@@ -1,0 +1,5 @@
+ignoredBuiltDependencies:
+  - esbuild
+
+overrides:
+  bc-lumen: link:../bc-lumen
