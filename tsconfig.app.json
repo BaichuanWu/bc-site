@@ -25,6 +25,7 @@
     "baseUrl": "./", // 根路径
     "paths": {
       "Src/*": ["src/*"],
+      "Consts": ["config/consts"],
       "Components/*": ["src/renderer/components/*"],
       "Utils/*": ["src/renderer/utils/*"],
       "Pages/*": ["src/renderer/pages/*"],

@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       Src: resolve(__dirname, './src'),
+      Consts: resolve(__dirname, './config/consts'),
       Components: resolve(__dirname, './src/renderer/components'),
       Utils: resolve(__dirname, './src/renderer/utils'),
       Pages: resolve(__dirname, './src/renderer/pages'),
@@ -22,7 +23,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, '')
       },

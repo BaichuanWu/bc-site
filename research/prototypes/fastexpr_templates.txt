@@ -1,0 +1,44 @@
+-- FastEXPR template: Growth Momentum
+-- Replace FIELD_TTM_REVENUE, FIELD_EPS, FIELD_CASH_OP, PRICE with actual dataset field ids
+
+select
+  id as instrument,
+  date as date,
+  (FIELD_TTM_REVENUE) as ttm_revenue,
+  (FIELD_EPS) as eps,
+  (FIELD_CASH_OP) as cashflow_op,
+  (PRICE) as close_price
+from dataset("fundamental23")
+
+-- compute yoy / 12m growth (example FastEXPR pseudo)
+-- Note: adapt to platform FastEXPR syntax if necessary
+let ttm_revenue_prev = lag(ttm_revenue, 4) -- prior year (quarterly data assumed)
+let revenue_growth_12m = (ttm_revenue - ttm_revenue_prev) / nullif(ttm_revenue_prev,0)
+
+-- z-score across cross-section (platform function names may differ)
+let score = cross_section_zscore(revenue_growth_12m)
+
+-- output score for sorting
+output score
+
+
+-- FastEXPR template: Factor Ratios Quick Rank
+-- Replace fnd65_allcap_sedol_bpemtt etc. with the actual field ids from dataset `fundamental65`
+
+select
+  id as instrument,
+  date as date,
+  fnd65_allcap_sedol_bpemtt as earnings_yield,
+  fnd65_allcap_sedol_apg as grossprofit_to_assets,
+  fnd65_allcap_sedol_cashratio as cash_ratio,
+  fnd65_allcap_sedol_booklev as book_leverage
+from dataset("fundamental65")
+
+let r1 = cross_section_rank(earnings_yield)
+let r2 = cross_section_rank(grossprofit_to_assets)
+let r3 = cross_section_rank(cash_ratio)
+let r4 = cross_section_rank(-book_leverage) -- assuming lower leverage is better
+
+let combined = (r1 + r2 + r3 + r4) / 4
+
+output combined as score

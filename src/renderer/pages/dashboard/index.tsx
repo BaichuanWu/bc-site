@@ -10,25 +10,16 @@ import {
 } from "bc-lumen/src/icons";
 import { DashboardPage, type  NavigationItem} from "bc-lumen/src/pages";
 import TodoPage from "../todo";
-import InspirationPage from "./quants/worldbrain/InspirationPage";
+import InspirationPage from "./quants/InspirationPage";
+import TemplatePage from "./quants/TemplatePage";
+import AlphaPage from "./quants/wqb/AlphaPage";
 
 const NAVIGATION: NavigationItem[] = [
   {
     kind: "header",
-    title: "Todo",
+    title: "Acticles",
   },
-  {
-    segment: "todo1",
-    title: "Todo1",
-    icon: <Task />,
-    component: <TodoPage />,
-  },
-  {
-    segment: "todo2",
-    title: "todo2",
-    icon: <Checklist />,
-    component: <TodoPage />,
-  },
+
   {
     kind: "divider",
   },
@@ -37,33 +28,39 @@ const NAVIGATION: NavigationItem[] = [
     title: "Quants",
   },
   {
+    segment: "inspiration",
+    title: "Inspiration",
+    icon: <Lightbulb />,
+    component: <InspirationPage />,
+  },
+  {
+    segment: "template",
+    title: "Template",
+    icon: <Description />,
+    component: <TemplatePage />,
+  },
+  {
     segment: "world-quant",
     title: "WorldQuant",
     icon: <Analytics />,
     children: [
       {
-        segment: "inspiration",
-        title: "Inspiration",
-        icon: <Lightbulb />,
-        component: <InspirationPage />,
+        segment: "profile",
+        title: "Profile",
+        icon: <Person />,
+        component: <TodoPage />,
       },
       {
-        segment: "template",
-        title: "Template",
-        icon: <Description />,
+        segment: "alpha-tasks",
+        title: "Alpha Tasks",
+        icon: <Task />,
         component: <TodoPage />,
       },
       {
         segment: "alpha",
         title: "Alpha",
         icon: <Functions />,
-        component: <TodoPage />,
-      },
-      {
-        segment: "profile",
-        title: "Profile",
-        icon: <Person />,
-        component: <TodoPage />,
+        component: <AlphaPage />,
       },
     ],
   },
@@ -79,7 +76,7 @@ const NAVIGATION: NavigationItem[] = [
 const  Dashboard = ({linkPrefix=""}) => {
 
   return (
-    <DashboardPage branding={{title:"Quants"}} items={NAVIGATION} linkPrefix={linkPrefix} />
+    <DashboardPage branding={{title:"Dashboard"}} items={NAVIGATION} linkPrefix={linkPrefix} />
   )
 }
 
