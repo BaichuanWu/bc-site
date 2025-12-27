@@ -1,6 +1,5 @@
 import {
   Task,
-  Checklist,
   Analytics,
   Lightbulb,
   Description,
