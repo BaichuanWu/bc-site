@@ -4,10 +4,12 @@ import inspiration from './inspiration'
 import wqbAlphaTask from './wqbAlphaTask'
 import template from './template'
 import wqbAlpha from './wqbAlpha'
+import promotion from './promotion'
 
 export default combineReducers({
     inspiration,
     template,
     wqbAlpha,
-    wqbAlphaTask
+    wqbAlphaTask,
+    promotion,
 })

@@ -2,6 +2,7 @@ import {
   Task,
   Analytics,
   Lightbulb,
+  DocumentScannerOutlined,
   Description,
   Functions,
   Layers,
@@ -11,53 +12,62 @@ import { DashboardPage, type  NavigationItem} from "bc-lumen/src/pages";
 import TodoPage from "../todo";
 import InspirationPage from "./quants/InspirationPage";
 import TemplatePage from "./quants/TemplatePage";
-import AlphaPage from "./quants/wqb/AlphaPage";
+import AlphaPage from "./quants/wqb/analysis/AlphaPage";
+import PromotionPage from "./quants/promotionPage";
 
 const NAVIGATION: NavigationItem[] = [
   {
     kind: "header",
-    title: "Acticles",
+    title: "web3",
   },
-
   {
-    kind: "divider",
+      segment: "profile",
+      title: "todo1",
+      icon: <Person />,
+      component: <TodoPage />,
   },
   {
     kind: "header",
-    title: "Quants",
+    title: "quants",
   },
   {
     segment: "inspiration",
-    title: "Inspiration",
+    title: "inspiration",
     icon: <Lightbulb />,
     component: <InspirationPage />,
   },
   {
     segment: "template",
-    title: "Template",
+    title: "alpha template",
     icon: <Description />,
     component: <TemplatePage />,
   },
   {
-    segment: "world-quant",
-    title: "WorldQuant",
+    segment: "promotion",
+    title: "promotion",
+    icon: <DocumentScannerOutlined />,
+    component: <PromotionPage />,
+  },
+  {
+    segment: "world-brain-quant",
+    title: "WorldBrainQuant",
     icon: <Analytics />,
     children: [
       {
         segment: "profile",
-        title: "Profile",
+        title: "profile",
         icon: <Person />,
         component: <TodoPage />,
       },
       {
-        segment: "alpha-tasks",
-        title: "Alpha Tasks",
-        icon: <Task />,
-        component: <TodoPage />,
+        segment: "workflow",
+        title: "workflow",
+        icon: <Description />,
+        component: <TemplatePage />,
       },
       {
         segment: "alpha",
-        title: "Alpha",
+        title: "alphas",
         icon: <Functions />,
         component: <AlphaPage />,
       },
@@ -69,13 +79,20 @@ const NAVIGATION: NavigationItem[] = [
     icon: <Layers />,
     component: <TodoPage />,
   },
+  {
+    kind: "divider",
+  },
+  {
+    kind: "header",
+    title: "Acticles",
+  },
 ];
 
 
 const  Dashboard = ({linkPrefix=""}) => {
 
   return (
-    <DashboardPage branding={{title:"Dashboard"}} items={NAVIGATION} linkPrefix={linkPrefix} />
+    <DashboardPage branding={{title:"workspace"}} items={NAVIGATION} linkPrefix={linkPrefix} />
   )
 }
 

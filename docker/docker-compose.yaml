@@ -1,7 +1,0 @@
-version: "3.9"
-services:
-  taurus:
-    environment:
-      - TZ=Asia/Shanghai
-    build: .
-    image: ${URL}taurus:${TAURUS_COMMIT_ID}

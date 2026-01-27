@@ -27,7 +27,6 @@ const AlphaPage = () => {
     createOrUpdateItems={createOrUpdateItems}
     fetchData={fetchData}
   />
-
 }
 
 export default AlphaPage
