@@ -19,6 +19,9 @@ importers:
       bc-lumen:
         specifier: link:../bc-lumen
         version: link:../bc-lumen
+      nprogress:
+        specifier: ^0.2.0
+        version: 0.2.0
       react:
         specifier: 19.1.1
         version: 19.1.1
@@ -47,6 +50,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.0.3(vite@7.1.6(@types/node@24.5.2))
+      baseline-browser-mapping:
+        specifier: ^2.9.18
+        version: 2.9.18
       eslint:
         specifier: ^9.33.0
         version: 9.35.0
@@ -648,8 +654,8 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==, tarball: https://registry.npmmirror.com/balanced-match/-/balanced-match-1.0.2.tgz}
 
-  baseline-browser-mapping@2.8.6:
-    resolution: {integrity: sha512-wrH5NNqren/QMtKUEEJf7z86YjfqW/2uw3IL3/xpqZUC95SSVIFXYQeeGjL6FT/X68IROu6RMehZQS5foy2BXw==, tarball: https://registry.npmmirror.com/baseline-browser-mapping/-/baseline-browser-mapping-2.8.6.tgz}
+  baseline-browser-mapping@2.9.18:
+    resolution: {integrity: sha512-e23vBV1ZLfjb9apvfPk4rHVu2ry6RIr2Wfs+O324okSidrX7pTAnEJPCh/O5BtRlr7QtZI7ktOP3vsqr7Z5XoA==, tarball: https://registry.npmmirror.com/baseline-browser-mapping/-/baseline-browser-mapping-2.9.18.tgz}
     hasBin: true
 
   brace-expansion@1.1.12:
@@ -964,6 +970,9 @@ packages:
 
   node-releases@2.0.21:
     resolution: {integrity: sha512-5b0pgg78U3hwXkCM8Z9b2FJdPZlr9Psr9V2gQPESdGHqbntyFJKFW4r5TeWGFzafGY3hzs1JC62VEQMbl1JFkw==, tarball: https://registry.npmmirror.com/node-releases/-/node-releases-2.0.21.tgz}
+
+  nprogress@0.2.0:
+    resolution: {integrity: sha512-I19aIingLgR1fmhftnbWWO3dXc0hSxqHQHQb3H8m+K3TnEn/iSeTZZOyvKXWqQESMwuUVnatlCnZdLBZZt2VSA==, tarball: https://registry.npmmirror.com/nprogress/-/nprogress-0.2.0.tgz}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==, tarball: https://registry.npmmirror.com/optionator/-/optionator-0.9.4.tgz}
@@ -1739,7 +1748,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  baseline-browser-mapping@2.8.6: {}
+  baseline-browser-mapping@2.9.18: {}
 
   brace-expansion@1.1.12:
     dependencies:
@@ -1756,7 +1765,7 @@ snapshots:
 
   browserslist@4.26.2:
     dependencies:
-      baseline-browser-mapping: 2.8.6
+      baseline-browser-mapping: 2.9.18
       caniuse-lite: 1.0.30001743
       electron-to-chromium: 1.5.222
       node-releases: 2.0.21
@@ -2050,6 +2059,8 @@ snapshots:
   natural-compare@1.4.0: {}
 
   node-releases@2.0.21: {}
+
+  nprogress@0.2.0: {}
 
   optionator@0.9.4:
     dependencies:

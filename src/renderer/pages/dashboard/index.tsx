@@ -14,6 +14,8 @@ import InspirationPage from "./quants/InspirationPage";
 import TemplatePage from "./quants/TemplatePage";
 import AlphaPage from "./quants/wqb/analysis/AlphaPage";
 import PromotionPage from "./quants/promotionPage";
+import BeginnerAlphaPage from "./quants/BeginnerAlphaPage";
+import SubmittableAlphaPage from "./quants/SubmittableAlphaPage";
 
 const NAVIGATION: NavigationItem[] = [
   {
@@ -70,6 +72,18 @@ const NAVIGATION: NavigationItem[] = [
         title: "alphas",
         icon: <Functions />,
         component: <AlphaPage />,
+      },
+      {
+        segment: "beginner-alpha",
+        title: "初阶Alpha",
+        icon: <Functions />,
+        component: <BeginnerAlphaPage />,
+      },
+      {
+        segment: "submittable-alpha",
+        title: "可提交Alpha",
+        icon: <Send />,
+        component: <SubmittableAlphaPage />,
       },
     ],
   },
