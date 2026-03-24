@@ -2,6 +2,8 @@ import * as React from "react"
 import useSWR from "swr"
 import { apiClient, fetcher } from "@/lib/api"
 
+export type SortEntry = { key: string; dir: 'asc' | 'desc' }
+
 export function useCrud<T extends { id: string | number }>(
     endpoint: string,
     searchParamName?: string,
@@ -11,49 +13,71 @@ export function useCrud<T extends { id: string | number }>(
     const [debouncedSearch, setDebouncedSearch] = React.useState("")
     const [page, setPage] = React.useState(1)
     const [pageSize, setPageSize] = React.useState(20)
+    const [sorts, setSorts] = React.useState<SortEntry[]>([])
 
     React.useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 300)
         return () => clearTimeout(timer)
     }, [search])
 
-    // Reset pagination on search change
+    // Reset pagination on search change (primitive string is stable)
     React.useEffect(() => {
         setPage(1)
-    }, [debouncedSearch, additionalQueries])
+    }, [debouncedSearch])
 
-    const queryParams = new URLSearchParams()
-    const qPayload: Record<string, any> = {}
+    const queryParamsString = React.useMemo(() => {
+        const params = new URLSearchParams()
+        const qPayload: Record<string, any> = {}
 
-    // Attach all hard filters preserving objects like { ge: 10 }
-    Object.entries(additionalQueries).forEach(([key, val]) => {
-        if (val !== "" && val !== "all" && val != null) {
-            // Remove empty sub-objects if present like {}
-            if (typeof val === 'object' && Object.keys(val).length === 0) return;
-            qPayload[key] = val
+        // Attach all hard filters preserving objects like { ge: 10 }
+        Object.entries(additionalQueries).forEach(([key, val]) => {
+            if (val !== "" && val !== "all" && val != null) {
+                // Remove empty sub-objects if present like {}
+                if (typeof val === 'object' && Object.keys(val).length === 0) return;
+                qPayload[key] = val
+            }
+        })
+
+        // Attach the text search mapping it natively to { "like": "%...%" }
+        if (debouncedSearch && searchParamName) {
+            let cleanKey = searchParamName.replace(/Regexp|Like|_regexp|_like/g, '')
+            qPayload[cleanKey] = { like: `%${debouncedSearch}%` }
         }
-    })
 
-    // Attach the text search mapping it natively to { "like": "%...%" }
-    if (debouncedSearch && searchParamName) {
-        // Strip out old suffixes if dev forgot to remove them
-        let cleanKey = searchParamName.replace(/Regexp|Like|_regexp|_like/g, '')
-        qPayload[cleanKey] = { like: `%${debouncedSearch}%` }
-    }
+        if (Object.keys(qPayload).length > 0) {
+            params.set("q", JSON.stringify(qPayload))
+        }
 
-    if (Object.keys(qPayload).length > 0) {
-        queryParams.set("q", JSON.stringify(qPayload))
-    }
+        // Pagination params (skip and limit)
+        const skip = (page - 1) * pageSize
+        params.set("skip", String(skip))
+        params.set("limit", String(pageSize))
 
-    // Pagination params (skip and limit)
-    const skip = (page - 1) * pageSize
-    queryParams.set("skip", String(skip))
-    queryParams.set("limit", String(pageSize))
+        // Sorting params (comma-separated string for backend)
+        if (sorts.length > 0) {
+            const orderByStr = sorts.map(s => s.dir === 'desc' ? `-${s.key}` : s.key).join(',')
+            params.set("orderBy", orderByStr)
+        }
+
+        return params.toString()
+    }, [page, pageSize, debouncedSearch, sorts, additionalQueries, searchParamName])
+
+    const swrKey = `${endpoint}?${queryParamsString}`
+
+    React.useEffect(() => {
+        console.log(`[useCrud] Key changed: ${swrKey}`)
+    }, [swrKey])
 
     const { data: resultData, mutate, isLoading, isValidating } = useSWR(
-        `${endpoint}?${queryParams.toString()}`,
+        swrKey,
         fetcher,
-        { keepPreviousData: true }
+        {
+            keepPreviousData: true,
+            dedupingInterval: 200,
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            revalidateIfStale: false
+        }
     )
 
     const data: T[] = Array.isArray(resultData?.dataSource)
@@ -107,7 +131,13 @@ export function useCrud<T extends { id: string | number }>(
         }
     }
 
-    return {
+    // Sort helper that also resets page to avoid double requests
+    const updateSorts = React.useCallback((updater: SortEntry[] | ((prev: SortEntry[]) => SortEntry[])) => {
+        setSorts(updater)
+        setPage(1)
+    }, [])
+
+    const result = React.useMemo(() => ({
         data,
         isLoading,
         isValidating,
@@ -119,6 +149,8 @@ export function useCrud<T extends { id: string | number }>(
         pageSize,
         setPageSize,
         total,
+        sorts,
+        updateSorts,
         isDialogOpen,
         editingItem,
         isSaving,
@@ -127,5 +159,11 @@ export function useCrud<T extends { id: string | number }>(
         handleSave,
         handleDelete,
         mutate
-    }
+    }), [
+        data, isLoading, isValidating, search, debouncedSearch,
+        page, pageSize, total, sorts, updateSorts,
+        isDialogOpen, editingItem, isSaving, mutate
+    ])
+
+    return result
 }

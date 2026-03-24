@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
 import { DataTable, type Column } from "@/components/common/data-table"
-import { useCrud } from "@/hooks/use-crud"
+import { useCrud, type SortEntry } from "@/hooks/use-crud"
 import {
     Select,
     SelectContent,
@@ -18,6 +18,8 @@ export type ItemsRenderProps<T> = {
     items: T[]
     columns: Column<T>[]
     stickyTop?: number
+    sorts?: SortEntry[]
+    onSort?: (key: string) => void
 }
 
 export type CrudLayoutProps<T extends { id: string | number }> = {
@@ -41,6 +43,7 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     columns?: Column<T>[]
     itemsRender?: React.ComponentType<ItemsRenderProps<T>>
     stickyTop?: number
+    onFilterChange?: (filters: Record<string, any>) => void
 
     children?: React.ReactNode
 }
@@ -59,9 +62,16 @@ export function CrudLayout<T extends { id: string | number }>({
     idKey = "id",
     filterItems,
     storageKey,
-    stickyTop = 56 // Default to dashboard header height (h-14)
+    stickyTop = 56, // Default to dashboard header height (h-14)
+    onFilterChange
 }: CrudLayoutProps<T>) {
     const [filters, setFilters] = React.useState<Record<string, any>>({})
+
+    const handleFilterChange = (newFilters: Record<string, any>) => {
+        setFilters(newFilters)
+        internalCrud.setPage(1) // Explicitly reset page on filter change
+        onFilterChange?.(newFilters)
+    }
 
     // If endpoint is provided, use internal useCrud
     const internalCrud = useCrud<T>(
@@ -80,8 +90,33 @@ export function CrudLayout<T extends { id: string | number }>({
         pageSize,
         setPageSize,
         total,
+        sorts,
+        updateSorts,
         isValidating
     } = internalCrud
+
+    /**
+     * Multi-column sort handler:
+     *  - Click new column → append as desc
+     *  - Click existing desc → toggle to asc
+     *  - Click existing asc → remove from sorts
+     */
+    const handleSort = (key: string) => {
+        updateSorts((prev: SortEntry[]) => {
+            const idx = prev.findIndex((s: SortEntry) => s.key === key)
+            if (idx === -1) {
+                // New column, add as desc
+                return [...prev, { key, dir: 'desc' as const }]
+            }
+            const existing = prev[idx]
+            if (existing.dir === 'desc') {
+                // Toggle to asc
+                return prev.map((s: SortEntry, i: number) => i === idx ? { ...s, dir: 'asc' as const } : s)
+            }
+            // Already asc, remove
+            return prev.filter((_: SortEntry, i: number) => i !== idx)
+        })
+    }
 
     const totalPages = Math.ceil(total / pageSize)
 
@@ -103,7 +138,7 @@ export function CrudLayout<T extends { id: string | number }>({
                 <SearchFilterGroup
                     title="Filters"
                     items={filterItems}
-                    onSearch={setFilters}
+                    onSearch={handleFilterChange}
                     storageKey={storageKey}
                 />
             )}
@@ -121,7 +156,13 @@ export function CrudLayout<T extends { id: string | number }>({
                 )}
 
                 <div className={isLoading ? "opacity-50 transition-opacity duration-300 pointer-events-none" : "transition-opacity duration-300"}>
-                    <ItemsRender items={items} columns={columns} stickyTop={stickyTop} />
+                    <ItemsRender 
+                        items={items} 
+                        columns={columns} 
+                        stickyTop={stickyTop} 
+                        sorts={sorts}
+                        onSort={handleSort}
+                    />
                 </div>
 
                 {/* Internal Pagination - Only if using internal Fetching */}

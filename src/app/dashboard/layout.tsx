@@ -9,6 +9,7 @@ import {
     LineChart,
     ChevronDown,
     ChevronRight,
+    Bot,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -38,6 +39,14 @@ const NAV_ITEMS: NavItem[] = [
                     { title: "AI Agent", href: "/dashboard/world-brain-quant/ai-agent" },
                 ]
             }
+        ]
+    },
+    {
+        title: "Agent Management",
+        icon: Bot,
+        children: [
+            { title: "Agents", href: "/dashboard/agent" },
+            { title: "LLM Config", href: "/dashboard/agent/llm" },
         ]
     },
 ]

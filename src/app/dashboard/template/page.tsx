@@ -15,6 +15,7 @@ import { apiClient } from "@/lib/api"
 import { useCrud } from "@/hooks/use-crud"
 import { CrudLayout, type ItemsRenderProps } from "@/components/common/crud-layout"
 import { type SearchFilterItem } from "@/components/common/query-filters"
+import { ActionButtons } from "@/components/common/action-buttons"
 
 type Template = {
     id: string | number
@@ -215,7 +216,6 @@ export default function TemplatePage() {
         handleOpenDialog: handleOpenCrud,
         handleCloseDialog: handleCloseCrud,
         handleSave,
-        handleDelete,
         mutate
     } = useCrud<Template>('/quants/template')
 
@@ -264,12 +264,14 @@ export default function TemplatePage() {
                             <Settings className="mr-2 h-4 w-4" /> Configure
                         </Button>
                         <div className="flex-1"></div>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenCrud(item)}>
-                            <Edit className="h-4 w-4 text-blue-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <ActionButtons 
+                            onEdit={() => handleOpenCrud(item)}
+                            onConfirmDelete={async () => {
+                                await apiClient.delete('/quants/template', { params: { id: item.id } })
+                                mutate()
+                            }}
+                            description={<>Are you sure you want to delete the template <strong>{item.title}</strong>? This action cannot be undone.</>}
+                        />
                     </CardFooter>
                 </Card>
             ))}
@@ -277,7 +279,7 @@ export default function TemplatePage() {
                 <div className="col-span-full py-12 text-center text-muted-foreground">No templates found.</div>
             )}
         </div>
-    ), [handleOpenCrud, handleDelete])
+    ), [handleOpenCrud])
 
     const filterItems: SearchFilterItem[] = [
         { key: "title", label: "Title", type: "text" },

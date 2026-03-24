@@ -1,5 +1,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { ChevronUp, ChevronDown } from "lucide-react"
+import { type SortEntry } from "@/hooks/use-crud"
 import {
     Table,
     TableBody,
@@ -23,6 +25,7 @@ export type Column<T> = {
     align?: 'left' | 'right' | 'center'
     className?: string
     truncate?: boolean
+    sortable?: boolean
     render?: (value: any, item: T) => React.ReactNode
 }
 
@@ -30,12 +33,16 @@ export type DataTableProps<T> = {
     items: T[]
     columns: Column<T>[]
     stickyTop?: number
+    sorts?: SortEntry[]
+    onSort?: (key: string) => void
 }
 
 export function DataTable<T extends { id: string | number }>({
     items,
     columns,
-    stickyTop = 0
+    stickyTop = 0,
+    sorts = [],
+    onSort
 }: DataTableProps<T>) {
     const containerRef = React.useRef<HTMLDivElement>(null)
 
@@ -102,6 +109,7 @@ export function DataTable<T extends { id: string | number }>({
                                         col.align === 'center' && "text-center",
                                         col.fixed === 'left' && "sticky left-0 z-40 border-r",
                                         col.fixed === 'right' && "sticky right-0 z-40 border-l",
+                                        col.sortable && "cursor-pointer hover:bg-muted/70 select-none",
                                         col.className
                                     )}
                                     style={{
@@ -110,8 +118,29 @@ export function DataTable<T extends { id: string | number }>({
                                         maxWidth: col.width,
                                         overflow: col.truncate ? 'hidden' : undefined
                                     }}
+                                    onClick={() => col.sortable && onSort && onSort(col.key)}
                                 >
-                                    {col.title}
+                                    <div className={cn("flex items-center gap-1", 
+                                        col.align === 'right' && "justify-end",
+                                        col.align === 'center' && "justify-center"
+                                    )}>
+                                        {col.title}
+                                        {col.sortable && (() => {
+                                            const sortIdx = sorts.findIndex(s => s.key === col.key)
+                                            const sortEntry = sortIdx !== -1 ? sorts[sortIdx] : null
+                                            return (
+                                                <div className="flex items-center ml-1">
+                                                    <div className="flex flex-col">
+                                                        <ChevronUp className={cn("h-3 w-3 -mb-1", sortEntry?.dir === 'asc' ? "opacity-100 text-indigo-600 dark:text-indigo-400" : "opacity-30")} />
+                                                        <ChevronDown className={cn("h-3 w-3", sortEntry?.dir === 'desc' ? "opacity-100 text-indigo-600 dark:text-indigo-400" : "opacity-30")} />
+                                                    </div>
+                                                    {sortEntry && sorts.length > 1 && (
+                                                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 ml-0.5">{sortIdx + 1}</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        })()}
+                                    </div>
                                 </TableHead>
                             ))}
                         </TableRow>
