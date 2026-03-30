@@ -51,12 +51,14 @@ export default function AgentPage() {
 
   // Share the same endpoint/cache as RemoteSelect for table label lookup
   const { data: llmOptions } = useSWR("/agent/llm?limit=100", (url) => 
-    apiClient.get(url).then(res => res.data?.dataSource || res.data?.data || [])
+    apiClient.get(url).then((res: any) => {
+      if (Array.isArray(res)) return res;
+      return res?.dataSource || res?.data || [];
+    })
   )
 
 
   const [formData, setFormData] = React.useState<any>({})
-
 
   React.useEffect(() => {
     if (editingItem) {
@@ -65,20 +67,21 @@ export default function AgentPage() {
       setFormData({
         name: "",
         version: "1.0.0",
-        agent_class: "BaseAgent",
-        llm_id: 0,
-        sys_prompt: "# You are a helpful assistant\n\nDescribe your behavior here...",
-        llm_config: { model: "gpt-4o", temperature: 0.7 },
-        is_active: 1,
+        agentClass: "BaseAgent",
+        llmId: 0,
+        sysPrompt: "# You are a helpful assistant\n\nDescribe your behavior here...",
+        userPrompt: "",
+        llmConfig: { model: "gpt-4o", temperature: 0.7 },
+        isActive: 1,
       })
     }
   }, [editingItem, isDialogOpen])
 
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Agent Name", type: "text" },
-    { key: "agent_class", label: "Class", type: "text" },
+    { key: "agentClass", label: "Class", type: "text" },
     {
-      key: "is_active",
+      key: "isActive",
       label: "Status",
       type: "number",
       options: [
@@ -100,9 +103,9 @@ export default function AgentPage() {
             </div>
         )
     },
-    { key: "agent_class", title: "Class", className: "text-sm" },
+    { key: "agentClass", title: "Class", className: "text-sm" },
     { 
-        key: "llm_id", 
+        key: "llmId", 
         title: "LLM Config",
         render: (id: number) => {
             const llm = (llmOptions || []).find((o: any) => o.id === id)
@@ -110,7 +113,7 @@ export default function AgentPage() {
         }
     },
     {
-      key: "is_active",
+      key: "isActive",
       title: "Status",
       render: (val: number) => (
         <Badge variant={val ? "default" : "secondary"} className="text-[10px]">
@@ -149,7 +152,7 @@ export default function AgentPage() {
           onAdd={() => handleOpenDialog()}
         >
           <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle>{editingItem ? "Edit Agent" : "Create New Agent"}</DialogTitle>
           </DialogHeader>
@@ -160,7 +163,7 @@ export default function AgentPage() {
                     <Label htmlFor="agent_name">Agent Name</Label>
                     <Input
                         id="agent_name"
-                        value={formData.name}
+                        value={formData.name || ""}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="e.g. Strategist"
                     />
@@ -169,7 +172,7 @@ export default function AgentPage() {
                     <Label htmlFor="version">Version</Label>
                     <Input
                         id="version"
-                        value={formData.version}
+                        value={formData.version || ""}
                         onChange={(e) => setFormData({ ...formData, version: e.target.value })}
                         placeholder="1.0.0"
                     />
@@ -178,10 +181,10 @@ export default function AgentPage() {
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="agent_class">Implementation Class</Label>
+                    <Label htmlFor="agentClass">Implementation Class</Label>
                     <Select 
-                        value={formData.agent_class} 
-                        onValueChange={(val) => setFormData({...formData, agent_class: val})}
+                        value={formData.agentClass || ""} 
+                        onValueChange={(val) => setFormData({...formData, agentClass: val})}
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Select class" />
@@ -196,22 +199,21 @@ export default function AgentPage() {
                     </Select>
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="llm_id">LLM Credentials</Label>
+                    <Label htmlFor="llmId">LLM Credentials</Label>
                     <RemoteSelect
                         endpoint="/agent/llm?limit=100"
-                        value={String(formData.llm_id)}
-                        onValueChange={(val) => setFormData({...formData, llm_id: parseInt(val)})}
+                        value={formData.llmId}
+                        onValueChange={(val) => setFormData({...formData, llmId: val})}
                         placeholder="Select LLM"
-                        extraOptions={[{ label: "Default (from config.py)", value: "0" }]}
                     />
                 </div>
             </div>
 
             <div className="grid gap-2">
-               <Label htmlFor="is_active">Status</Label>
+               <Label htmlFor="isActive">Status</Label>
                <Select 
-                   value={String(formData.is_active)} 
-                   onValueChange={(val) => setFormData({...formData, is_active: parseInt(val)})}
+                   value={String(formData.isActive ?? 1)} 
+                   onValueChange={(val) => setFormData({...formData, isActive: parseInt(val)})}
                >
                    <SelectTrigger>
                        <SelectValue placeholder="Select Status" />
@@ -223,13 +225,23 @@ export default function AgentPage() {
                </Select>
             </div>
 
-            <div className="grid gap-2">
-              <Label>System Prompt (Markdown)</Label>
-              <MarkdownEditor
-                value={formData.sys_prompt}
-                onChange={(val) => setFormData({ ...formData, sys_prompt: val })}
-                className="mt-1"
-              />
+            <div className="grid grid-cols-2 gap-6">
+                <div className="grid gap-2 flex-1 min-h-0">
+                  <Label>System Prompt (Markdown)</Label>
+                  <MarkdownEditor
+                    value={formData.sysPrompt || ""}
+                    onChange={(val) => setFormData({ ...formData, sysPrompt: val })}
+                    className="mt-1 h-[400px] overflow-auto"
+                  />
+                </div>
+                <div className="grid gap-2 flex-1 min-h-0">
+                  <Label>User Prompt Template (Markdown)</Label>
+                  <MarkdownEditor
+                    value={formData.userPrompt || ""}
+                    onChange={(val) => setFormData({ ...formData, userPrompt: val })}
+                    className="mt-1 h-[400px] overflow-auto"
+                  />
+                </div>
             </div>
           </div>
 

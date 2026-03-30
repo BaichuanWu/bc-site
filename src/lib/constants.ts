@@ -2,12 +2,10 @@
  * Standardized Task Event Types (aligned with SystemTaskEventModel)
  */
 export const TASK_EVENT_TYPE = {
-    START: 0,
     CHECKPOINT: 1,
-    LOG: 2,
+    PROGRESS: 2,
     RESULT: 3,
     ERROR: 4,
-    TELEMETRY: 10,
 } as const;
 
 /**

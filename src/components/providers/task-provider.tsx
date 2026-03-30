@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 
 import { type TaskStatus, type TaskProgress, type TaskState } from "@/types/task"
+import { TASK_EVENT_TYPE } from "@/lib/constants"
 import { mapServerStateToStatus } from "@/lib/task-utils"
 
 interface TaskContextType {
@@ -16,6 +17,23 @@ interface TaskContextType {
 }
 
 const TaskContext = createContext<TaskContextType | null>(null)
+
+const mergeTaskEvents = (existingEvents: any[], incomingEvents: any[]) => {
+    const unique = new Map<string | number, any>()
+
+    for (const event of [...existingEvents, ...incomingEvents]) {
+        const key =
+            event.id ??
+            `${event.typ}-${event.payload?.step ?? "event"}-${event.payload?.status ?? "na"}`
+        unique.set(key, event)
+    }
+
+    return Array.from(unique.values()).sort(
+        (a, b) =>
+            new Date(a.createTime || 0).getTime() -
+            new Date(b.createTime || 0).getTime()
+    )
+}
 
 export const useTaskSystem = () => {
     const context = useContext(TaskContext)
@@ -156,27 +174,21 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                     let newState: TaskState = { ...existing }
 
                     if (data.event) {
-                        // This is a new event log
                         const eventData = data.event
-                        const isCheckpoint = eventData.typ === 1 // TASK_EVENT_TYPE.CHECKPOINT
-                        
-                        if (isCheckpoint && eventData.payload?.step) {
-                            // Deduplicate checkpoints by step+status
-                            const existingIdx = existing.events.findIndex(e => 
-                                e.payload?.step === eventData.payload?.step && 
-                                e.payload?.status === eventData.payload?.status
-                            )
-                            if (existingIdx !== -1) {
-                                newState.events = [...existing.events]
-                                newState.events[existingIdx] = eventData
-                            } else {
-                                newState.events = [...existing.events, eventData]
-                            }
-                        } else {
-                            newState.events = [...existing.events, eventData]
-                        }
+                        const normalizedEvent =
+                            eventData.typ === TASK_EVENT_TYPE.CHECKPOINT &&
+                            eventData.payload?.step
+                                ? {
+                                      ...eventData,
+                                      id:
+                                          eventData.id ??
+                                          `${eventData.typ}-${eventData.payload.step}-${eventData.payload.status}`,
+                                  }
+                                : eventData
+                        newState.events = mergeTaskEvents(existing.events, [
+                            normalizedEvent,
+                        ])
                     } else {
-                        // This is a task state update
                         newState = {
                             ...newState,
                             status: mapServerStateToStatus(data.state),
@@ -248,7 +260,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
             }
             return {
                 ...prev,
-                [taskId]: { ...current, ...state }
+                [taskId]: {
+                    ...current,
+                    ...state,
+                    events: state.events
+                        ? mergeTaskEvents(current.events, state.events)
+                        : current.events,
+                }
             }
         })
     }, [])
@@ -297,4 +315,3 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         </TaskContext.Provider>
     )
 }
-

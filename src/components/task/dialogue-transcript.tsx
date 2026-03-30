@@ -21,7 +21,6 @@ export const DialogueTranscript = ({ messages }: { messages: any[] }) => {
                     key={i} 
                     role={m?.role || 'assistant'} 
                     content={m?.content} 
-                    type={m?.typ} 
                     index={i} 
                 />
             ))}

@@ -61,19 +61,31 @@ export default function TaskDetailPage() {
     const task_id = params.id as string
     
     const [loading, setLoading] = useState(true)
-    const [initialData, setInitialData] = useState<any>(null)
-
     const { 
         status, 
         progress, 
-        events: sseEvents, 
+        events, 
         snapshot, 
-        error: sseError,
         setInitialState 
     } = useTask(parseInt(task_id))
 
     const [task, setTask] = useState<any>(null)
-    const [apiEvents, setApiEvents] = useState<any[]>([])
+
+    const getEventTitle = useCallback((event: any) => {
+        if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final Result'
+        return event.payload?.step || event.payload?.node || 'Unknown Step'
+    }, [])
+
+    const getEventStatus = useCallback((event: any) => {
+        if (event.typ === TASK_EVENT_TYPE.RESULT) return TASK_STATE.SUCCESS
+        return event.payload?.status || 0
+    }, [])
+
+    const getEventSummary = useCallback((event: any) => {
+        if (event.message) return event.message
+        if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final workflow output'
+        return `Audit trail for ${event.payload?.step || 'step'}`
+    }, [])
 
     // Sync task state from hook back to local 'task' for UI compatibility
     const displayTask = useMemo(() => {
@@ -91,18 +103,7 @@ export default function TaskDetailPage() {
         }
     }, [task, status, progress, snapshot])
 
-    const displayEvents = useMemo(() => {
-        // Merge API events with SSE events, deduplicating
-        const all = [...apiEvents, ...sseEvents]
-        const unique = new Map()
-        all.forEach(e => {
-            const key = e.id || `${e.payload?.step}-${e.payload?.status}`
-            unique.set(key, e)
-        })
-        return Array.from(unique.values()).sort((a, b) => 
-            new Date(a.createTime || 0).getTime() - new Date(b.createTime || 0).getTime()
-        )
-    }, [apiEvents, sseEvents])
+    const displayEvents = events
 
     useEffect(() => {
         const fetchTask = async () => {
@@ -114,7 +115,6 @@ export default function TaskDetailPage() {
                 const t = taskRes as any
                 const evs = eventsRes as any
                 setTask(t)
-                setApiEvents(evs)
                 
                 // Seed the global provider so other components (like breadcrumbs) know the state
                 setInitialState(parseInt(task_id), {
@@ -245,12 +245,19 @@ export default function TaskDetailPage() {
                                         ) : (
                                             displayEvents.map((event: any, idx: number) => (
                                                 <div key={event.id} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                    {(() => {
+                                                        const eventStatus = getEventStatus(event)
+                                                        const eventTitle = getEventTitle(event)
+                                                        const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
+                                                        const resultData = event.payload?.result
+                                                        return (
+                                                            <>
                                                     {/* dot */}
                                                     <div className={cn(
                                                         "absolute -left-[31px] top-6 h-2 w-2 rounded-full ring-4 ring-background z-10 transition-all group-hover:scale-125",
-                                                        event.payload?.status === TASK_STATE.SUCCESS ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" :
-                                                        event.payload?.status === TASK_STATE.RUNNING ? "bg-blue-500 animate-pulse" :
-                                                        event.payload?.status === TASK_STATE.ERROR ? "bg-red-500" : "bg-muted"
+                                                        eventStatus === TASK_STATE.SUCCESS ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" :
+                                                        eventStatus === TASK_STATE.RUNNING ? "bg-blue-500 animate-pulse" :
+                                                        eventStatus === TASK_STATE.ERROR ? "bg-red-500" : "bg-muted"
                                                     )} />
 
                                                     <Sheet>
@@ -259,15 +266,15 @@ export default function TaskDetailPage() {
                                                                 <div className="flex items-center justify-between mb-1">
                                                                     <div className="flex items-center gap-3">
                                                                         <span className="text-sm font-black tracking-tight uppercase">
-                                                                            {event.payload?.step || event.payload?.node || 'Unknown Step'}
+                                                                            {eventTitle}
                                                                         </span>
                                                                         <Badge variant="outline" className={cn(
                                                                             "text-[8px] h-3.5 font-black uppercase tracking-widest",
-                                                                            event.payload?.status === TASK_STATE.SUCCESS ? "text-green-500 border-green-500/30 bg-green-500/5" :
-                                                                            event.payload?.status === TASK_STATE.RUNNING ? "text-blue-500 border-blue-500/30 bg-blue-500/5" :
+                                                                            eventStatus === TASK_STATE.SUCCESS ? "text-green-500 border-green-500/30 bg-green-500/5" :
+                                                                            eventStatus === TASK_STATE.RUNNING ? "text-blue-500 border-blue-500/30 bg-blue-500/5" :
                                                                             "text-muted-foreground border-muted/30"
                                                                         )}>
-                                                                            {mapStatusToName(mapServerStateToStatus(event.payload?.status || 0))}
+                                                                            {mapStatusToName(mapServerStateToStatus(eventStatus))}
                                                                         </Badge>
                                                                     </div>
                                                                     <span className="text-[9px] font-mono opacity-40">
@@ -276,7 +283,7 @@ export default function TaskDetailPage() {
                                                                 </div>
                                                                 <div className="flex items-center justify-between">
                                                                     <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70">
-                                                                        {event.message || `Audit trail for ${event.payload?.step || 'step'}`}
+                                                                        {getEventSummary(event)}
                                                                     </p>
                                                                     <ChevronRightIcon className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                                                                 </div>
@@ -287,17 +294,17 @@ export default function TaskDetailPage() {
                                                                 <div className="flex items-center gap-6">
                                                                     <div className={cn(
                                                                         "h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-2xl",
-                                                                        event.payload?.status === TASK_STATE.SUCCESS ? "bg-green-600" : "bg-blue-600"
+                                                                        eventStatus === TASK_STATE.SUCCESS ? "bg-green-600" : "bg-blue-600"
                                                                     )}>
                                                                         <ActivityIcon className="h-8 w-8" />
                                                                     </div>
                                                                     <div className="space-y-1">
                                                                         <SheetTitle className="text-3xl font-black italic uppercase tracking-tighter">
-                                                                            {event.payload?.step || 'Step Detail'}
+                                                                            {eventTitle}
                                                                         </SheetTitle>
                                                                         <SheetDescription className="text-xs font-mono opacity-50 flex items-center gap-2 uppercase tracking-widest">
-                                                                            <span className={cn("h-1.5 w-1.5 rounded-full", event.payload?.status === TASK_STATE.SUCCESS ? "bg-green-500" : "bg-blue-500")} />
-                                                                            {mapStatusToName(mapServerStateToStatus(event.payload?.status || 0))} • {event.createTime ? new Date(event.createTime).toLocaleString() : 'N/A'}
+                                                                            <span className={cn("h-1.5 w-1.5 rounded-full", eventStatus === TASK_STATE.SUCCESS ? "bg-green-500" : "bg-blue-500")} />
+                                                                            {mapStatusToName(mapServerStateToStatus(eventStatus))} • {event.createTime ? new Date(event.createTime).toLocaleString() : 'N/A'}
                                                                         </SheetDescription>
                                                                     </div>
                                                                 </div>
@@ -305,7 +312,18 @@ export default function TaskDetailPage() {
                                                             
                                                             <ScrollArea className="flex-1 min-h-0">
                                                                 <div className="p-8 max-w-full mx-auto">
-                                                                    <DialogueTranscript messages={event.payload?.messages || []} />
+                                                                    {!isResultEvent && (
+                                                                        <DialogueTranscript messages={event.payload?.messages || []} />
+                                                                    )}
+
+                                                                    {isResultEvent && resultData && (
+                                                                        <div className="space-y-6">
+                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">Final Output</h4>
+                                                                            <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
+                                                                                <JsonNode data={resultData} depth={0} />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                     
                                                                     {/* Only show raw data if it's NOT an agent node (no messages) or if user explicitly needs it */}
                                                                     {event.payload?.data && typeof event.payload.data === 'object' && Object.keys(event.payload.data).length > 0 && (!event.payload?.messages || event.payload?.messages.length === 0) && (
@@ -320,6 +338,9 @@ export default function TaskDetailPage() {
                                                             </ScrollArea>
                                                         </SheetContent>
                                                     </Sheet>
+                                                            </>
+                                                        )
+                                                    })()}
                                                 </div>
                                             ))
                                         )}
@@ -333,4 +354,3 @@ export default function TaskDetailPage() {
         </div>
     )
 }
-

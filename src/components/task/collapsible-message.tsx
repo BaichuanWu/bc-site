@@ -17,17 +17,29 @@ import { MarkdownViewer } from '@/components/common/markdown-viewer'
 export const CollapsibleMessage = ({ 
     role, 
     content, 
-    type,
     index 
 }: { 
     role: string, 
     content: any, 
-    type?: string,
     index: number 
 }) => {
     const [isCollapsed, setIsCollapsed] = useState(false)
-    const isDict = type === 'dict' || (typeof content === 'object' && content !== null)
     
+    let parsedContent = content;
+    let isDict = typeof content === 'object' && content !== null;
+
+    if (typeof content === 'string' && !isDict) {
+        const trimmed = content.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            try {
+                parsedContent = JSON.parse(trimmed);
+                isDict = true;
+            } catch(e) {
+                // fall back to string view implicitly
+            }
+        }
+    }
+
     const getRoleStyles = (role: string) => {
         switch(role) {
             case 'system': return "bg-muted/30 border-muted-foreground/10 text-muted-foreground"
@@ -78,7 +90,7 @@ export const CollapsibleMessage = ({
                 <div className="p-6 pt-0 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-300">
                     <div className="prose prose-invert prose-sm max-w-none">
                         {isDict ? (
-                            <JsonNode data={content} depth={0} />
+                            <JsonNode data={parsedContent} depth={0} />
                         ) : (
                             <MarkdownViewer content={String(content || '')} />
                         )}
