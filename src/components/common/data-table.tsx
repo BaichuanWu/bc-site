@@ -26,7 +26,7 @@ export type Column<T> = {
     className?: string
     truncate?: boolean
     sortable?: boolean
-    render?: (value: any, item: T) => React.ReactNode
+    render?: (value: any, item: T, onRefresh?: () => void) => React.ReactNode
 }
 
 export type DataTableProps<T> = {
@@ -35,6 +35,7 @@ export type DataTableProps<T> = {
     stickyTop?: number
     sorts?: SortEntry[]
     onSort?: (key: string) => void
+    onRefresh?: () => void
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -42,7 +43,8 @@ export function DataTable<T extends { id: string | number }>({
     columns,
     stickyTop = 0,
     sorts = [],
-    onSort
+    onSort,
+    onRefresh
 }: DataTableProps<T>) {
     const containerRef = React.useRef<HTMLDivElement>(null)
 
@@ -151,7 +153,7 @@ export function DataTable<T extends { id: string | number }>({
                                 <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
                                     {columns.map((col, colIdx) => {
                                         const value = col.render
-                                            ? col.render((item as any)[col.key], item)
+                                            ? col.render((item as any)[col.key], item, onRefresh)
                                             : (item as any)[col.key];
 
                                         const cellContent = col.truncate ? (

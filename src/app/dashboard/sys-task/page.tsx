@@ -1,176 +1,152 @@
 'use client'
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
-import { useTask } from '@/hooks/use-task'
-import { useStream } from '@/hooks/use-stream'
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { apiClient } from '@/lib/api'
-import { PlayIcon, RotateCcwIcon, Loader2Icon, ActivityIcon, ServerIcon } from 'lucide-react'
+import { 
+    ActivityIcon, 
+    RotateCcwIcon, 
+    Loader2Icon, 
+    ChevronRightIcon,
+    ServerIcon
+} from 'lucide-react'
+import Link from 'next/link'
+import { CrudLayout, type ItemsRenderProps } from '@/components/common/crud-layout'
+import { type SearchFilterItem } from '@/components/common/query-filters'
 
-interface TaskProgress {
-    step?: number
-    message?: string
-    [key: string]: any
-}
+import { cn } from '@/lib/utils'
+import { useMeta } from '@/hooks/use-meta'
+import { TASK_STATE } from '@/lib/constants'
+import { mapServerStateToStatus } from '@/lib/task-utils'
 
-interface TaskUpdate {
-    task_id: number
-    progress?: TaskProgress
-    status?: 'completed' | 'failed'
-    error?: string
-    timestamp?: string
-}
+// --- Types ---
 
 interface TaskItemProps {
     task: any
-    update?: TaskUpdate
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, update }) => {
+import { TaskProgressBar } from '@/components/common/task-progress-bar'
+
+const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     const id = task.id
     const name = task.name
-    const status = update?.status || (task.state === 10 ? 'running' : task.state === 20 ? 'completed' : task.state === 30 ? 'failed' : 'pending')
-    const progress = update?.progress
+    
+    // Use standardized names from backend (CamelCase)
+    const stateName = task.stateName
+    const typName = task.typName
 
-    const getStatusColor = (s: string) => {
+    const getStatusColor = (s: number) => {
         switch (s) {
-            case 'running': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-            case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20'
-            case 'failed': return 'bg-red-500/10 text-red-500 border-red-500/20'
+            case TASK_STATE.RUNNING: return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+            case TASK_STATE.SUCCESS: return 'bg-green-500/10 text-green-500 border-green-500/20'
+            case TASK_STATE.FAILED:
+            case TASK_STATE.ERROR: return 'bg-red-500/10 text-red-500 border-red-500/20'
             default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20'
         }
     }
 
     return (
-        <Card className="mb-4 overflow-hidden border-l-4 transition-all hover:shadow-md" style={{ borderLeftColor: status === 'running' ? 'rgb(59 130 246)' : 'transparent' }}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="space-y-1">
-                    <CardTitle className="text-md font-semibold flex items-center gap-2">
-                        {name}
-                        {status === 'running' && <ActivityIcon className="h-3 w-3 text-blue-500 animate-pulse" />}
-                    </CardTitle>
-                    <CardDescription className="text-xs font-mono">ID: {id}</CardDescription>
-                </div>
-                <Badge variant="outline" className={getStatusColor(status)}>
-                    {status === 'running' && <Loader2Icon className="mr-1.5 h-3 w-3 animate-spin" />}
-                    {status}
-                </Badge>
-            </CardHeader>
-            <CardContent>
-                {(progress || status === 'running') && (
-                    <div className="space-y-3 mt-1">
-                        <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                            <span className="truncate mr-4">{progress?.message || 'In progress...'}</span>
-                            <span>{progress?.step ? `${progress.step * 10}%` : '0%'}</span>
-                        </div>
-                        <div className="w-full bg-secondary/50 h-1.5 rounded-full overflow-hidden">
-                            <div
-                                className="bg-primary h-full transition-all duration-700 ease-in-out"
-                                style={{ width: `${(progress?.step || 0) * 10}%` }}
-                            />
-                        </div>
+        <Card className="mb-4 overflow-hidden border-l-4 transition-all hover:shadow-lg bg-card/50 backdrop-blur-sm group flex flex-col h-full" style={{ borderLeftColor: task.state === TASK_STATE.RUNNING ? 'rgb(59 130 246)' : 'transparent' }}>
+            <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0 gap-4">
+                <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-wider px-1.5 h-4 opacity-70 shrink-0">
+                            {typName}
+                        </Badge>
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 min-w-0">
+                            <span className="truncate">{name}</span>
+                            {task.state === TASK_STATE.RUNNING && <ActivityIcon className="h-3 w-3 text-blue-500 animate-pulse shrink-0" />}
+                        </CardTitle>
                     </div>
-                )}
-                {update?.error && <p className="text-xs text-destructive mt-2 bg-destructive/10 p-2 rounded">{update.error}</p>}
-                {status === 'completed' && !progress && <p className="text-xs text-muted-foreground mt-2 italic">Finished at {update?.timestamp ? new Date(update.timestamp).toLocaleTimeString() : 'Recently'}</p>}
+                    <CardDescription className="text-[10px] font-mono opacity-60 truncate" title={`${id} • ${task.createTime ? new Date(task.createTime).toLocaleString() : ''}`}>
+                        ID: {id} {task.createTime && `• ${new Date(task.createTime).toLocaleString()}`}
+                    </CardDescription>
+                </div>
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                    <Badge variant="outline" className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-0.5 whitespace-nowrap", getStatusColor(task.state))}>
+                        {task.state === TASK_STATE.RUNNING && <Loader2Icon className="mr-1 h-2.5 w-2.5 animate-spin" />}
+                        {stateName}
+                    </Badge>
+                    <Link href={`/dashboard/sys-task/${id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-tighter gap-1 opacity-0 group-hover:opacity-100 transition-all px-2">
+                            Details
+                            <ChevronRightIcon className="h-3.5 w-3.5" />
+                        </Button>
+                    </Link>
+                </div>
+            </CardHeader>
+            <CardContent className="pb-4 mt-auto">
+                <TaskProgressBar 
+                    taskId={id} 
+                    initialData={{ 
+                        progress: { percent: task.progress, message: task.message },
+                        status: mapServerStateToStatus(task.state)
+                    }} 
+                />
             </CardContent>
         </Card>
     )
 }
 
-export default function SystemTaskPage() {
-    const [initialTasks, setInitialTasks] = useState<any[]>([])
-    const [streamUpdates, setStreamUpdates] = useState<Record<number, TaskUpdate>>({})
-    const { run, status: startStatus } = useTask()
-
-    // Build URL for the stream (only monitor running ones)
-    const streamUrl = useMemo(() => {
-        const params = new URLSearchParams({ state: '10', min_interval: '1.0' })
-        return `/api/v1/sys/task/stream?${params.toString()}`
-    }, [])
-
-    const { status: streamStatus, listen } = useStream(streamUrl)
-
-    const handleTaskUpdate = useCallback((data: TaskUpdate) => {
-        setStreamUpdates(prev => ({
-            ...prev,
-            [data.task_id]: { ...prev[data.task_id], ...data }
-        }))
-    }, [])
-
-    useEffect(() => {
-        const unlisten = listen('task_update', handleTaskUpdate)
-        return () => unlisten()
-    }, [listen, handleTaskUpdate])
-
-    const fetchTasks = async () => {
-        try {
-            const data: any = await apiClient.get('/sys/active')
-            setInitialTasks(data)
-        } catch (err) {
-            console.error('Failed to fetch tasks:', err)
-        }
-    }
-
-    useEffect(() => {
-        fetchTasks()
-    }, [])
-
-    const handleRunTask = async () => {
-        const id = await run('example_task', { demo: true })
-        if (id) {
-            setInitialTasks(prev => [{ id, name: 'example_task', state: 10 }, ...prev])
-        }
+const TaskCardGrid: React.FC<ItemsRenderProps<any>> = ({ items }) => {
+    if (!items || items.length === 0) {
+        return (
+            <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/5 italic text-sm text-muted-foreground">
+                No tasks match your current criteria.
+            </div>
+        )
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight">System Monitor</h1>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className={`h-2 w-2 rounded-full ${streamStatus === 'open' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                        <span className="flex items-center gap-1">
-                            <ServerIcon className="h-3 w-3" />
-                            Redis Stream {streamStatus === 'open' ? 'Active' : 'Connecting...'}
-                        </span>
-                    </div>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" size="sm" onClick={fetchTasks} className="h-9">
-                        <RotateCcwIcon className="mr-2 h-4 w-4" />
-                        Sync DB
-                    </Button>
-                    <Button size="sm" onClick={handleRunTask} disabled={startStatus === 'pending'} className="h-9 shadow-sm">
-                        {startStatus === 'pending' ? (
-                            <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <PlayIcon className="mr-2 h-4 w-4" />
-                        )}
-                        Trigger Task
-                    </Button>
-                </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {items.map(task => (
+                <TaskItem key={task.id} task={task} />
+            ))}
+        </div>
+    )
+}
 
-            <div className="grid gap-1">
-                {initialTasks.length === 0 && Object.keys(streamUpdates).length === 0 ? (
-                    <div className="text-center py-20 border-2 border-dashed rounded-xl bg-muted/30">
-                        <ActivityIcon className="mx-auto h-10 w-10 text-muted-foreground/50 mb-4" />
-                        <h3 className="text-lg font-medium text-muted-foreground">System Idle</h3>
-                        <p className="text-sm text-muted-foreground/70">No active background tasks detected.</p>
-                    </div>
-                ) : (
-                    initialTasks.map(task => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            update={streamUpdates[task.id]}
-                        />
-                    ))
-                )}
+// --- Main Page ---
+
+export default function SystemTaskPage() {
+    const { getOptions, isLoading } = useMeta()
+
+    const filterItems: SearchFilterItem[] = [
+        { key: "name", label: "Task Name", type: "text" },
+        { 
+            key: "typ", 
+            label: "Type", 
+            type: "number",
+            options: getOptions('SystemTask', 'TYP_NAME_MAPPING')
+        },
+        { 
+            key: "state", 
+            label: "State", 
+            type: "number",
+            options: getOptions('SystemTask', 'STATE_NAME_MAPPING')
+        }
+    ]
+
+    if (isLoading) {
+        return (
+            <div className="h-[60vh] flex items-center justify-center">
+                <Loader2Icon className="h-8 w-8 animate-spin opacity-20" />
             </div>
+        )
+    }
+
+    return (
+        <div className="p-6 animate-in fade-in duration-700">
+            <CrudLayout<any>
+                title="System Monitor"
+                description="Orchestration audit trail and live execution tracking."
+                endpoint="/sys/tasks"
+                filterItems={filterItems}
+                storageKey="sys-task-filters"
+                itemsRender={TaskCardGrid}
+                stickyTop={0}
+            />
         </div>
     )
 }

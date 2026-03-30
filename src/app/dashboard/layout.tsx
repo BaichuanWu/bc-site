@@ -10,6 +10,7 @@ import {
     ChevronDown,
     ChevronRight,
     Bot,
+    Activity,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,13 @@ const NAV_ITEMS: NavItem[] = [
         children: [
             { title: "Agents", href: "/dashboard/agent" },
             { title: "LLM Config", href: "/dashboard/agent/llm" },
+        ]
+    },
+    {
+        title: "System Management",
+        icon: Activity,
+        children: [
+            { title: "System Task", href: "/dashboard/sys-task" },
         ]
     },
 ]

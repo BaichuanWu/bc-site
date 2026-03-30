@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, ChevronUp, Filter, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, Loader2, TrendingUp, BarChart3, Code2, RefreshCcw, Play } from "lucide-react"
 
 import {
     Select,
@@ -10,7 +10,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
+import { apiClient } from "@/lib/api"
+import { toast } from "sonner"
 import { useCrud } from "@/hooks/use-crud"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type Column } from "@/components/common/data-table"
@@ -25,8 +33,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
-import { apiClient } from "@/lib/api"
-import { Play } from "lucide-react"
 
 type Alpha = {
     id: string | number
@@ -40,7 +46,12 @@ type Alpha = {
     wqbTypName: string
     state: number
     pc: number
+    pcUpdateTime?: string
     failCount: number
+    warnCount: number
+    region: string
+    universe: string
+    delay: number
     parentId?: string | number
     ancestorId?: string | number
 }
@@ -56,7 +67,6 @@ const getStateBadge = (state: number) => {
     }
 }
 
-import { toast } from "sonner"
 
 export default function AlphaPage() {
     const [currentFilters, setCurrentFilters] = React.useState<Record<string, any>>({})
@@ -99,6 +109,20 @@ export default function AlphaPage() {
         { key: "fitness", label: "Fitness Score", type: "number" },
         { key: "margin", label: "Margin Filter", type: "number" },
         { key: "wqbAlphaId", label: "WQB ID", type: "text" },
+        {
+            key: "region",
+            label: "Region",
+            type: "text",
+            options: [
+                { label: "USA", value: "USA" },
+                { label: "EUR", value: "EUR" },
+                { label: "ASI", value: "ASI" },
+                { label: "CHN", value: "CHN" },
+                { label: "JPN", value: "JPN" },
+                { label: "IND", value: "IND" },
+                { label: "GLB", value: "GLB" },
+            ]
+        },
         { key: "operatorCount", label: "Operator Count", type: "number" },
         { key: "pc", label: "Production Corr (PC)", type: "number" },
         { key: "failCount", label: "Fail Count Limit", type: "number" },
@@ -138,6 +162,9 @@ export default function AlphaPage() {
             truncate: true,
             className: "font-mono text-[10px] sm:text-xs",
         },
+        { key: "region", title: "Region", width: 80, align: 'center', className: "font-bold text-blue-500/80" },
+        { key: "universe", title: "Universe", width: 100, truncate: true },
+        { key: "delay", title: "Delay", width: 70, align: 'center' },
         { key: "sharpe", title: "Sharpe", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
         { key: "operatorCount", title: "Operator Count", align: 'right', sortable: true },
         { key: "failCount", title: "Fail Count", align: 'right', sortable: true },
@@ -145,7 +172,49 @@ export default function AlphaPage() {
         { key: "fitness", title: "Fitness", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
         { key: "margin", title: "Margin (ⱱ)", align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
         { key: "turnover", title: "Turnover", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
-        { key: "pc", title: "PC", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
+        { 
+            key: "pc", 
+            title: "PC", 
+            align: 'right', 
+            sortable: true, 
+            render: (val, item) => (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2 group/pc">
+                                <span className="cursor-help border-b border-dotted border-muted-foreground/30">
+                                    {(Number(val) || 0).toFixed(4)}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover/pc:opacity-100 transition-opacity"
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                            const res = await apiClient.post(`/quants/wqb/alpha/${item.id}/query-pc`);
+                                            toast.success("PC update task started", {
+                                                description: `Task ID: ${res.data?.task_id}`
+                                            });
+                                            // onRefresh is passed from CrudLayout to DataTable
+                                        } catch (err) {
+                                            toast.error("Failed to start PC update");
+                                        }
+                                    }}
+                                >
+                                    <RefreshCcw className="h-3.5 w-3.5 text-muted-foreground hover:text-indigo-600 transition-colors" />
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="text-[10px] font-mono">
+                                Last Updated: {item.pcUpdateTime ? new Date(item.pcUpdateTime).toLocaleString() : 'Never'}
+                            </p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) 
+        },
         {
             key: "wqbTyp",
             title: "Type",
@@ -163,7 +232,7 @@ export default function AlphaPage() {
             title: "Actions",
             width: 80,
             fixed: 'right',
-            render: (_, item) => <AlphaActionMenu alpha={item} />
+            render: (_, item, onRefresh) => <AlphaActionMenu alpha={item} onSuccess={onRefresh} />
         }
     ], [])
 
@@ -179,6 +248,8 @@ export default function AlphaPage() {
             onFilterChange={setCurrentFilters}
             addButtonLabel="Simulate Alphas by Query"
             onAdd={handleBatchSimulate}
+            pageSizeOptions={[20, 50, 100, 200]}
+            defaultPageSize={50}
         >
         </CrudLayout>
     )

@@ -20,6 +20,7 @@ export type ItemsRenderProps<T> = {
     stickyTop?: number
     sorts?: SortEntry[]
     onSort?: (key: string) => void
+    onRefresh?: () => void
 }
 
 export type CrudLayoutProps<T extends { id: string | number }> = {
@@ -44,6 +45,8 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     itemsRender?: React.ComponentType<ItemsRenderProps<T>>
     stickyTop?: number
     onFilterChange?: (filters: Record<string, any>) => void
+    pageSizeOptions?: number[]
+    defaultPageSize?: number
 
     children?: React.ReactNode
 }
@@ -63,7 +66,9 @@ export function CrudLayout<T extends { id: string | number }>({
     filterItems,
     storageKey,
     stickyTop = 56, // Default to dashboard header height (h-14)
-    onFilterChange
+    onFilterChange,
+    pageSizeOptions = [10, 20, 30, 40, 50],
+    defaultPageSize = 20
 }: CrudLayoutProps<T>) {
     const [filters, setFilters] = React.useState<Record<string, any>>({})
 
@@ -77,7 +82,8 @@ export function CrudLayout<T extends { id: string | number }>({
     const internalCrud = useCrud<T>(
         endpoint || "",
         "", // searchParamName is removed from props, so we pass empty for now
-        filters
+        filters,
+        defaultPageSize
     )
 
     // Merge manual and internal states
@@ -162,6 +168,7 @@ export function CrudLayout<T extends { id: string | number }>({
                         stickyTop={stickyTop} 
                         sorts={sorts}
                         onSort={handleSort}
+                        onRefresh={internalCrud.mutate}
                     />
                 </div>
 
@@ -185,7 +192,7 @@ export function CrudLayout<T extends { id: string | number }>({
                                         <SelectValue placeholder={pageSize} />
                                     </SelectTrigger>
                                     <SelectContent side="top">
-                                        {[10, 20, 30, 40, 50].map((size) => (
+                                        {pageSizeOptions.map((size) => (
                                             <SelectItem key={size} value={String(size)}>
                                                 {size}
                                             </SelectItem>

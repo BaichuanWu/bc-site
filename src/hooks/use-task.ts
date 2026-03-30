@@ -1,91 +1,67 @@
-import { useState, useEffect, useCallback } from 'react'
-import { apiClient } from '@/lib/api'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTaskSystem } from '@/components/providers/task-provider'
+import { type TaskState, type TaskProgress, type TaskStatus } from '@/types/task'
 
-export interface TaskProgress {
-    step?: number
-    message?: string
-    [key: string]: any
+export interface TaskInitialData {
+    progress?: TaskProgress | null
+    status?: TaskStatus
+    error?: string | null
 }
 
-export interface TaskUpdate {
-    task_id: number
-    progress?: TaskProgress
-    status?: 'completed' | 'failed'
-    error?: string
-}
-
-export const useTask = (taskId?: number) => {
-    const [progress, setProgress] = useState<TaskProgress | null>(null)
-    const [status, setStatus] = useState<'pending' | 'running' | 'completed' | 'failed' | 'idle'>('idle')
-    const [error, setError] = useState<string | null>(null)
+export const useTask = (taskId?: number, initialData?: TaskInitialData) => {
+    const { subscribe, getTaskState, runTask, setInitialState } = useTaskSystem()
+    // Local state for the current ID being tracked
     const [currentTaskId, setCurrentTaskId] = useState<number | undefined>(taskId)
+    
+    // Seeded ref to prevent redundant initialization
+    const seededRef = useRef<string | null>(null)
 
-    const connect = useCallback((id: number) => {
-        const streamUrl = `/api/v1/sys/stream/${id}`
-        const eventSource = new EventSource(streamUrl)
+    // Derived state from the global provider
+    const taskState = getTaskState(currentTaskId || -1)
 
-        setStatus('running')
-        setError(null)
-
-        const handleUpdate = (event: MessageEvent) => {
-            try {
-                const data: TaskUpdate = JSON.parse(event.data)
-                if (data.progress) {
-                    setProgress(data.progress)
-                }
-                if (data.status) {
-                    setStatus(data.status)
-                    if (data.status === 'completed' || data.status === 'failed') {
-                        if (data.error) setError(data.error)
-                        eventSource.close()
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to parse SSE message:', err)
+    // Initial seeding
+    useEffect(() => {
+        if (taskId && initialData) {
+            const dataKey = `${taskId}-${JSON.stringify(initialData)}`
+            if (seededRef.current !== dataKey) {
+                setInitialState(taskId, {
+                    status: initialData.status,
+                    progress: initialData.progress,
+                    error: initialData.error,
+                })
+                seededRef.current = dataKey
             }
         }
+    }, [taskId, initialData, setInitialState])
 
-        eventSource.addEventListener('task_update', handleUpdate as any)
-        eventSource.onmessage = handleUpdate
-
-        eventSource.onerror = (err) => {
-            console.error('SSE connection error:', err)
-            setError('Connection lost')
-            setStatus('failed')
-            eventSource.close()
-        }
-
-        return () => {
-            eventSource.close()
-        }
-    }, [])
-
+    // Subscription management
     useEffect(() => {
-        if (currentTaskId) {
-            const cleanup = connect(currentTaskId)
-            return cleanup
-        }
-    }, [currentTaskId, connect])
+        if (!currentTaskId) return
+        const unsubscribe = subscribe(currentTaskId)
+        return unsubscribe
+    }, [currentTaskId, subscribe])
 
-    const run = async (taskName: string, context: any = {}) => {
+    const run = useCallback(async (taskName: string, context: any = {}) => {
         try {
-            setStatus('pending')
-            const response: any = await apiClient.post(`/sys/run/${taskName}`, context)
-            if (response.task_id) {
-                setCurrentTaskId(response.task_id)
-                return response.task_id
+            const id = await runTask(taskName, context)
+            if (id) {
+                setCurrentTaskId(id)
+                return id
             }
         } catch (err: any) {
-            setError(err.message || 'Failed to start task')
-            setStatus('failed')
+            console.error('Failed to start task', err)
+            throw err
         }
-    }
+    }, [runTask])
 
     return {
         run,
-        progress,
-        status,
-        error,
-        taskId: currentTaskId
+        progress: taskState?.progress || initialData?.progress || null,
+        status: taskState?.status || initialData?.status || 'idle',
+        error: taskState?.error || initialData?.error || null,
+        events: taskState?.events || [],
+        snapshot: taskState?.snapshot || null,
+        taskId: currentTaskId,
+        setInitialState
     }
 }

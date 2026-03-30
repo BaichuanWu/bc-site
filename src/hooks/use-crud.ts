@@ -1,18 +1,20 @@
 import * as React from "react"
 import useSWR from "swr"
 import { apiClient, fetcher } from "@/lib/api"
+import { toast } from "sonner"
 
 export type SortEntry = { key: string; dir: 'asc' | 'desc' }
 
 export function useCrud<T extends { id: string | number }>(
     endpoint: string,
     searchParamName?: string,
-    additionalQueries: Record<string, string | number> = {}
+    additionalQueries: Record<string, string | number> = {},
+    defaultPageSize: number = 20
 ) {
     const [search, setSearch] = React.useState("")
     const [debouncedSearch, setDebouncedSearch] = React.useState("")
     const [page, setPage] = React.useState(1)
-    const [pageSize, setPageSize] = React.useState(20)
+    const [pageSize, setPageSize] = React.useState(defaultPageSize)
     const [sorts, setSorts] = React.useState<SortEntry[]>([])
 
     React.useEffect(() => {
@@ -64,9 +66,6 @@ export function useCrud<T extends { id: string | number }>(
 
     const swrKey = `${endpoint}?${queryParamsString}`
 
-    React.useEffect(() => {
-        console.log(`[useCrud] Key changed: ${swrKey}`)
-    }, [swrKey])
 
     const { data: resultData, mutate, isLoading, isValidating } = useSWR(
         swrKey,
@@ -115,7 +114,7 @@ export function useCrud<T extends { id: string | number }>(
             handleCloseDialog()
             mutate()
         } catch (e) {
-            alert("Failed to save data")
+            toast.error("Failed to save data")
         } finally {
             setIsSaving(false)
         }
@@ -127,7 +126,7 @@ export function useCrud<T extends { id: string | number }>(
             await apiClient.delete(endpoint, { params: { id } })
             mutate()
         } catch (e) {
-            alert("Failed to delete data")
+            toast.error("Failed to delete data")
         }
     }
 
