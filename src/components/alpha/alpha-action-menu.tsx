@@ -55,7 +55,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                 description: taskId ? `Task ID: ${taskId}` : undefined
             })
             onSuccess?.()
-        } catch (e) {
+        } catch {
             toast.error(`Failed to ${action.toLowerCase()}`)
         } finally {
             setIsLoading(false)
@@ -80,7 +80,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
             })
             setIsEditDialogOpen(false)
             onSuccess?.()
-        } catch (e) {
+        } catch {
             toast.error("Failed to update and simulate")
         } finally {
             setIsLoading(false)

@@ -19,23 +19,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DataTable } from "@/components/common/data-table"
-import { Plus } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { apiClient } from "@/lib/api"
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { useDeleteAction } from "@/hooks/use-delete-action"
 
+type LlmRecord = {
+  id: number
+  name: string
+  provider: string
+  model_name: string
+  api_key: string
+  base_url: string
+  is_active: number
+}
+
 export default function LlmPage() {
-  const [filters, setFilters] = React.useState<Record<string, any>>({})
+  const [filters] = React.useState<Record<string, unknown>>({})
   const deleteAction = useDeleteAction()
 
   const {
@@ -46,10 +50,10 @@ export default function LlmPage() {
     handleCloseDialog,
     handleSave,
     mutate,
-  } = useCrud<any>("/agent/llm", "", filters)
+  } = useCrud<LlmRecord>("/agent/llm", "", filters)
 
 
-  const [formData, setFormData] = React.useState<any>({})
+  const [formData, setFormData] = React.useState<Partial<LlmRecord>>({})
 
   React.useEffect(() => {
     if (editingItem) {
@@ -81,15 +85,15 @@ export default function LlmPage() {
     },
   ], [])
 
-  const columns = [
+  const columns: import("@/components/common/data-table").Column<LlmRecord>[] = [
     { key: "name", title: "Name", className: "text-sm font-medium" },
     { key: "provider", title: "Provider", className: "text-sm" },
     {
       key: "model_name",
       title: "Default Model",
-      render: (value: string) => (
+      render: (value: unknown) => (
         <div className="space-y-1">
-          <div className="text-sm font-mono text-muted-foreground">{value}</div>
+          <div className="text-sm font-mono text-muted-foreground">{String(value ?? "-")}</div>
           <div className="text-[11px] text-muted-foreground">Agent llm_config can override this</div>
         </div>
       ),
@@ -97,25 +101,25 @@ export default function LlmPage() {
     {
       key: "base_url",
       title: "Endpoint",
-      render: (value: string) => (
+      render: (value: unknown) => (
         <div className="max-w-[220px] truncate text-xs text-muted-foreground">
-          {value || "Provider default"}
+          {String(value || "Provider default")}
         </div>
       ),
     },
     {
       key: "api_key",
       title: "Credential",
-      render: (value: string) => (
+      render: (value: unknown) => (
         <span className="text-xs font-mono text-muted-foreground">
-          {value ? `${value.slice(0, 6)}••••••${value.slice(-4)}` : "-"}
+          {typeof value === "string" && value ? `${value.slice(0, 6)}••••••${value.slice(-4)}` : "-"}
         </span>
       ),
     },
     {
       key: "is_active",
       title: "Status",
-      render: (val: number) => (
+      render: (val: unknown) => (
         <Badge variant={val ? "default" : "secondary"} className="text-[10px]">
           {val ? "Active" : "Inactive"}
         </Badge>
@@ -125,7 +129,7 @@ export default function LlmPage() {
       key: "actions",
       title: "Actions",
       width: 100,
-      render: (_: any, item: any) => (
+      render: (_: unknown, item: LlmRecord) => (
         <ActionButtons 
           onEdit={() => handleOpenDialog(item)}
           onConfirmDelete={async () => {
@@ -146,7 +150,7 @@ export default function LlmPage() {
   return (
     <TooltipProvider>
       <div className="p-6">
-        <CrudLayout<any>
+        <CrudLayout<LlmRecord>
           title="LLM Configuration"
           description="Manage your LLM providers and API credentials."
           endpoint="/agent/llm"

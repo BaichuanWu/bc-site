@@ -13,6 +13,7 @@ import { parseJsonText } from "@/lib/json-utils"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { showTaskStartedToast } from "@/components/task/task-started-toast"
 import { Loader2 } from "lucide-react"
+import type { JsonObject } from "@/types/json"
 
 interface RunWorkflowDialogProps {
   open: boolean
@@ -23,6 +24,10 @@ interface RunWorkflowDialogProps {
   mode?: "config" | "json"
   initialKwargs?: Record<string, unknown>
   showSessionId?: boolean
+}
+
+type RunTaskResponse = {
+  task_id: number | string
 }
 
 export function RunWorkflowDialog({
@@ -77,7 +82,7 @@ export function RunWorkflowDialog({
       setSessionId("")
       return
     }
-    const config = (initialKwargs?.config as Record<string, unknown> | undefined) || {}
+    const config = (initialKwargs?.config as JsonObject | undefined) || {}
     setRegion(String(config.region || "USA"))
     setDatasetId(String(config.dataset_id || "top_v1"))
     setUniverse(String(config.universe || "TOP3000"))
@@ -103,7 +108,7 @@ export function RunWorkflowDialog({
         if (showSessionId && sessionId.trim()) {
           payload.session_id = sessionId.trim()
         }
-        return (await apiClient.post(`/sys/run/${workflowName}`, payload)) as any
+        return (await apiClient.post(`/sys/run/${workflowName}`, payload)) as RunTaskResponse
       },
       {
         errorMessage: "Failed to start workflow",

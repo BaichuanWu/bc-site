@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getEdgeModel } from "@/components/workflow/workflow-canvas-serializer"
+import { getJsonString } from "@/types/json"
 
 type WorkflowEdgeInspectorProps = {
   edge: Edge
@@ -28,7 +29,7 @@ export function WorkflowEdgeInspector({
       <div className="grid gap-2">
         <Label>Edge Type</Label>
         <Select
-          value={getEdgeModel(edge).type || "direct"}
+          value={getJsonString(getEdgeModel(edge).type, "direct")}
           onValueChange={(value) =>
             onUpdateEdge((current) => ({
               ...current,
@@ -54,7 +55,7 @@ export function WorkflowEdgeInspector({
         <Label>Router</Label>
         {availableRouters.length > 0 && edge.source !== "__start__" ? (
           <Select
-            value={getEdgeModel(edge).router || "__none__"}
+            value={getJsonString(getEdgeModel(edge).router, "__none__")}
             onValueChange={(value) =>
               onUpdateEdge((current) => ({
                 ...current,
@@ -82,7 +83,7 @@ export function WorkflowEdgeInspector({
           </Select>
         ) : (
           <Input
-            value={getEdgeModel(edge).router || ""}
+            value={getJsonString(getEdgeModel(edge).router)}
             disabled={edge.source === "__start__"}
             placeholder={edge.source === "__start__" ? "Uses definition.entry_router.name" : "Optional router ref"}
             onChange={(e) =>

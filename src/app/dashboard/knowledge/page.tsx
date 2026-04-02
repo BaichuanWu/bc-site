@@ -445,7 +445,7 @@ export default function KnowledgePage() {
                 ),
             },
         ],
-        [options, rawCrud]
+        [deleteAction, getLabel, options, rawCrud]
     )
 
     const documentColumns: Column<KnowledgeDocumentRecord>[] = React.useMemo(
@@ -510,7 +510,7 @@ export default function KnowledgePage() {
                 ),
             },
         ],
-        [documentCrud, options]
+        [deleteAction, documentCrud, getLabel]
     )
 
     const saveRaw = async () => {
@@ -566,8 +566,11 @@ export default function KnowledgePage() {
             setPromotingRaw(null)
             rawCrud.mutate()
             documentCrud.mutate()
-        } catch (error: any) {
-            const message = error?.response?.data?.detail || "Failed to promote raw knowledge"
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Failed to promote raw knowledge"
             toast.error(message)
         } finally {
             setIsPromoting(false)

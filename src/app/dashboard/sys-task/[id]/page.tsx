@@ -1,31 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
     ActivityIcon, 
     ArrowLeftIcon, 
-    BotIcon,
-    CheckCircle2Icon, 
-    ChevronDownIcon,
     ChevronRightIcon, 
-    CircleIcon, 
     ClockIcon, 
-    CodeIcon,
     DatabaseIcon, 
-    InfoIcon, 
-    Loader2Icon, 
-    MessageSquareIcon,
-    PlayIcon, 
-    SquareIcon, 
-    TerminalIcon,
-    UserIcon,
-    XCircleIcon
+    Loader2Icon
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TASK_EVENT_TYPE, TASK_STATE } from "@/lib/constants"
-import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { 
@@ -37,8 +24,6 @@ import {
     SheetTrigger 
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { apiClient } from '@/lib/api'
 
 import { JsonNode } from '@/components/common/json-node'
@@ -52,6 +37,50 @@ import {
     mapServerStateToStatus, 
     getStatusColor 
 } from '@/lib/task-utils'
+
+type TaskEventPayload = {
+    kind?: string
+    step?: string
+    node?: string
+    status?: number
+    message?: string
+    result?: unknown
+    messages?: unknown[]
+    trace?: unknown[]
+    data?: Record<string, unknown> | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+function getTraceArtifacts(trace: unknown): Record<string, unknown>[] {
+    if (!Array.isArray(trace)) return []
+    return trace.filter(
+        (item): item is Record<string, unknown> =>
+            isRecord(item) && item.type !== 'message_added'
+    )
+}
+
+type TaskEventRecord = {
+    id: number | string
+    typ: number
+    message?: string
+    createTime?: string
+    payload?: TaskEventPayload
+}
+
+type TaskDetailRecord = {
+    id: number
+    name: string
+    state: number
+    stateName: string
+    progress: number
+    message?: string
+    createTime?: string
+    snapshot?: unknown
+    context?: unknown
+}
 
 // --- Main Page ---
 
@@ -69,33 +98,33 @@ export default function TaskDetailPage() {
         setInitialState 
     } = useTask(parseInt(task_id))
 
-    const [task, setTask] = useState<any>(null)
+    const [task, setTask] = useState<TaskDetailRecord | null>(null)
 
-    const getPayloadKind = useCallback((event: any) => {
+    const getPayloadKind = (event: TaskEventRecord) => {
         return event?.payload?.kind || 'generic'
-    }, [])
+    }
 
-    const getEventTitle = useCallback((event: any) => {
+    const getEventTitle = (event: TaskEventRecord) => {
         if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final Result'
         if (event.typ === TASK_EVENT_TYPE.ERROR) return 'Task Error'
         if (getPayloadKind(event) === 'batch_progress') return 'Batch Progress'
         return event.payload?.step || event.payload?.node || 'Task Event'
-    }, [])
+    }
 
-    const getEventStatus = useCallback((event: any) => {
+    const getEventStatus = (event: TaskEventRecord) => {
         if (event.typ === TASK_EVENT_TYPE.RESULT) return TASK_STATE.SUCCESS
         if (event.typ === TASK_EVENT_TYPE.ERROR) return TASK_STATE.ERROR
         return event.payload?.status || 0
-    }, [])
+    }
 
-    const getEventSummary = useCallback((event: any) => {
+    const getEventSummary = (event: TaskEventRecord) => {
         if (event.message) return event.message
         if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final workflow output'
         if (event.typ === TASK_EVENT_TYPE.ERROR) return event.payload?.message || 'Task execution failed'
         if (getPayloadKind(event) === 'batch_progress') return 'Incremental execution progress and runtime artifacts'
         if (getPayloadKind(event) === 'workflow_node') return `Audit trail for ${event.payload?.step || 'step'}`
         return 'Generic task event payload'
-    }, [getPayloadKind])
+    }
 
     // Sync task state from hook back to local 'task' for UI compatibility
     const displayTask = useMemo(() => {
@@ -113,7 +142,7 @@ export default function TaskDetailPage() {
         }
     }, [task, status, progress, snapshot])
 
-    const displayEvents = events
+    const displayEvents = events as TaskEventRecord[]
 
     useEffect(() => {
         const fetchTask = async () => {
@@ -122,8 +151,8 @@ export default function TaskDetailPage() {
                     apiClient.get(`/sys/task/${task_id}`),
                     apiClient.get(`/sys/task/${task_id}/events`)
                 ])
-                const t = taskRes as any
-                const evs = eventsRes as any
+                const t = taskRes as unknown as TaskDetailRecord
+                const evs = eventsRes as unknown as TaskEventRecord[]
                 setTask(t)
                 
                 // Seed the global provider so other components (like breadcrumbs) know the state
@@ -253,7 +282,7 @@ export default function TaskDetailPage() {
                                                 Waiting for orchestration heartbeat...
                                             </div>
                                         ) : (
-                                            displayEvents.map((event: any, idx: number) => (
+                                            displayEvents.map((event: TaskEventRecord, idx: number) => (
                                                 <div key={event.id} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
                                                     {(() => {
                                                         const eventStatus = getEventStatus(event)
@@ -261,11 +290,11 @@ export default function TaskDetailPage() {
                                                         const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
                                                         const resultData = event.payload?.result
                                                         const payloadKind = getPayloadKind(event)
-                                                        const transcriptMessages = event.payload?.messages || []
+                                                        const traceArtifacts = getTraceArtifacts(event.payload?.trace)
                                                         const shouldShowTranscript = !isResultEvent && ['workflow_node', 'agent_run'].includes(payloadKind)
                                                         const artifactData = isResultEvent
                                                             ? null
-                                                            : event.payload?.data && typeof event.payload.data === 'object'
+                                                            : isRecord(event.payload?.data)
                                                                 ? event.payload.data
                                                                 : event.payload
                                                         return (
@@ -334,10 +363,21 @@ export default function TaskDetailPage() {
                                                             <ScrollArea className="flex-1 min-h-0">
                                                                 <div className="p-8 max-w-full mx-auto">
                                                                     {shouldShowTranscript && (
-                                                                        <DialogueTranscript messages={transcriptMessages} />
+                                                                        <DialogueTranscript messages={event.payload?.messages || []} />
                                                                     )}
 
-                                                                    {isResultEvent && resultData && (
+                                                                    {traceArtifacts.length > 0 && (
+                                                                        <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
+                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
+                                                                                Trace Events
+                                                                            </h4>
+                                                                            <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
+                                                                                <JsonNode data={traceArtifacts} depth={0} />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {isResultEvent && Boolean(resultData) && (
                                                                         <div className="space-y-6">
                                                                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">Final Output</h4>
                                                                             <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
@@ -346,7 +386,7 @@ export default function TaskDetailPage() {
                                                                         </div>
                                                                     )}
                                                                     
-                                                                    {artifactData && Object.keys(artifactData).length > 0 && (
+                                                                    {isRecord(artifactData) && Object.keys(artifactData).length > 0 && (
                                                                         <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
                                                                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
                                                                                 {shouldShowTranscript ? 'Process Artifacts' : 'Event Payload'}

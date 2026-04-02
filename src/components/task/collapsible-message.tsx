@@ -20,7 +20,7 @@ export const CollapsibleMessage = ({
     index 
 }: { 
     role: string, 
-    content: any, 
+    content: unknown, 
     index: number 
 }) => {
     const [isCollapsed, setIsCollapsed] = useState(false)
@@ -34,7 +34,7 @@ export const CollapsibleMessage = ({
             try {
                 parsedContent = JSON.parse(trimmed);
                 isDict = true;
-            } catch(e) {
+            } catch {
                 // fall back to string view implicitly
             }
         }

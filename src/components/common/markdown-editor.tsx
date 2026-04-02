@@ -6,7 +6,7 @@ import MDEditor, { commands, type ICommand } from "@uiw/react-md-editor"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useTheme } from "next-themes"
-import { GripVertical, Maximize2, PencilLine, Minimize2 } from "lucide-react"
+import { GripVertical, PencilLine, Minimize2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -206,6 +206,7 @@ export function MarkdownEditor({
               if (!src || String(src).trim() === "") {
                 return null
               }
+              // eslint-disable-next-line @next/next/no-img-element
               return <img src={src} alt={alt || ""} {...props} />
             },
           },

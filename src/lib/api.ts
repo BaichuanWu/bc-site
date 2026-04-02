@@ -17,4 +17,4 @@ apiClient.interceptors.response.use(
     }
 )
 
-export const fetcher = (url: string) => apiClient.get(url).then(res => res as any)
+export const fetcher = <T>(url: string) => apiClient.get(url).then(res => res as T)

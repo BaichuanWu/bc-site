@@ -21,7 +21,7 @@ export interface SystemMeta {
 }
 
 export const useMeta = () => {
-    const { data, error, isLoading } = useSWR<SystemMeta>('/meta', (url: string) => apiClient.get(url) as any)
+    const { data, error, isLoading } = useSWR<SystemMeta>('/meta', (url: string) => apiClient.get(url) as Promise<SystemMeta>)
 
     const getOptions = useMemo(() => (modelName: string, mappingName: string) => {
         if (!data?.models[modelName]) return []
@@ -35,7 +35,7 @@ export const useMeta = () => {
         }))
     }, [data])
 
-    const getLabel = useMemo(() => (modelName: string, mappingName: string, value: any) => {
+    const getLabel = useMemo(() => (modelName: string, mappingName: string, value: unknown) => {
         if (!data?.models[modelName]) return String(value)
         const mapping = data.models[modelName][mappingName]
         return mapping?.[String(value)] || String(value)

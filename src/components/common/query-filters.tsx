@@ -26,10 +26,19 @@ export interface SearchFilterItem {
     options?: { label: string, value: string | number }[]
 }
 
+type FilterValue =
+    | string
+    | number
+    | null
+    | Array<string | number | null>
+    | undefined
+
+type FilterClause = Record<string, FilterValue>
+
 interface DynamicFilterProps {
     label: string
-    value: Record<string, any> | undefined
-    onChange: (val: Record<string, any> | undefined) => void
+    value: FilterClause | undefined
+    onChange: (val: FilterClause | undefined) => void
     options?: { label: string, value: string | number }[]
     type?: 'text' | 'number'
 }
@@ -120,7 +129,7 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
         }
     }
 
-    const onValChange = (newVal: any) => {
+    const onValChange = (newVal: string | number | null | undefined) => {
         if (newVal === '' || newVal == null) {
             onChange(undefined)
             return
@@ -184,7 +193,11 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
                         type={currentOp === 'in' ? 'text' : type}
                         className="flex-1 h-[32px] rounded-none border-0 focus-visible:ring-0 text-xs shadow-none px-3 text-center text-foreground"
                         placeholder={currentOp === 'in' ? '1, 2, 3...' : 'Value...'}
-                        value={currentOp === 'in' && Array.isArray(currentVal) ? currentVal.join(', ') : (currentVal ?? '')}
+                        value={
+                            currentOp === 'in' && Array.isArray(currentVal)
+                                ? currentVal.map((item) => String(item ?? '')).join(', ')
+                                : (typeof currentVal === 'string' || typeof currentVal === 'number' ? currentVal : '')
+                        }
                         onChange={(e) => onValChange(e.target.value)}
                     />
                 )}
@@ -195,13 +208,13 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
 
 interface SearchFilterGroupProps {
     items: SearchFilterItem[]
-    onSearch: (filters: Record<string, any>) => void
+    onSearch: (filters: Record<string, FilterClause>) => void
     storageKey?: string
     title?: string
-    initialFilters?: Record<string, any>
+    initialFilters?: Record<string, FilterClause>
 }
 
-type FilterTemplates = Record<string, Record<string, any>>
+type FilterTemplates = Record<string, Record<string, FilterClause>>
 
 export function SearchFilterGroup({
     items,
@@ -210,7 +223,7 @@ export function SearchFilterGroup({
     title = "Search Filters",
     initialFilters = {}
 }: SearchFilterGroupProps) {
-    const [tempFilters, setTempFilters] = React.useState<Record<string, any>>(initialFilters)
+    const [tempFilters, setTempFilters] = React.useState<Record<string, FilterClause>>(initialFilters)
     const [isVisible, setIsVisible] = React.useState(true)
     const [templates, setTemplates] = React.useState<FilterTemplates>({})
     const [newTemplateName, setNewTemplateName] = React.useState("")
@@ -224,7 +237,7 @@ export function SearchFilterGroup({
             const saved = localStorage.getItem(storageKey)
             if (saved) {
                 try {
-                    const parsed = JSON.parse(saved)
+                    const parsed = JSON.parse(saved) as Record<string, FilterClause>
                     setTempFilters(parsed)
                     // Trigger initial search with saved filters
                     onSearch(parsed)
@@ -238,15 +251,15 @@ export function SearchFilterGroup({
             const savedTemplates = localStorage.getItem(templatesKey)
             if (savedTemplates) {
                 try {
-                    setTemplates(JSON.parse(savedTemplates))
+                    setTemplates(JSON.parse(savedTemplates) as FilterTemplates)
                 } catch (e) {
                     console.error("Failed to parse templates", e)
                 }
             }
         }
-    }, [storageKey, templatesKey])
+    }, [onSearch, storageKey, templatesKey])
 
-    const updateFilter = (key: string, value: Record<string, any> | undefined) => {
+    const updateFilter = (key: string, value: FilterClause | undefined) => {
         setTempFilters(prev => {
             const next = { ...prev }
             if (value === undefined) {
@@ -302,7 +315,8 @@ export function SearchFilterGroup({
         e.stopPropagation()
         if (!templatesKey) return
 
-        const { [name]: _, ...rest } = templates
+        const { [name]: deletedTemplate, ...rest } = templates
+        void deletedTemplate
         setTemplates(rest)
         localStorage.setItem(templatesKey, JSON.stringify(rest))
     }
@@ -435,4 +449,3 @@ export function SearchFilterGroup({
         </Card>
     )
 }
-

@@ -1,15 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeft, Loader2, TrendingUp, BarChart3, Code2, RefreshCcw, Play } from "lucide-react"
-
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { RefreshCcw } from "lucide-react"
 import {
     Tooltip,
     TooltipContent,
@@ -19,19 +11,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
-import { useCrud } from "@/hooks/use-crud"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type Column } from "@/components/common/data-table"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
+import { type SearchFilterItem } from "@/components/common/query-filters"
+import { getJsonObject } from "@/types/json"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
 
 type Alpha = {
@@ -69,16 +53,17 @@ const getStateBadge = (state: number) => {
 
 
 export default function AlphaPage() {
-    const [currentFilters, setCurrentFilters] = React.useState<Record<string, any>>({})
+    const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>({})
 
     const handleBatchSimulate = async () => {
         try {
             const res = await apiClient.post("/quants/wqb/alpha/simulate-batch", currentFilters)
-            const taskId = res.data?.task_id
+            const data = getJsonObject(res)
+            const taskId = typeof data?.task_id === "number" ? data.task_id : undefined
             toast.success("Batch simulation started", {
                 description: taskId ? `Task ID: ${taskId}` : undefined
             })
-        } catch (e) {
+        } catch {
             toast.error("Failed to start batch simulation")
         }
     }
@@ -193,11 +178,12 @@ export default function AlphaPage() {
                                         e.stopPropagation();
                                         try {
                                             const res = await apiClient.post(`/quants/wqb/alpha/${item.id}/query-pc`);
+                                            const data = getJsonObject(res)
                                             toast.success("PC update task started", {
-                                                description: `Task ID: ${res.data?.task_id}`
+                                                description: typeof data?.task_id === "number" ? `Task ID: ${data.task_id}` : undefined
                                             });
                                             // onRefresh is passed from CrudLayout to DataTable
-                                        } catch (err) {
+                                        } catch {
                                             toast.error("Failed to start PC update");
                                         }
                                     }}
@@ -228,7 +214,7 @@ export default function AlphaPage() {
             render: (val) => getStateBadge(val as number)
         },
         {
-            key: "actions" as any,
+            key: "actions",
             title: "Actions",
             width: 80,
             fixed: 'right',
@@ -254,6 +240,4 @@ export default function AlphaPage() {
         </CrudLayout>
     )
 }
-
-
 

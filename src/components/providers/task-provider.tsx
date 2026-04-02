@@ -3,23 +3,44 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react"
 import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
+import { getJsonObject } from "@/types/json"
 
-import { type TaskStatus, type TaskProgress, type TaskState } from "@/types/task"
+import { type TaskState } from "@/types/task"
 import { TASK_EVENT_TYPE } from "@/lib/constants"
 import { mapServerStateToStatus } from "@/lib/task-utils"
+
+type TaskEventRecord = {
+    id?: string | number
+    typ?: number
+    payload?: {
+        step?: string
+        status?: number
+    } | null
+    createTime?: string
+}
+
+type TaskUpdatePayload = {
+    id?: number
+    state?: number
+    message?: string
+    progress?: number
+    snapshot?: unknown
+    error_log?: string | null
+    event?: TaskEventRecord
+}
 
 interface TaskContextType {
     sessionId: string
     getTaskState: (taskId: number) => TaskState | undefined
     subscribe: (taskId: number, onUpdate?: (state: TaskState) => void) => () => void
-    runTask: (taskName: string, context: any) => Promise<number | undefined>
+    runTask: (taskName: string, context: Record<string, unknown>) => Promise<number | undefined>
     setInitialState: (taskId: number, state: Partial<TaskState>) => void
 }
 
 const TaskContext = createContext<TaskContextType | null>(null)
 
-const mergeTaskEvents = (existingEvents: any[], incomingEvents: any[]) => {
-    const unique = new Map<string | number, any>()
+const mergeTaskEvents = (existingEvents: TaskEventRecord[], incomingEvents: TaskEventRecord[]) => {
+    const unique = new Map<string | number, TaskEventRecord>()
 
     for (const event of [...existingEvents, ...incomingEvents]) {
         const key =
@@ -124,7 +145,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     }, [flushUpdates])
 
     // SSE Connection Logic
-    const connect = useCallback(() => {
+    const connect = useCallback(function connectSse() {
         if (eventSourceRef.current) eventSourceRef.current.close()
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
 
@@ -154,9 +175,9 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
             if (event.data === ': heartbeat') return
         }
 
-        es.addEventListener('task_update', (event: any) => {
+        es.addEventListener('task_update', (event: MessageEvent<string>) => {
             try {
-                const data = JSON.parse(event.data)
+                const data = JSON.parse(event.data) as TaskUpdatePayload
                 const tid = data.id
                 if (!tid) return
 
@@ -175,6 +196,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
                     if (data.event) {
                         const eventData = data.event
+                        if (!eventData) return prev
                         const normalizedEvent =
                             eventData.typ === TASK_EVENT_TYPE.CHECKPOINT &&
                             eventData.payload?.step
@@ -185,13 +207,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                                           `${eventData.typ}-${eventData.payload.step}-${eventData.payload.status}`,
                                   }
                                 : eventData
-                        newState.events = mergeTaskEvents(existing.events, [
+                        newState.events = mergeTaskEvents(existing.events as TaskEventRecord[], [
                             normalizedEvent,
                         ])
                     } else {
                         newState = {
                             ...newState,
-                            status: mapServerStateToStatus(data.state),
+                            status: mapServerStateToStatus(data.state ?? 0),
                             progress: {
                                 message: data.message,
                                 percent: data.progress,
@@ -232,7 +254,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
             
             console.log(`[TaskProvider] Reconnecting in ${delay}ms... (Attempt ${retryCountRef.current})`)
             reconnectTimerRef.current = setTimeout(() => {
-                connect()
+                void connectSse()
             }, delay)
         }
 
@@ -264,7 +286,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                     ...current,
                     ...state,
                     events: state.events
-                        ? mergeTaskEvents(current.events, state.events)
+                        ? mergeTaskEvents(current.events as TaskEventRecord[], state.events as TaskEventRecord[])
                         : current.events,
                 }
             }
@@ -304,9 +326,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
     const getTaskState = useCallback((taskId: number) => taskStates[taskId], [taskStates])
 
-    const runTask = async (taskName: string, context: any) => {
-        const res: any = await apiClient.post(`/sys/run/${taskName}`, context)
-        return res.task_id
+    const runTask = async (taskName: string, context: Record<string, unknown>) => {
+        const res = await apiClient.post(`/sys/run/${taskName}`, context)
+        const data = getJsonObject(res)
+        const taskId = data?.task_id
+        return typeof taskId === "number" ? taskId : undefined
     }
 
     return (

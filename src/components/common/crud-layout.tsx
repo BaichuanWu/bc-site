@@ -2,7 +2,6 @@ import * as React from "react"
 import { Plus, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
 import { DataTable, type Column } from "@/components/common/data-table"
 import { useCrud, type SortEntry } from "@/hooks/use-crud"
@@ -44,7 +43,7 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     columns?: Column<T>[]
     itemsRender?: React.ComponentType<ItemsRenderProps<T>>
     stickyTop?: number
-    onFilterChange?: (filters: Record<string, any>) => void
+    onFilterChange?: (filters: Record<string, unknown>) => void
     pageSizeOptions?: number[]
     defaultPageSize?: number
 
@@ -59,10 +58,9 @@ export function CrudLayout<T extends { id: string | number }>({
     isLoading: manualIsLoading,
     items: manualItems,
     columns = [],
-    itemsRender: ItemsRender = DataTable as any,
+    itemsRender,
     children,
     endpoint,
-    idKey = "id",
     filterItems,
     storageKey,
     stickyTop = 56, // Default to dashboard header height (h-14)
@@ -70,9 +68,10 @@ export function CrudLayout<T extends { id: string | number }>({
     pageSizeOptions = [10, 20, 30, 40, 50],
     defaultPageSize = 20
 }: CrudLayoutProps<T>) {
-    const [filters, setFilters] = React.useState<Record<string, any>>({})
+    const [filters, setFilters] = React.useState<Record<string, unknown>>({})
+    const ResolvedItemsRender = itemsRender ?? DataTable<T>
 
-    const handleFilterChange = (newFilters: Record<string, any>) => {
+    const handleFilterChange = (newFilters: Record<string, unknown>) => {
         setFilters(newFilters)
         internalCrud.setPage(1) // Explicitly reset page on filter change
         onFilterChange?.(newFilters)
@@ -162,7 +161,7 @@ export function CrudLayout<T extends { id: string | number }>({
                 )}
 
                 <div className={isLoading ? "opacity-50 transition-opacity duration-300 pointer-events-none" : "transition-opacity duration-300"}>
-                    <ItemsRender 
+                    <ResolvedItemsRender 
                         items={items} 
                         columns={columns} 
                         stickyTop={stickyTop} 

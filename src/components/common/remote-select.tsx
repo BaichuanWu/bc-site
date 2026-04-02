@@ -17,15 +17,23 @@ import {
 } from "@/components/ui/popover"
 import { apiClient } from "@/lib/api"
 import useSWR from "swr"
+import { getJsonArray, getJsonObject, getJsonString } from "@/types/json"
+
+type RemoteOptionValue = string | number
+
+type RemoteOption = {
+  label: string
+  value: RemoteOptionValue
+}
 
 interface RemoteSelectProps {
   endpoint: string;
-  value?: string | number | null;
-  onValueChange: (value: any) => void;
+  value?: RemoteOptionValue | null;
+  onValueChange: (value: RemoteOptionValue | null) => void;
   placeholder?: string;
   labelKey?: string;
   valueKey?: string;
-  extraOptions?: { label: string; value: string | number }[];
+  extraOptions?: RemoteOption[];
   className?: string;
   disabled?: boolean;
 }
@@ -47,21 +55,33 @@ export function RemoteSelect({
 }: RemoteSelectProps) {
   const [open, setOpen] = React.useState(false)
 
-  const { data, isLoading } = useSWR(endpoint, (url) => 
-    apiClient.get(url).then((res: any) => {
-      // Axios interceptor already unwrapped `response.data`.
-      if (Array.isArray(res)) return res;
-      return res?.dataSource || res?.data || [];
+  const { data, isLoading } = useSWR<RemoteOption[]>(endpoint, async (url: string) =>
+    apiClient.get(url).then((res) => {
+      const unwrapped = Array.isArray(res)
+        ? res
+        : getJsonArray(getJsonObject(res)?.dataSource) ??
+          getJsonArray(getJsonObject(res)?.data) ??
+          []
+
+      return unwrapped
+        .map((item) => {
+          const obj = getJsonObject(item)
+          if (!obj) return null
+          const rawValue = obj[valueKey]
+          if (typeof rawValue !== "string" && typeof rawValue !== "number") return null
+          return {
+            label: getJsonString(obj[labelKey]),
+            value: rawValue,
+          }
+        })
+        .filter((item): item is RemoteOption => item !== null)
     })
   )
 
-  const options = React.useMemo(() => {
-    const remoteOptions = (data || []).map((item: any) => ({
-      label: String(item[labelKey] ?? ""),
-      value: item[valueKey], // keep original type (e.g. numeric IDs)
-    }))
-    return [...extraOptions, ...remoteOptions]
-  }, [data, extraOptions, labelKey, valueKey])
+  const options = React.useMemo(
+    () => [...extraOptions, ...(data || [])],
+    [data, extraOptions]
+  )
 
   // Find the selected option to display its label
   const selectedOption = React.useMemo(

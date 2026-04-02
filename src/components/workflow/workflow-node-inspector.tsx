@@ -15,6 +15,7 @@ import {
   SPECIAL_NODE_IDS,
   type CanvasNodeData,
 } from "@/components/workflow/workflow-canvas-serializer"
+import { getJsonObject, getJsonString, type JsonObject } from "@/types/json"
 
 type AgentOption = {
   id: number
@@ -29,7 +30,7 @@ type WorkflowNodeInspectorProps = {
   edges: Array<{
     source: string
     target: string
-    data?: { model?: Record<string, any> }
+    data?: { model?: JsonObject }
   }>
   availableAgents: AgentOption[]
   nodeKinds: Record<string, string>
@@ -48,6 +49,7 @@ export function WorkflowNodeInspector({
   onUpdateNode,
   onCreateEdge,
 }: WorkflowNodeInspectorProps) {
+  const model = getJsonObject(node.data.model) || {}
   const connectableNodes = React.useMemo(
     () => nodes.filter((item) => !SPECIAL_NODE_IDS.has(item.id) && item.id !== node.id),
     [node.id, nodes]
@@ -84,10 +86,10 @@ export function WorkflowNodeInspector({
               value={
                 availableAgents.some(
                   (agent) =>
-                    agent.name === (node.data.model?.agent_name || "") &&
-                    (agent.version || "1.0.0") === (node.data.model?.agent_version || "1.0.0")
+                    agent.name === getJsonString(model.agent_name) &&
+                    (agent.version || "1.0.0") === getJsonString(model.agent_version, "1.0.0")
                 )
-                  ? `${node.data.model?.agent_name || ""}@@${node.data.model?.agent_version || "1.0.0"}`
+                  ? `${getJsonString(model.agent_name)}@@${getJsonString(model.agent_version, "1.0.0")}`
                   : "__custom__"
               }
               onValueChange={(value) => {
@@ -124,7 +126,7 @@ export function WorkflowNodeInspector({
           <div className="grid gap-2">
             <Label>Agent Name</Label>
             <Input
-              value={node.data.model?.agent_name || ""}
+              value={getJsonString(model.agent_name)}
               onChange={(e) =>
                 onUpdateNode((current) => ({
                   ...current,
@@ -142,7 +144,7 @@ export function WorkflowNodeInspector({
             <div className="grid gap-2">
               <Label>Version</Label>
               <Input
-                value={node.data.model?.agent_version || ""}
+                value={getJsonString(model.agent_version)}
                 onChange={(e) =>
                   onUpdateNode((current) => ({
                     ...current,
@@ -157,7 +159,7 @@ export function WorkflowNodeInspector({
             <div className="grid gap-2">
               <Label>Kind</Label>
               <Select
-                value={node.data.model?.kind || "system"}
+                value={getJsonString(model.kind, "system")}
                 onValueChange={(value) =>
                   onUpdateNode((current) => ({
                     ...current,
@@ -188,7 +190,7 @@ export function WorkflowNodeInspector({
           <div className="grid gap-2">
             <Label>Description</Label>
             <Textarea
-              value={node.data.model?.description || ""}
+              value={getJsonString(model.description)}
               onChange={(e) =>
                 onUpdateNode((current) => ({
                   ...current,
@@ -206,7 +208,7 @@ export function WorkflowNodeInspector({
           <div className="grid gap-2">
             <Label>Input Mapping JSON</Label>
             <Textarea
-              value={JSON.stringify(node.data.model?.input_mapping || {}, null, 2)}
+              value={JSON.stringify(getJsonObject(model.input_mapping) || {}, null, 2)}
               onChange={(e) => {
                 try {
                   const nextValue = JSON.parse(e.target.value || "{}")
@@ -223,7 +225,7 @@ export function WorkflowNodeInspector({
           <div className="grid gap-2">
             <Label>Output Mapping JSON</Label>
             <Textarea
-              value={JSON.stringify(node.data.model?.output_mapping || {}, null, 2)}
+              value={JSON.stringify(getJsonObject(model.output_mapping) || {}, null, 2)}
               onChange={(e) => {
                 try {
                   const nextValue = JSON.parse(e.target.value || "{}")
@@ -263,7 +265,7 @@ export function WorkflowNodeInspector({
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{candidate.id}</div>
                           <div className="text-xs text-muted-foreground">
-                            {candidate.data.model?.agent_name || "Manual node"}
+                            {getJsonString(getJsonObject(candidate.data.model)?.agent_name) || "Manual node"}
                           </div>
                         </div>
                         <Button

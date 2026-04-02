@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
     ActivityIcon, 
-    RotateCcwIcon, 
     Loader2Icon, 
-    ChevronRightIcon,
-    ServerIcon
+    ChevronRightIcon
 } from 'lucide-react'
 import Link from 'next/link'
 import { CrudLayout, type ItemsRenderProps } from '@/components/common/crud-layout'
@@ -23,7 +21,18 @@ import { mapServerStateToStatus } from '@/lib/task-utils'
 // --- Types ---
 
 interface TaskItemProps {
-    task: any
+    task: SystemTaskListItem
+}
+
+type SystemTaskListItem = {
+    id: number
+    name: string
+    state: number
+    stateName: string
+    typName: string
+    progress: number
+    message?: string
+    createTime?: string
 }
 
 import { TaskProgressBar } from '@/components/common/task-progress-bar'
@@ -89,7 +98,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     )
 }
 
-const TaskCardGrid: React.FC<ItemsRenderProps<any>> = ({ items }) => {
+const TaskCardGrid: React.FC<ItemsRenderProps<SystemTaskListItem>> = ({ items }) => {
     if (!items || items.length === 0) {
         return (
             <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/5 italic text-sm text-muted-foreground">
@@ -138,7 +147,7 @@ export default function SystemTaskPage() {
 
     return (
         <div className="p-6 animate-in fade-in duration-700">
-            <CrudLayout<any>
+            <CrudLayout<SystemTaskListItem>
                 title="System Monitor"
                 description="Orchestration audit trail and live execution tracking."
                 endpoint="/sys/tasks"

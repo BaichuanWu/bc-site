@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Edit, Trash2, Settings, Play } from "lucide-react"
+import { Settings } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { apiClient } from "@/lib/api"
 import { useCrud } from "@/hooks/use-crud"
 import { CrudLayout, type ItemsRenderProps } from "@/components/common/crud-layout"
@@ -63,7 +61,7 @@ export default function TemplatePage() {
         setIsTaskDialogOpen(true)
     }
 
-    const TemplateCards = React.useCallback(({ items }: ItemsRenderProps<Template>) => (
+    const TemplateCards = ({ items }: ItemsRenderProps<Template>) => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map((item) => (
                 <Card key={item.id} className="flex flex-col group hover:shadow-md transition-all">
@@ -98,7 +96,7 @@ export default function TemplatePage() {
                 <div className="col-span-full py-12 text-center text-muted-foreground">No templates found.</div>
             )}
         </div>
-    ), [handleOpenCrud])
+    )
 
     const filterItems: SearchFilterItem[] = [
         { key: "title", label: "Title", type: "text" },

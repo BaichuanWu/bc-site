@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -19,16 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DataTable } from "@/components/common/data-table"
 import { MarkdownEditor } from "@/components/common/markdown-editor"
-import { Plus, Bot } from "lucide-react"
+import { Bot } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api"
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
@@ -41,6 +36,25 @@ import { Textarea } from "@/components/ui/textarea"
 
 type AgentOptionsResponse = {
   agent_classes?: string[]
+}
+
+type AgentRecord = {
+  id: number
+  name: string
+  version: string
+  agentClass: string
+  llmId: number | null
+  sysPrompt: string
+  userPrompt: string
+  llmConfig?: Record<string, unknown>
+  knowledgeNamespaces?: string[]
+  responseType?: string
+  isActive: number
+}
+
+type LlmOption = {
+  id: number
+  name: string
 }
 
 function preventDialogCloseWhileFullscreen(event: Event) {
@@ -58,7 +72,7 @@ function preventDialogEscapeWhileFullscreen(event: KeyboardEvent) {
 }
 
 export default function AgentPage() {
-  const [filters, setFilters] = React.useState<Record<string, any>>({})
+  const [filters] = React.useState<Record<string, unknown>>({})
   const deleteAction = useDeleteAction()
 
   const {
@@ -69,20 +83,21 @@ export default function AgentPage() {
     handleCloseDialog,
     handleSave,
     mutate,
-  } = useCrud<any>("/agent/agent", "", filters)
+  } = useCrud<AgentRecord>("/agent/agent", "", filters)
 
   // Share the same endpoint/cache as RemoteSelect for table label lookup
-  const { data: llmOptions } = useSWR("/agent/llm?limit=100", (url) => 
-    apiClient.get(url).then((res: any) => {
+  const { data: llmOptions } = useSWR<LlmOption[]>("/agent/llm?limit=100", (url: string) => 
+    apiClient.get(url).then((res: unknown) => {
       if (Array.isArray(res)) return res;
-      return res?.dataSource || res?.data || [];
+      const record = (res && typeof res === "object") ? res as Record<string, unknown> : null
+      return (Array.isArray(record?.dataSource) ? record.dataSource : Array.isArray(record?.data) ? record.data : []) as LlmOption[];
     })
   )
   const { data: agentOptions } = useSWR<AgentOptionsResponse>("/agent/options", (url: string) =>
     apiClient.get(url).then((res) => res as AgentOptionsResponse)
   )
 
-  const [formData, setFormData] = React.useState<any>({})
+  const [formData, setFormData] = React.useState<Partial<AgentRecord>>({})
   const [llmConfigText, setLlmConfigText] = React.useState("{}")
   const [knowledgeNamespacesText, setKnowledgeNamespacesText] = React.useState("[]")
   const availableAgentClasses = React.useMemo(() => {
@@ -127,14 +142,14 @@ export default function AgentPage() {
     },
   ], [])
 
-  const columns = [
+  const columns: import("@/components/common/data-table").Column<AgentRecord>[] = [
     { 
         key: "name", 
         title: "Agent Name",
-        render: (name: string, item: any) => (
+        render: (name: unknown, item: AgentRecord) => (
             <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-primary" />
-                <span className="font-medium text-sm">{name}</span>
+                <span className="font-medium text-sm">{String(name ?? "-")}</span>
                 <Badge variant="outline" className="text-[10px] px-1 py-0">{item.version}</Badge>
             </div>
         )
@@ -143,8 +158,8 @@ export default function AgentPage() {
     { 
         key: "llmId", 
         title: "LLM / Override",
-        render: (id: number, item: any) => {
-            const llm = (llmOptions || []).find((o: any) => o.id === id)
+        render: (id: unknown, item: AgentRecord) => {
+            const llm = (llmOptions || []).find((o) => o.id === id)
             const override = itemHasLlmOverride(item)
             return (
               <div className="space-y-1">
@@ -159,7 +174,7 @@ export default function AgentPage() {
     {
       key: "responseType",
       title: "Response / Knowledge",
-      render: (_: any, item: any) => (
+      render: (_: unknown, item: AgentRecord) => (
         <div className="space-y-1 text-xs">
           <div>{item.responseType || "-"}</div>
           <div className="text-muted-foreground">
@@ -171,7 +186,7 @@ export default function AgentPage() {
     {
       key: "isActive",
       title: "Status",
-      render: (val: number) => (
+      render: (val: unknown) => (
         <Badge variant={val ? "default" : "secondary"} className="text-[10px]">
           {val ? "Active" : "Inactive"}
         </Badge>
@@ -181,7 +196,7 @@ export default function AgentPage() {
       key: "actions",
       title: "Actions",
       width: 100,
-      render: (_: any, item: any) => (
+      render: (_: unknown, item: AgentRecord) => (
         <ActionButtons 
           onEdit={() => handleOpenDialog(item)}
           onConfirmDelete={async () => {
@@ -199,14 +214,14 @@ export default function AgentPage() {
     },
   ]
 
-  function itemHasLlmOverride(item: any) {
+  function itemHasLlmOverride(item: Partial<AgentRecord> | null | undefined) {
     return !!item?.llmConfig && Object.keys(item.llmConfig || {}).length > 0
   }
 
   return (
     <TooltipProvider>
       <div className="p-6">
-        <CrudLayout<any>
+        <CrudLayout<AgentRecord>
           title="Agent Management"
           description="Define and configure specialized agents and their prompts."
           endpoint="/agent/agent"
@@ -273,7 +288,12 @@ export default function AgentPage() {
                     <RemoteSelect
                         endpoint="/agent/llm?limit=100"
                         value={formData.llmId}
-                        onValueChange={(val) => setFormData({...formData, llmId: val})}
+                        onValueChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            llmId: typeof val === "number" ? val : null,
+                          })
+                        }
                         placeholder="Select LLM"
                     />
                 </div>

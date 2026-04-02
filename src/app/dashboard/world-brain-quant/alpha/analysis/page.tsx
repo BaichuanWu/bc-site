@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { apiClient } from "@/lib/api"
-import { toast } from "sonner"
+import { getJsonArray, getJsonObject } from "@/types/json"
 
 type Alpha = {
     id: string | number
@@ -32,11 +32,16 @@ type Alpha = {
     turnover: number
     pc: number
     state: number
-    wqbData?: any
+    wqbData?: unknown
     wqbPnlData?: {
-        records: any[]
+        records: unknown[]
         schema: { properties: { name: string }[] }
     }
+}
+
+type ChartPoint = {
+    date: string
+    [key: string]: string | number
 }
 
 import { Suspense } from "react"
@@ -58,14 +63,16 @@ function AnalysisContent() {
         const flattened = rawIds.flatMap(id => id.split(","))
         return Array.from(new Set(flattened)).filter(id => id && !isNaN(Number(id)))
     }, [rawIds])
+    const idsKey = React.useMemo(() => ids.join(','), [ids])
+    const idNumbers = React.useMemo(() => ids.map(Number), [ids])
 
     const [alphas, setAlphas] = React.useState<Alpha[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
-    const [chartData, setChartData] = React.useState<any[]>([])
+    const [chartData, setChartData] = React.useState<ChartPoint[]>([])
 
     React.useEffect(() => {
         async function fetchAlphas() {
-            if (ids.length === 0) {
+            if (idNumbers.length === 0) {
                 setIsLoading(false)
                 return
             }
@@ -74,15 +81,16 @@ function AnalysisContent() {
                 setIsLoading(true)
 
                 // Single batch request is more efficient
-                const res: any = await apiClient.get(`/quants/wqb/alpha`, {
-                    params: { q: JSON.stringify({ id: { in_: ids.map(Number) } }) }
+                const res = await apiClient.get(`/quants/wqb/alpha`, {
+                    params: { q: JSON.stringify({ id: { in_: idNumbers } }) }
                 })
 
-                const fetchedAlphas = (res?.dataSource || res?.data_source || res?.data || (Array.isArray(res) ? res : [])) as Alpha[]
+                const responseObject = getJsonObject(res)
+                const fetchedAlphas = (Array.isArray(res) ? res : getJsonArray(responseObject?.dataSource) ?? getJsonArray(responseObject?.data_source) ?? getJsonArray(responseObject?.data) ?? []) as Alpha[]
                 setAlphas(fetchedAlphas || [])
 
                 // Process PnL data for Recharts
-                const dateMap: Record<string, any> = {}
+                const dateMap: Record<string, ChartPoint> = {}
 
                 fetchedAlphas.forEach((alpha) => {
                     const records = alpha.wqbPnlData?.records || []
@@ -97,7 +105,8 @@ function AnalysisContent() {
                         return
                     }
 
-                    records.forEach((rec: any) => {
+                    records.forEach((rec) => {
+                        if (!Array.isArray(rec)) return
                         const dateStr = rec[dateIdx]
                         if (!dateStr) return
 
@@ -110,15 +119,15 @@ function AnalysisContent() {
                 const sortedData = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date))
                 setChartData(sortedData)
 
-            } catch (e) {
-                console.error("Failed to fetch alphas for analysis", e)
+            } catch (error) {
+                console.error("Failed to fetch alphas for analysis", error)
             } finally {
                 setIsLoading(false)
             }
         }
 
         fetchAlphas()
-    }, [ids.join(',')])
+    }, [idNumbers, idsKey])
 
     if (isLoading) {
         return (
@@ -182,12 +191,12 @@ function AnalysisContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {['sharpe', 'fitness', 'margin', 'turnover', 'pc'].map((metric) => (
+                {(['sharpe', 'fitness', 'margin', 'turnover', 'pc'] as const).map((metric) => (
                                     <TableRow key={metric} className="hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors">
                                         <TableCell className="font-medium capitalize">{metric}</TableCell>
                                         {alphas.map((a) => (
                                             <TableCell key={a.id} className="text-right font-mono text-sm leading-none py-3">
-                                                {(Number((a as any)[metric]) || 0).toFixed(metric === 'margin' || metric === 'turnover' || metric === 'pc' ? 4 : 2)}
+                                                {(Number(a[metric]) || 0).toFixed(metric === 'margin' || metric === 'turnover' || metric === 'pc' ? 4 : 2)}
                                             </TableCell>
                                         ))}
                                     </TableRow>

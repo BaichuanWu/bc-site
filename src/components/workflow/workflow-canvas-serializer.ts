@@ -4,13 +4,20 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react"
+import {
+  getJsonArray,
+  getJsonObject,
+  getJsonString,
+  isJsonObject,
+  type JsonObject,
+} from "@/types/json"
 
-export type WorkflowDefinition = Record<string, any>
-export type WorkflowUiSchema = Record<string, any>
+export type WorkflowDefinition = JsonObject
+export type WorkflowUiSchema = JsonObject
 
 export type CanvasNodeData = {
   label: string
-  model?: Record<string, any>
+  model?: JsonObject
   special?: boolean
   kind?: string
 }
@@ -28,19 +35,26 @@ export function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value))
 }
 
-export function formatNodeLabel(node: Record<string, any>) {
-  return node?.description || node?.agent_name || node?.key || "Workflow Node"
+export function formatNodeLabel(node: JsonObject) {
+  return (
+    getJsonString(node.description) ||
+    getJsonString(node.agent_name) ||
+    getJsonString(node.key) ||
+    "Workflow Node"
+  )
 }
 
 export function getLayoutMap(uiSchema: WorkflowUiSchema) {
-  return (uiSchema?.layout?.nodes || {}) as Record<string, { x: number; y: number }>
+  const layout = getJsonObject(uiSchema.layout)
+  const nodes = getJsonObject(layout?.nodes)
+  return (nodes || {}) as Record<string, { x: number; y: number }>
 }
 
-export function getEdgeModel(edge: Edge | null | undefined): Record<string, any> {
-  return (edge?.data?.model || {}) as Record<string, any>
+export function getEdgeModel(edge: Edge | null | undefined): JsonObject {
+  return (edge?.data?.model || {}) as JsonObject
 }
 
-export function getEdgeFingerprint(edgeLike: Record<string, any> | null | undefined) {
+export function getEdgeFingerprint(edgeLike: JsonObject | null | undefined) {
   if (!edgeLike) return ""
   return [
     edgeLike.from || edgeLike.source || "",
@@ -51,14 +65,14 @@ export function getEdgeFingerprint(edgeLike: Record<string, any> | null | undefi
 }
 
 export function buildCanvasState(definition: WorkflowDefinition, uiSchema: WorkflowUiSchema) {
-  const workflowNodes = Array.isArray(definition?.nodes) ? definition.nodes : []
-  const workflowEdges = Array.isArray(definition?.edges) ? definition.edges : []
+  const workflowNodes = (getJsonArray(definition.nodes) || []).filter(isJsonObject)
+  const workflowEdges = (getJsonArray(definition.edges) || []).filter(isJsonObject)
   const layout = getLayoutMap(uiSchema)
 
   const specialNodeIds = new Set<string>()
   workflowEdges.forEach((edge) => {
-    if (edge?.from === "__start__") specialNodeIds.add("__start__")
-    if (edge?.to === "__end__") specialNodeIds.add("__end__")
+    if (getJsonString(edge.from) === "__start__") specialNodeIds.add("__start__")
+    if (getJsonString(edge.to) === "__end__") specialNodeIds.add("__end__")
   })
 
   const nodes: Node<CanvasNodeData>[] = []
@@ -86,10 +100,12 @@ export function buildCanvasState(definition: WorkflowDefinition, uiSchema: Workf
   }
 
   workflowNodes.forEach((node, index) => {
-    const position = layout[node.key] || { x: 280 + (index % 3) * 260, y: 60 + Math.floor(index / 3) * 170 }
-    const color = NODE_KIND_STYLES[node.kind || "system"] || NODE_KIND_STYLES.system
+    const nodeKey = getJsonString(node.key, `node_${index + 1}`)
+    const nodeKind = getJsonString(node.kind, "system")
+    const position = layout[nodeKey] || { x: 280 + (index % 3) * 260, y: 60 + Math.floor(index / 3) * 170 }
+    const color = NODE_KIND_STYLES[nodeKind] || NODE_KIND_STYLES.system
     nodes.push({
-      id: node.key,
+      id: nodeKey,
       type: "workflowNode",
       position,
       width: 240,
@@ -97,7 +113,7 @@ export function buildCanvasState(definition: WorkflowDefinition, uiSchema: Workf
       data: {
         label: formatNodeLabel(node),
         model: cloneJson(node),
-        kind: node.kind || "system",
+        kind: nodeKind,
       },
       style: {
         width: 240,
@@ -136,15 +152,18 @@ export function buildCanvasState(definition: WorkflowDefinition, uiSchema: Workf
   }
 
   const edges: Edge[] = workflowEdges.map((edge, index) => ({
-    id: `${edge.from}->${edge.to}-${index}`,
-    source: edge.from,
-    target: edge.to,
+    id: `${getJsonString(edge.from)}->${getJsonString(edge.to)}-${index}`,
+    source: getJsonString(edge.from),
+    target: getJsonString(edge.to),
     type: "smoothstep",
-    label: edge.type === "conditional" ? `conditional${edge.router ? `:${edge.router}` : ""}` : "direct",
+    label:
+      getJsonString(edge.type) === "conditional"
+        ? `conditional${getJsonString(edge.router) ? `:${getJsonString(edge.router)}` : ""}`
+        : "direct",
     data: {
       model: cloneJson(edge),
     },
-    animated: edge.type === "conditional",
+    animated: getJsonString(edge.type) === "conditional",
     markerEnd: { type: MarkerType.ArrowClosed },
   }))
 
@@ -161,21 +180,24 @@ export function buildDefinitionFromCanvas(
   nextDefinition.nodes = nodes
     .filter((node) => !SPECIAL_NODE_IDS.has(node.id))
     .map((node) => ({
-      ...(node.data.model || {}),
+      ...(getJsonObject(node.data.model) || {}),
       key: node.id,
-      kind: node.data.kind || node.data.model?.kind || "system",
-      description: node.data.model?.description || "",
+      kind: node.data.kind || getJsonString(getJsonObject(node.data.model)?.kind, "system"),
+      description: getJsonString(getJsonObject(node.data.model)?.description),
     }))
 
   nextDefinition.edges = edges.map((edge) => ({
     ...getEdgeModel(edge),
     from: edge.source,
     to: edge.target,
-    type: getEdgeModel(edge).type || "direct",
+    type: getJsonString(getEdgeModel(edge).type, "direct"),
   }))
 
   const nextUiSchema = cloneJson(uiSchema || {})
-  const nextLayout = { ...(nextUiSchema.layout || {}), nodes: {} as Record<string, { x: number; y: number }> }
+  const nextLayout = {
+    ...(getJsonObject(nextUiSchema.layout) || {}),
+    nodes: {} as Record<string, { x: number; y: number }>,
+  }
   nodes.forEach((node) => {
     nextLayout.nodes[node.id] = {
       x: Math.round(node.position.x),

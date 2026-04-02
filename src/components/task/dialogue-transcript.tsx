@@ -4,7 +4,23 @@ import React from 'react'
 import { MessageSquareIcon } from 'lucide-react'
 import { CollapsibleMessage } from './collapsible-message'
 
-export const DialogueTranscript = ({ messages }: { messages: any[] }) => {
+export type TranscriptMessage = {
+    role?: string
+    content?: unknown
+}
+
+function normalizeMessage(value: unknown): TranscriptMessage {
+    if (!value || typeof value !== 'object') {
+        return { role: 'assistant', content: value }
+    }
+    const maybeMessage = value as Record<string, unknown>
+    return {
+        role: typeof maybeMessage.role === 'string' ? maybeMessage.role : 'assistant',
+        content: maybeMessage.content,
+    }
+}
+
+export const DialogueTranscript = ({ messages }: { messages: unknown[] }) => {
     if (!messages || messages.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 grayscale opacity-30 gap-4">
@@ -17,12 +33,17 @@ export const DialogueTranscript = ({ messages }: { messages: any[] }) => {
     return (
         <div className="space-y-4 pb-12">
             {messages.map((m, i) => (
+                (() => {
+                    const message = normalizeMessage(m)
+                    return (
                 <CollapsibleMessage 
                     key={i} 
-                    role={m?.role || 'assistant'} 
-                    content={m?.content} 
+                    role={message.role || 'assistant'} 
+                    content={message.content ?? null} 
                     index={i} 
                 />
+                    )
+                })()
             ))}
         </div>
     )

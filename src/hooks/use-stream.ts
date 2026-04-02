@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { JsonValue } from '@/types/json'
 
 export interface StreamOptions {
     enabled?: boolean
     onOpen?: () => void
-    onError?: (error: any) => void
+    onError?: (error: unknown) => void
 }
+
+type StreamListener = (data: JsonValue) => void
 
 // export const useStream = (url: string | null, options: StreamOptions = {}) => {
 //     const { enabled = true, onOpen, onError } = options;
@@ -83,7 +86,7 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
     const { enabled = true, onOpen, onError } = options
     const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('closed')
     const eventSourceRef = useRef<EventSource | null>(null)
-    const listenersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map())
+    const listenersRef = useRef<Map<string, Set<StreamListener>>>(new Map())
 
     const connect = useCallback(() => {
         if (!url || !enabled) return
@@ -95,7 +98,6 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
         console.log(`[useStream] Connecting to ${url}`)
         const es = new EventSource(url)
         eventSourceRef.current = es
-        setStatus('connecting')
 
         es.onopen = () => {
             console.log(`[useStream] Connected to ${url}`)
@@ -115,7 +117,7 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
                 if (event.data === '') return // Heartbeat
                 const data = JSON.parse(event.data)
                 listenersRef.current.get('message')?.forEach(cb => cb(data))
-            } catch (e) {
+            } catch {
                 // Ignore parse errors for heartbeats/pings
             }
         }
@@ -124,9 +126,9 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
         const eventTypes = Array.from(listenersRef.current.keys())
         eventTypes.forEach(type => {
             if (type === 'message') return
-            es.addEventListener(type, (e: any) => {
+            es.addEventListener(type, (e: Event) => {
                 try {
-                    const data = JSON.parse(e.data)
+                    const data = JSON.parse((e as MessageEvent).data) as JsonValue
                     listenersRef.current.get(type)?.forEach(cb => cb(data))
                 } catch (err) {
                     console.error(`[useStream] Failed to parse ${type} event:`, err)
@@ -143,12 +145,11 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
             if (es) {
                 console.log('[useStream] Closing connection')
                 es.close()
-                setStatus('closed')
             }
         }
     }, [connect])
 
-    const listen = useCallback((event: string, callback: (data: any) => void) => {
+    const listen = useCallback((event: string, callback: StreamListener) => {
         if (!listenersRef.current.has(event)) {
             listenersRef.current.set(event, new Set())
         }
@@ -158,9 +159,9 @@ export const useStream = (url: string | null, options: StreamOptions = {}) => {
         if (eventSourceRef.current && event !== 'message') {
             const handler = (e: MessageEvent) => {
                 try {
-                    const data = JSON.parse(e.data)
+                    const data = JSON.parse(e.data) as JsonValue
                     callback(data)
-                } catch (err) { }
+                } catch {}
             }
             eventSourceRef.current.addEventListener(event, handler)
             return () => {

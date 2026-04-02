@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import useSWR from "swr"
-import { GitBranch, History, Loader2, Play, Sparkles } from "lucide-react"
+import { GitBranch, History, Play, Sparkles } from "lucide-react"
 
 import { apiClient } from "@/lib/api"
 import { formatJsonText, parseJsonText } from "@/lib/json-utils"
@@ -30,6 +30,7 @@ import { JsonNode } from "@/components/common/json-node"
 import { WorkflowCanvasEditor } from "@/components/workflow/workflow-canvas-editor"
 import { RunWorkflowDialog } from "@/components/workflow/run-workflow-dialog"
 import { WorkflowVersionsDialog } from "@/components/workflow/workflow-versions-dialog"
+import type { JsonObject } from "@/types/json"
 
 type WorkflowOptionsResponse = {
   defaults?: {
@@ -106,7 +107,7 @@ export default function WorkflowPage() {
   const editorRef = React.useRef<HTMLDivElement | null>(null)
   const { data: options } = useSWR<WorkflowOptionsResponse>(
     "/workflow-definition/options",
-    (url: string) => apiClient.get(url).then((res: any) => res as WorkflowOptionsResponse)
+    (url: string) => apiClient.get(url).then((res: unknown) => res as WorkflowOptionsResponse)
   )
   const workflowCrud = useCrud<WorkflowRecord>("/workflow-definition")
   const agentCrud = useCrud<AgentRecord>("/agent/agent", "name", {}, 50)
@@ -118,10 +119,7 @@ export default function WorkflowPage() {
   const [preview, setPreview] = React.useState<WorkflowPreview | null>(null)
   const [versionTarget, setVersionTarget] = React.useState<WorkflowRecord | null>(null)
   const [runningWorkflow, setRunningWorkflow] = React.useState<WorkflowRecord | null>(null)
-  const versionFilters = React.useMemo(
-    () => (versionTarget?.name ? { name: versionTarget.name } : { name: "__no_workflow_selected__" }),
-    [versionTarget?.name]
-  )
+  const versionFilters = versionTarget?.name ? { name: versionTarget.name } : { name: "__no_workflow_selected__" }
   const versionsCrud = useCrud<WorkflowRecord>("/workflow-definition", "", versionFilters, 100)
 
   const domainOptions = getOptions("WorkflowDefinition", "DOMAIN_NAME_MAPPING").map((option) => ({
@@ -222,7 +220,7 @@ export default function WorkflowPage() {
     } catch {
       // keep save success independent from preview refresh
     }
-  }, [form, parseJsonText, workflowCrud])
+  }, [form, workflowCrud])
 
   const handleApplyTemplate = React.useCallback(() => {
     if (!selectedTemplate) return
@@ -289,7 +287,7 @@ export default function WorkflowPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-primary" />
-            <span className="font-medium">{value}</span>
+            <span className="font-medium">{String(value ?? "-")}</span>
             <Badge variant="outline" className="text-[10px] px-1 py-0">
               {item.version}
             </Badge>
@@ -324,14 +322,19 @@ export default function WorkflowPage() {
     {
       key: "definitionJson",
       title: "Logic",
-      render: (value: any) => {
-        const nodeCount = Array.isArray(value?.nodes) ? value.nodes.length : 0
-        const edgeCount = Array.isArray(value?.edges) ? value.edges.length : 0
+      render: (value: unknown) => {
+        const definitionValue = (value && typeof value === "object" ? value : {}) as JsonObject
+        const nodeCount = Array.isArray(definitionValue.nodes) ? definitionValue.nodes.length : 0
+        const edgeCount = Array.isArray(definitionValue.edges) ? definitionValue.edges.length : 0
+        const entryRouter =
+          definitionValue.entry_router && typeof definitionValue.entry_router === "object"
+            ? (definitionValue.entry_router as JsonObject).name
+            : undefined
         return (
           <div className="space-y-1 text-xs">
             <div>{nodeCount} nodes / {edgeCount} edges</div>
             <div className="text-muted-foreground">
-              router: {value?.entry_router?.name || "-"}
+              router: {typeof entryRouter === "string" ? entryRouter : "-"}
             </div>
           </div>
         )
@@ -646,7 +649,7 @@ export default function WorkflowPage() {
         mode="json"
         showSessionId
         initialKwargs={
-          ((runningWorkflow?.definitionJson as any)?.run_defaults?.kwargs as Record<string, unknown> | undefined) || {
+          ((((runningWorkflow?.definitionJson || {}) as JsonObject).run_defaults as JsonObject | undefined)?.kwargs as Record<string, unknown> | undefined) || {
             config: {
               region: "USA",
               dataset_id: "top_v1",

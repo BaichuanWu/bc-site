@@ -30,9 +30,9 @@ export const TaskProgressBar = ({
         <div className={cn("space-y-2 w-full", className)}>
             <div className="flex items-center justify-between text-xs transition-all animate-in fade-in">
                 <div className="flex items-center gap-2 text-muted-foreground font-medium truncate">
-                    {status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                    {status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                    {status === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
+                    {showStatus && status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                    {showStatus && status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                    {showStatus && status === 'failed' && <AlertCircle className="h-3 w-3 text-destructive" />}
                     <span className="truncate">{message}</span>
                 </div>
                 {showProgressValue && (

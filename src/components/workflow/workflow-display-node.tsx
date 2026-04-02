@@ -1,9 +1,11 @@
 "use client"
 
 import type { CSSProperties } from "react"
-import { Handle, Position } from "@xyflow/react"
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react"
 
 import { Badge } from "@/components/ui/badge"
+import type { CanvasNodeData } from "@/components/workflow/workflow-canvas-serializer"
+import { getJsonString, isJsonObject } from "@/types/json"
 import { cn } from "@/lib/utils"
 
 const KIND_BADGE_STYLES: Record<string, string> = {
@@ -13,11 +15,29 @@ const KIND_BADGE_STYLES: Record<string, string> = {
   workflow: "bg-teal-600 text-white border-teal-400",
 }
 
-export function WorkflowDisplayNode(props: any) {
-  const data = (props?.data || {}) as Record<string, any>
-  const selected = !!props?.selected
-  const model = (data.model || {}) as Record<string, any>
-  const kind = data.kind || model.kind || "system"
+type WorkflowNodeModel = NonNullable<CanvasNodeData["model"]>
+
+function toCanvasNodeData(value: unknown): CanvasNodeData {
+  if (!value || typeof value !== "object") {
+    return { label: "Workflow node" }
+  }
+
+  const source = value as Partial<CanvasNodeData>
+  return {
+    label: typeof source.label === "string" ? source.label : "Workflow node",
+    model: isJsonObject(source.model) ? source.model : undefined,
+    special: typeof source.special === "boolean" ? source.special : undefined,
+    kind: typeof source.kind === "string" ? source.kind : undefined,
+  }
+}
+
+export function WorkflowDisplayNode({
+  data,
+  selected,
+}: NodeProps<Node<Record<string, unknown>, string | undefined>>) {
+  const safeData = toCanvasNodeData(data)
+  const model: WorkflowNodeModel = safeData.model || {}
+  const kind = safeData.kind || getJsonString(model.kind, "system")
   const badgeClassName = KIND_BADGE_STYLES[kind] || KIND_BADGE_STYLES.system
   const handleClassName =
     "h-3.5 w-3.5 rounded-full border-2 border-background bg-primary shadow-sm"
@@ -26,7 +46,7 @@ export function WorkflowDisplayNode(props: any) {
     height: 14,
   } satisfies CSSProperties
 
-  if (data.special) {
+  if (safeData.special) {
     return (
       <div
         className={cn(
@@ -37,8 +57,8 @@ export function WorkflowDisplayNode(props: any) {
         {model.key !== "__start__" && (
           <Handle id="in" type="target" position={Position.Left} className={handleClassName} style={handleStyle} />
         )}
-        <div className="text-xs font-black tracking-[0.28em]">{data.label}</div>
-        {model.key !== "__end__" && (
+        <div className="text-xs font-black tracking-[0.28em]">{safeData.label}</div>
+        {getJsonString(model.key) !== "__end__" && (
           <Handle id="out" type="source" position={Position.Right} className={handleClassName} style={handleStyle} />
         )}
       </div>
@@ -57,9 +77,9 @@ export function WorkflowDisplayNode(props: any) {
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{model.key || data.label}</div>
+            <div className="truncate text-sm font-semibold">{getJsonString(model.key) || safeData.label}</div>
             <div className="line-clamp-2 text-xs text-muted-foreground">
-              {model.description || data.label || "Workflow node"}
+              {getJsonString(model.description) || safeData.label || "Workflow node"}
             </div>
           </div>
           <Badge className={cn("border text-[10px] uppercase", badgeClassName)}>
@@ -69,15 +89,15 @@ export function WorkflowDisplayNode(props: any) {
         <div className="space-y-1 rounded-2xl bg-muted/40 px-3 py-2 text-xs">
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Agent</span>
-            <span className="max-w-[120px] truncate font-medium">{model.agent_name || "-"}</span>
+            <span className="max-w-[120px] truncate font-medium">{getJsonString(model.agent_name) || "-"}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Version</span>
-            <span className="font-medium">{model.agent_version || "-"}</span>
+            <span className="font-medium">{getJsonString(model.agent_version) || "-"}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground">Type</span>
-            <span className="font-medium">{model.type || "agent"}</span>
+            <span className="font-medium">{getJsonString(model.type, "agent")}</span>
           </div>
         </div>
       </div>

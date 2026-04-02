@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTaskSystem } from '@/components/providers/task-provider'
-import { type TaskState, type TaskProgress, type TaskStatus } from '@/types/task'
+import { type TaskProgress, type TaskStatus } from '@/types/task'
 
 export interface TaskInitialData {
     progress?: TaskProgress | null
@@ -41,14 +41,14 @@ export const useTask = (taskId?: number, initialData?: TaskInitialData) => {
         return unsubscribe
     }, [currentTaskId, subscribe])
 
-    const run = useCallback(async (taskName: string, context: any = {}) => {
+    const run = useCallback(async (taskName: string, context: Record<string, unknown> = {}) => {
         try {
             const id = await runTask(taskName, context)
             if (id) {
                 setCurrentTaskId(id)
                 return id
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to start task', err)
             throw err
         }

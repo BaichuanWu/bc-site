@@ -4,11 +4,17 @@ import { apiClient, fetcher } from "@/lib/api"
 import { toast } from "sonner"
 
 export type SortEntry = { key: string; dir: 'asc' | 'desc' }
+type CrudListResponse<T> = {
+    dataSource?: T[]
+    data?: T[]
+    total?: number
+    totalCount?: number
+} | T[]
 
 export function useCrud<T extends { id: string | number }>(
     endpoint: string,
     searchParamName?: string,
-    additionalQueries: Record<string, string | number> = {},
+    additionalQueries: Record<string, unknown> = {},
     defaultPageSize: number = 20
 ) {
     const [search, setSearch] = React.useState("")
@@ -29,7 +35,7 @@ export function useCrud<T extends { id: string | number }>(
 
     const queryParamsString = React.useMemo(() => {
         const params = new URLSearchParams()
-        const qPayload: Record<string, any> = {}
+        const qPayload: Record<string, unknown> = {}
 
         // Attach all hard filters preserving objects like { ge: 10 }
         Object.entries(additionalQueries).forEach(([key, val]) => {
@@ -42,7 +48,7 @@ export function useCrud<T extends { id: string | number }>(
 
         // Attach the text search mapping it natively to { "like": "%...%" }
         if (debouncedSearch && searchParamName) {
-            let cleanKey = searchParamName.replace(/Regexp|Like|_regexp|_like/g, '')
+            const cleanKey = searchParamName.replace(/Regexp|Like|_regexp|_like/g, '')
             qPayload[cleanKey] = { like: `%${debouncedSearch}%` }
         }
 
@@ -67,7 +73,7 @@ export function useCrud<T extends { id: string | number }>(
     const swrKey = `${endpoint}?${queryParamsString}`
 
 
-    const { data: resultData, mutate, isLoading, isValidating } = useSWR(
+    const { data: resultData, mutate, isLoading, isValidating } = useSWR<CrudListResponse<T>>(
         swrKey,
         fetcher,
         {
@@ -79,31 +85,34 @@ export function useCrud<T extends { id: string | number }>(
         }
     )
 
-    const data: T[] = Array.isArray(resultData?.dataSource)
-        ? resultData.dataSource
-        : Array.isArray(resultData?.data)
-            ? resultData.data
-            : Array.isArray(resultData)
-                ? resultData
-                : []
-
-    const total = resultData?.total || resultData?.totalCount || 0
+    const { data, total } = React.useMemo(() => {
+        const listResult = resultData && !Array.isArray(resultData) ? resultData : null
+        const resolvedData: T[] = Array.isArray(listResult?.dataSource)
+            ? listResult.dataSource
+            : Array.isArray(listResult?.data)
+                ? listResult.data
+                : Array.isArray(resultData)
+                    ? resultData
+                    : []
+        const resolvedTotal = listResult?.total || listResult?.totalCount || 0
+        return { data: resolvedData, total: resolvedTotal }
+    }, [resultData])
 
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [editingItem, setEditingItem] = React.useState<T | null>(null)
     const [isSaving, setIsSaving] = React.useState(false)
 
-    const handleOpenDialog = (item?: T) => {
+    const handleOpenDialog = React.useCallback((item?: T) => {
         setEditingItem(item || null)
         setIsDialogOpen(true)
-    }
+    }, [])
 
-    const handleCloseDialog = () => {
+    const handleCloseDialog = React.useCallback(() => {
         setIsDialogOpen(false)
         setEditingItem(null)
-    }
+    }, [])
 
-    const handleSave = async (payload: Partial<T>) => {
+    const handleSave = React.useCallback(async (payload: Partial<T>) => {
         try {
             setIsSaving(true)
             if (editingItem) {
@@ -113,22 +122,22 @@ export function useCrud<T extends { id: string | number }>(
             }
             handleCloseDialog()
             mutate()
-        } catch (e) {
+        } catch {
             toast.error("Failed to save data")
         } finally {
             setIsSaving(false)
         }
-    }
+    }, [editingItem, endpoint, handleCloseDialog, mutate])
 
-    const handleDelete = async (id: string | number) => {
+    const handleDelete = React.useCallback(async (id: string | number) => {
         if (!confirm("Are you sure you want to delete this item?")) return
         try {
             await apiClient.delete(endpoint, { params: { id } })
             mutate()
-        } catch (e) {
+        } catch {
             toast.error("Failed to delete data")
         }
-    }
+    }, [endpoint, mutate])
 
     // Sort helper that also resets page to avoid double requests
     const updateSorts = React.useCallback((updater: SortEntry[] | ((prev: SortEntry[]) => SortEntry[])) => {
@@ -161,7 +170,8 @@ export function useCrud<T extends { id: string | number }>(
     }), [
         data, isLoading, isValidating, search, debouncedSearch,
         page, pageSize, total, sorts, updateSorts,
-        isDialogOpen, editingItem, isSaving, mutate
+        isDialogOpen, editingItem, isSaving, mutate,
+        handleOpenDialog, handleCloseDialog, handleSave, handleDelete
     ])
 
     return result

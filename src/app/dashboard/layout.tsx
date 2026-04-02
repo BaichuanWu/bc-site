@@ -13,6 +13,7 @@ import {
     Activity,
     BookOpen,
     Workflow,
+    type LucideIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils"
 type NavItem = {
     title: string
     href?: string
-    icon?: any
+    icon?: LucideIcon
     children?: NavItem[]
 }
 

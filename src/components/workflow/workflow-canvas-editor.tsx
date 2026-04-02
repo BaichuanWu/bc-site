@@ -39,6 +39,7 @@ import {
 import { WorkflowDisplayNode } from "@/components/workflow/workflow-display-node"
 import { WorkflowNodeInspector } from "@/components/workflow/workflow-node-inspector"
 import { WorkflowNodePickerDialog } from "@/components/workflow/workflow-node-picker-dialog"
+import { getJsonObject, getJsonString, type JsonObject } from "@/types/json"
 
 type WorkflowCanvasEditorProps = {
   definition: WorkflowDefinition
@@ -93,7 +94,7 @@ function WorkflowCanvasEditorInner({
   const [selectedEdgeId, setSelectedEdgeId] = React.useState<string | null>(null)
   const [isAddNodeOpen, setIsAddNodeOpen] = React.useState(false)
   const invalidEdgeFingerprints = React.useMemo(
-    () => new Set((preview?.invalid_edges || []).map((edge) => getEdgeFingerprint(edge as Record<string, any>))),
+    () => new Set((preview?.invalid_edges || []).map((edge) => getEdgeFingerprint(edge as JsonObject))),
     [preview]
   )
 
@@ -259,7 +260,7 @@ function WorkflowCanvasEditorInner({
           getEdgeFingerprint({
             source: edge.source,
             target: edge.target,
-            ...(edge.data?.model || {}),
+            ...(getJsonObject(edge.data?.model) || {}),
           })
         )
 
@@ -278,7 +279,7 @@ function WorkflowCanvasEditorInner({
     (routerName: string) => {
       const nextDefinition = cloneJson(definition || {})
       nextDefinition.entry_router = {
-        ...(nextDefinition.entry_router || {}),
+        ...(getJsonObject(nextDefinition.entry_router) || {}),
         name: routerName === "__none__" ? undefined : routerName,
       }
       lastSyncedSignatureRef.current = JSON.stringify({
@@ -321,7 +322,7 @@ function WorkflowCanvasEditorInner({
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground">Entry Router</span>
                 <Select
-                  value={(definition?.entry_router?.name as string) || "__none__"}
+                  value={getJsonString(getJsonObject(definition.entry_router)?.name, "__none__")}
                   onValueChange={updateEntryRouter}
                 >
                   <SelectTrigger className="h-8 min-w-[220px]">

@@ -4,7 +4,6 @@ import { Pencil, Trash2 } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { DeleteConfirmDialog } from "./delete-confirm-dialog"

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Bot, GitBranch, Play, Sparkles, Database, LayoutPanelLeft } from "lucide-react"
 import { RunWorkflowDialog } from "@/components/workflow/run-workflow-dialog"
 import { apiClient } from "@/lib/api"
+import { getJsonArray, getJsonObject, getJsonString } from "@/types/json"
 
 type WorkflowNodeMeta = {
     node_name: string
@@ -29,7 +30,28 @@ export default function AgentWorkflowPage() {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const { data: workflowMeta } = useSWR<WorkflowMeta>(
         "/sys/workflow/cluster_nuggets_v3/meta",
-        (url: string) => apiClient.get(url).then((res: any) => res as WorkflowMeta)
+        async (url: string) => {
+            const res = await apiClient.get(url)
+            const data = getJsonObject(res)
+            const nodeValues = (getJsonArray(data?.nodes) ?? []).map((node) => {
+                const nodeObj = getJsonObject(node)
+                return {
+                    node_name: getJsonString(nodeObj?.node_name),
+                    agent_name: getJsonString(nodeObj?.agent_name),
+                    agent_version: getJsonString(nodeObj?.agent_version),
+                    kind: getJsonString(nodeObj?.kind),
+                    description: getJsonString(nodeObj?.description),
+                }
+            })
+
+            return {
+                name: getJsonString(data?.name),
+                title: getJsonString(data?.title),
+                version: getJsonString(data?.version),
+                description: getJsonString(data?.description),
+                nodes: nodeValues,
+            }
+        }
     )
 
     return (

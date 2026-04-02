@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { ChevronDownIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export const JsonNode = ({ data, label, depth = 0 }: { data: any, label?: string, depth?: number }) => {
+export const JsonNode = ({ data, label, depth = 0 }: { data: unknown, label?: string, depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false)
     const isObject = data !== null && typeof data === 'object'
     const isEmpty = isObject && Object.keys(data).length === 0
@@ -25,9 +25,9 @@ export const JsonNode = ({ data, label, depth = 0 }: { data: any, label?: string
         )
     }
 
-    const entries = Array.isArray(data) 
+    const entries: Array<[string, unknown]> = Array.isArray(data) 
         ? data.map((v, i) => [String(i), v]) 
-        : Object.entries(data)
+        : Object.entries(data as Record<string, unknown>)
 
     return (
         <div className="flex flex-col py-0.5">
@@ -58,7 +58,7 @@ export const JsonNode = ({ data, label, depth = 0 }: { data: any, label?: string
             {isExpanded && !isEmpty && (
                 <div className="flex flex-col border-l border-white/5 ml-1.5 mt-0.5 relative">
                     {entries.map(([key, value], i) => (
-                        <JsonNode key={i} data={value} label={Array.isArray(data) ? undefined : key} depth={depth + 1} />
+                        <JsonNode key={i} data={value} label={Array.isArray(data) ? undefined : String(key)} depth={depth + 1} />
                     ))}
                 </div>
             )}

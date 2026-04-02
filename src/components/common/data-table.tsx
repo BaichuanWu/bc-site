@@ -17,6 +17,10 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+type BivariantRender<T> = {
+    bivarianceHack: (value: unknown, item: T, onRefresh?: () => void) => React.ReactNode
+}["bivarianceHack"]
+
 export type Column<T> = {
     key: string
     title: React.ReactNode
@@ -26,7 +30,15 @@ export type Column<T> = {
     className?: string
     truncate?: boolean
     sortable?: boolean
-    render?: (value: any, item: T, onRefresh?: () => void) => React.ReactNode
+    render?: BivariantRender<T>
+}
+
+function renderTableValue(value: unknown): React.ReactNode {
+    if (React.isValidElement(value)) return value
+    if (value === null || value === undefined) return null
+    if (typeof value === "string" || typeof value === "number") return value
+    if (typeof value === "boolean") return value ? "true" : "false"
+    return JSON.stringify(value)
 }
 
 export type DataTableProps<T> = {
@@ -152,22 +164,23 @@ export function DataTable<T extends { id: string | number }>({
                             items.map((item) => (
                                 <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
                                     {columns.map((col, colIdx) => {
+                                        const row = item as Record<string, unknown>
                                         const value = col.render
-                                            ? col.render((item as any)[col.key], item, onRefresh)
-                                            : (item as any)[col.key];
+                                            ? col.render(row[col.key], item, onRefresh)
+                                            : row[col.key];
 
                                         const cellContent = col.truncate ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <div className="truncate max-w-full cursor-help text-foreground">
-                                                        {value}
+                                                        {renderTableValue(value)}
                                                     </div>
                                                 </TooltipTrigger>
                                                 <TooltipContent className="max-w-[400px] break-all">
-                                                    {value}
+                                                    {renderTableValue(value)}
                                                 </TooltipContent>
                                             </Tooltip>
-                                        ) : value;
+                                        ) : renderTableValue(value);
 
                                         return (
                                             <TableCell
