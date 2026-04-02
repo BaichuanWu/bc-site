@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@xyflow/react/dist/style.css";
+@import "@uiw/react-md-editor/markdown-editor.css";
+@import "@uiw/react-markdown-preview/markdown.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -122,5 +125,64 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .markdown-editor-shell .w-md-editor {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-radius: calc(var(--radius) + 0.25rem);
+    overflow: hidden;
+  }
+
+  .markdown-editor-shell .w-md-editor-toolbar {
+    border-bottom-color: color-mix(in oklch, var(--border) 100%, transparent);
+    background: color-mix(in oklch, var(--muted) 60%, var(--card));
+    padding: 0.5rem 0.625rem;
+    gap: 0.25rem;
+  }
+
+  .markdown-editor-shell .w-md-editor-toolbar li > button {
+    border-radius: 0.5rem;
+  }
+
+  .markdown-editor-shell .w-md-editor-content,
+  .markdown-editor-shell .w-md-editor-input,
+  .markdown-editor-shell .w-md-editor-preview {
+    min-height: 100%;
+  }
+
+  .markdown-editor-shell .w-md-editor-text-pre > code,
+  .markdown-editor-shell .w-md-editor-text-input {
+    font-size: 0.92rem !important;
+    line-height: 1.65 !important;
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  }
+
+  .markdown-editor-shell .w-md-editor-preview {
+    box-shadow: inset 1px 0 0 color-mix(in oklch, var(--border) 100%, transparent);
+    background: color-mix(in oklch, var(--card) 84%, var(--muted));
+  }
+
+  .markdown-editor-shell .w-md-editor-input {
+    width: var(--editor-pane-width, 52%) !important;
+    max-width: var(--editor-pane-width, 52%) !important;
+  }
+
+  .markdown-editor-shell .w-md-editor-preview {
+    width: calc(100% - var(--editor-pane-width, 52%)) !important;
+    left: var(--editor-pane-width, 52%);
+    right: 0;
+  }
+
+  .markdown-editor-shell .wmde-markdown,
+  .markdown-editor-shell .wmde-markdown-var {
+    background: transparent;
+    color: var(--foreground);
+  }
+
+  .markdown-editor-shell .wmde-markdown {
+    padding: 1.25rem 1.5rem;
   }
 }

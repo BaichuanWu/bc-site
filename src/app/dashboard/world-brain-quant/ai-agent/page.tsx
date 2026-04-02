@@ -1,14 +1,36 @@
 'use client'
 
 import * as React from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Sparkles, Database, LayoutPanelLeft } from "lucide-react"
+import { Bot, GitBranch, Play, Sparkles, Database, LayoutPanelLeft } from "lucide-react"
 import { RunWorkflowDialog } from "@/components/workflow/run-workflow-dialog"
+import { apiClient } from "@/lib/api"
+
+type WorkflowNodeMeta = {
+    node_name: string
+    agent_name: string
+    agent_version: string
+    kind: string
+    description: string
+}
+
+type WorkflowMeta = {
+    name: string
+    title: string
+    version: string
+    description: string
+    nodes: WorkflowNodeMeta[]
+}
 
 export default function AgentWorkflowPage() {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+    const { data: workflowMeta } = useSWR<WorkflowMeta>(
+        "/sys/workflow/cluster_nuggets_v3/meta",
+        (url: string) => apiClient.get(url).then((res: any) => res as WorkflowMeta)
+    )
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-700">
@@ -60,6 +82,39 @@ export default function AgentWorkflowPage() {
                                 This workflow uses **Reflective Agents** to analyze datafield clusters and assemble formulaic alphas with mandatory vector operator wrapping.
                             </p>
                         </div>
+                        {workflowMeta?.nodes?.length ? (
+                            <div className="space-y-3 rounded-xl border bg-background/80 p-3">
+                                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                                    <GitBranch className="h-3.5 w-3.5" />
+                                    Node to Agent Mapping
+                                </div>
+                                <div className="space-y-2">
+                                    {workflowMeta.nodes.map((node) => (
+                                        <div
+                                            key={node.node_name}
+                                            className="rounded-lg border bg-muted/20 p-2"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-xs font-black uppercase tracking-tight">
+                                                    {node.node_name}
+                                                </span>
+                                                <Badge variant="outline" className="text-[10px] font-mono">
+                                                    {node.kind}
+                                                </Badge>
+                                            </div>
+                                            <div className="mt-1 flex items-center gap-2 text-xs">
+                                                <Bot className="h-3.5 w-3.5 text-primary" />
+                                                <span className="font-semibold">{node.agent_name}</span>
+                                                <span className="text-muted-foreground">v{node.agent_version}</span>
+                                            </div>
+                                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                                                {node.description}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
                     </CardContent>
                     <CardFooter className="pt-4 border-t bg-muted/5 group-hover:bg-muted/10 transition-colors">
                         <Button 

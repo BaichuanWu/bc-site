@@ -11,6 +11,8 @@ import {
     ChevronRight,
     Bot,
     Activity,
+    BookOpen,
+    Workflow,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -40,6 +42,20 @@ const NAV_ITEMS: NavItem[] = [
                     { title: "AI Agent", href: "/dashboard/world-brain-quant/ai-agent" },
                 ]
             }
+        ]
+    },
+    {
+        title: "Workflow",
+        icon: Workflow,
+        children: [
+            { title: "Workflow Studio", href: "/dashboard/workflow" },
+        ]
+    },
+    {
+        title: "Knowledge",
+        icon: BookOpen,
+        children: [
+            { title: "Knowledge Workspace", href: "/dashboard/knowledge" },
         ]
     },
     {

@@ -32,9 +32,11 @@ import {
 import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { CrudLayout } from "@/components/common/crud-layout"
+import { useDeleteAction } from "@/hooks/use-delete-action"
 
 export default function LlmPage() {
   const [filters, setFilters] = React.useState<Record<string, any>>({})
+  const deleteAction = useDeleteAction()
 
   const {
     isDialogOpen,
@@ -82,7 +84,34 @@ export default function LlmPage() {
   const columns = [
     { key: "name", title: "Name", className: "text-sm font-medium" },
     { key: "provider", title: "Provider", className: "text-sm" },
-    { key: "model_name", title: "Model", className: "text-sm text-muted-foreground font-mono" },
+    {
+      key: "model_name",
+      title: "Default Model",
+      render: (value: string) => (
+        <div className="space-y-1">
+          <div className="text-sm font-mono text-muted-foreground">{value}</div>
+          <div className="text-[11px] text-muted-foreground">Agent llm_config can override this</div>
+        </div>
+      ),
+    },
+    {
+      key: "base_url",
+      title: "Endpoint",
+      render: (value: string) => (
+        <div className="max-w-[220px] truncate text-xs text-muted-foreground">
+          {value || "Provider default"}
+        </div>
+      ),
+    },
+    {
+      key: "api_key",
+      title: "Credential",
+      render: (value: string) => (
+        <span className="text-xs font-mono text-muted-foreground">
+          {value ? `${value.slice(0, 6)}••••••${value.slice(-4)}` : "-"}
+        </span>
+      ),
+    },
     {
       key: "is_active",
       title: "Status",
@@ -100,8 +129,13 @@ export default function LlmPage() {
         <ActionButtons 
           onEdit={() => handleOpenDialog(item)}
           onConfirmDelete={async () => {
-            await apiClient.delete("/agent/llm", { params: { id: item.id } })
-            mutate()
+            await deleteAction.remove("/agent/llm", item.id, {
+              successMessage: "LLM provider deleted successfully",
+              errorMessage: "Failed to delete provider",
+              onSuccess: async () => {
+                await mutate()
+              },
+            })
           }}
           description={<>Are you sure you want to delete the provider <strong>{item.name}</strong>? This action cannot be undone.</>}
         />

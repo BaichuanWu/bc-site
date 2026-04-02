@@ -71,21 +71,31 @@ export default function TaskDetailPage() {
 
     const [task, setTask] = useState<any>(null)
 
+    const getPayloadKind = useCallback((event: any) => {
+        return event?.payload?.kind || 'generic'
+    }, [])
+
     const getEventTitle = useCallback((event: any) => {
         if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final Result'
-        return event.payload?.step || event.payload?.node || 'Unknown Step'
+        if (event.typ === TASK_EVENT_TYPE.ERROR) return 'Task Error'
+        if (getPayloadKind(event) === 'batch_progress') return 'Batch Progress'
+        return event.payload?.step || event.payload?.node || 'Task Event'
     }, [])
 
     const getEventStatus = useCallback((event: any) => {
         if (event.typ === TASK_EVENT_TYPE.RESULT) return TASK_STATE.SUCCESS
+        if (event.typ === TASK_EVENT_TYPE.ERROR) return TASK_STATE.ERROR
         return event.payload?.status || 0
     }, [])
 
     const getEventSummary = useCallback((event: any) => {
         if (event.message) return event.message
         if (event.typ === TASK_EVENT_TYPE.RESULT) return 'Final workflow output'
-        return `Audit trail for ${event.payload?.step || 'step'}`
-    }, [])
+        if (event.typ === TASK_EVENT_TYPE.ERROR) return event.payload?.message || 'Task execution failed'
+        if (getPayloadKind(event) === 'batch_progress') return 'Incremental execution progress and runtime artifacts'
+        if (getPayloadKind(event) === 'workflow_node') return `Audit trail for ${event.payload?.step || 'step'}`
+        return 'Generic task event payload'
+    }, [getPayloadKind])
 
     // Sync task state from hook back to local 'task' for UI compatibility
     const displayTask = useMemo(() => {
@@ -250,6 +260,14 @@ export default function TaskDetailPage() {
                                                         const eventTitle = getEventTitle(event)
                                                         const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
                                                         const resultData = event.payload?.result
+                                                        const payloadKind = getPayloadKind(event)
+                                                        const transcriptMessages = event.payload?.messages || []
+                                                        const shouldShowTranscript = !isResultEvent && ['workflow_node', 'agent_run'].includes(payloadKind)
+                                                        const artifactData = isResultEvent
+                                                            ? null
+                                                            : event.payload?.data && typeof event.payload.data === 'object'
+                                                                ? event.payload.data
+                                                                : event.payload
                                                         return (
                                                             <>
                                                     {/* dot */}
@@ -268,6 +286,9 @@ export default function TaskDetailPage() {
                                                                         <span className="text-sm font-black tracking-tight uppercase">
                                                                             {eventTitle}
                                                                         </span>
+                                                                        <Badge variant="secondary" className="text-[8px] h-3.5 font-black uppercase tracking-widest bg-muted/50 text-muted-foreground">
+                                                                            {payloadKind}
+                                                                        </Badge>
                                                                         <Badge variant="outline" className={cn(
                                                                             "text-[8px] h-3.5 font-black uppercase tracking-widest",
                                                                             eventStatus === TASK_STATE.SUCCESS ? "text-green-500 border-green-500/30 bg-green-500/5" :
@@ -312,8 +333,8 @@ export default function TaskDetailPage() {
                                                             
                                                             <ScrollArea className="flex-1 min-h-0">
                                                                 <div className="p-8 max-w-full mx-auto">
-                                                                    {!isResultEvent && (
-                                                                        <DialogueTranscript messages={event.payload?.messages || []} />
+                                                                    {shouldShowTranscript && (
+                                                                        <DialogueTranscript messages={transcriptMessages} />
                                                                     )}
 
                                                                     {isResultEvent && resultData && (
@@ -325,12 +346,13 @@ export default function TaskDetailPage() {
                                                                         </div>
                                                                     )}
                                                                     
-                                                                    {/* Only show raw data if it's NOT an agent node (no messages) or if user explicitly needs it */}
-                                                                    {event.payload?.data && typeof event.payload.data === 'object' && Object.keys(event.payload.data).length > 0 && (!event.payload?.messages || event.payload?.messages.length === 0) && (
+                                                                    {artifactData && Object.keys(artifactData).length > 0 && (
                                                                         <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
-                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">Process Artifacts</h4>
+                                                                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
+                                                                                {shouldShowTranscript ? 'Process Artifacts' : 'Event Payload'}
+                                                                            </h4>
                                                                             <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                                                                                <JsonNode data={event.payload.data} depth={0} />
+                                                                                <JsonNode data={artifactData} depth={0} />
                                                                             </div>
                                                                         </div>
                                                                     )}

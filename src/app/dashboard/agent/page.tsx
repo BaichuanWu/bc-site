@@ -34,10 +34,32 @@ import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { RemoteSelect } from "@/components/common/remote-select"
+import { parseJsonText } from "@/lib/json-utils"
+import { useDeleteAction } from "@/hooks/use-delete-action"
 import useSWR from "swr"
+import { Textarea } from "@/components/ui/textarea"
+
+type AgentOptionsResponse = {
+  agent_classes?: string[]
+}
+
+function preventDialogCloseWhileFullscreen(event: Event) {
+  if (typeof document === "undefined") return
+  if (document.documentElement.dataset.mdEditorFullscreen === "true") {
+    event.preventDefault()
+  }
+}
+
+function preventDialogEscapeWhileFullscreen(event: KeyboardEvent) {
+  if (typeof document === "undefined") return
+  if (document.documentElement.dataset.mdEditorFullscreen === "true") {
+    event.preventDefault()
+  }
+}
 
 export default function AgentPage() {
   const [filters, setFilters] = React.useState<Record<string, any>>({})
+  const deleteAction = useDeleteAction()
 
   const {
     isDialogOpen,
@@ -56,26 +78,40 @@ export default function AgentPage() {
       return res?.dataSource || res?.data || [];
     })
   )
-
+  const { data: agentOptions } = useSWR<AgentOptionsResponse>("/agent/options", (url: string) =>
+    apiClient.get(url).then((res) => res as AgentOptionsResponse)
+  )
 
   const [formData, setFormData] = React.useState<any>({})
+  const [llmConfigText, setLlmConfigText] = React.useState("{}")
+  const [knowledgeNamespacesText, setKnowledgeNamespacesText] = React.useState("[]")
+  const availableAgentClasses = React.useMemo(() => {
+    const classes = agentOptions?.agent_classes || []
+    return classes.length ? classes : ["DefaultAgentNode", "ReflectiveAgent", "GraphAgentNode"]
+  }, [agentOptions])
 
   React.useEffect(() => {
     if (editingItem) {
       setFormData(editingItem)
+      setLlmConfigText(JSON.stringify(editingItem.llmConfig || {}, null, 2))
+      setKnowledgeNamespacesText(
+        JSON.stringify(editingItem.knowledgeNamespaces || [], null, 2)
+      )
     } else {
       setFormData({
         name: "",
         version: "1.0.0",
-        agentClass: "BaseAgent",
+        agentClass: availableAgentClasses[0] || "DefaultAgentNode",
         llmId: 0,
         sysPrompt: "# You are a helpful assistant\n\nDescribe your behavior here...",
         userPrompt: "",
         llmConfig: { model: "gpt-4o", temperature: 0.7 },
         isActive: 1,
       })
+      setLlmConfigText(JSON.stringify({ model: "gpt-4o", temperature: 0.7 }, null, 2))
+      setKnowledgeNamespacesText("[]")
     }
-  }, [editingItem, isDialogOpen])
+  }, [availableAgentClasses, editingItem, isDialogOpen])
 
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Agent Name", type: "text" },
@@ -106,11 +142,31 @@ export default function AgentPage() {
     { key: "agentClass", title: "Class", className: "text-sm" },
     { 
         key: "llmId", 
-        title: "LLM Config",
-        render: (id: number) => {
+        title: "LLM / Override",
+        render: (id: number, item: any) => {
             const llm = (llmOptions || []).find((o: any) => o.id === id)
-            return <span className="text-sm">{llm ? llm.name : "Default / None"}</span>
+            const override = itemHasLlmOverride(item)
+            return (
+              <div className="space-y-1">
+                <div className="text-sm">{llm ? llm.name : "No default LLM"}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {override ? "Agent llm_config override enabled" : "Using LLM defaults"}
+                </div>
+              </div>
+            )
         }
+    },
+    {
+      key: "responseType",
+      title: "Response / Knowledge",
+      render: (_: any, item: any) => (
+        <div className="space-y-1 text-xs">
+          <div>{item.responseType || "-"}</div>
+          <div className="text-muted-foreground">
+            namespaces: {Array.isArray(item.knowledgeNamespaces) ? item.knowledgeNamespaces.length : 0}
+          </div>
+        </div>
+      ),
     },
     {
       key: "isActive",
@@ -129,14 +185,23 @@ export default function AgentPage() {
         <ActionButtons 
           onEdit={() => handleOpenDialog(item)}
           onConfirmDelete={async () => {
-            await apiClient.delete("/agent/agent", { params: { id: item.id } })
-            mutate()
+            await deleteAction.remove("/agent/agent", item.id, {
+              successMessage: "Agent deleted successfully",
+              errorMessage: "Failed to delete agent",
+              onSuccess: async () => {
+                await mutate()
+              },
+            })
           }}
           description={<>Are you sure you want to delete the agent <strong>{item.name}</strong>? This action cannot be undone.</>}
         />
       ),
     },
   ]
+
+  function itemHasLlmOverride(item: any) {
+    return !!item?.llmConfig && Object.keys(item.llmConfig || {}).length > 0
+  }
 
   return (
     <TooltipProvider>
@@ -151,8 +216,13 @@ export default function AgentPage() {
           addButtonLabel="Create Agent"
           onAdd={() => handleOpenDialog()}
         >
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[1100px] max-h-[90vh] flex flex-col p-0">
+          <Dialog modal={false} open={isDialogOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent
+          className="sm:max-w-[1100px] max-h-[90vh] flex flex-col p-0"
+          onInteractOutside={preventDialogCloseWhileFullscreen}
+          onPointerDownOutside={preventDialogCloseWhileFullscreen}
+          onEscapeKeyDown={preventDialogEscapeWhileFullscreen}
+        >
           <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle>{editingItem ? "Edit Agent" : "Create New Agent"}</DialogTitle>
           </DialogHeader>
@@ -190,11 +260,11 @@ export default function AgentPage() {
                             <SelectValue placeholder="Select class" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="BaseAgent">BaseAgent</SelectItem>
-                            <SelectItem value="ReflectionAgent">ReflectionAgent</SelectItem>
-                            <SelectItem value="ClusteringAgent">ClusteringAgent</SelectItem>
-                            <SelectItem value="StrategistAgent">StrategistAgent</SelectItem>
-                            <SelectItem value="AssemblerAgent">AssemblerAgent</SelectItem>
+                            {availableAgentClasses.map((agentClass) => (
+                              <SelectItem key={agentClass} value={agentClass}>
+                                {agentClass}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -225,6 +295,44 @@ export default function AgentPage() {
                </Select>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="responseType">Response Type</Label>
+                    <Input
+                        id="responseType"
+                        value={formData.responseType || ""}
+                        onChange={(e) => setFormData({ ...formData, responseType: e.target.value })}
+                        placeholder="Optional schema name"
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="knowledgeNamespaces">Knowledge Namespaces</Label>
+                    <Textarea
+                        id="knowledgeNamespaces"
+                        value={knowledgeNamespacesText}
+                        onChange={(e) => setKnowledgeNamespacesText(e.target.value)}
+                        className="min-h-[96px] font-mono text-xs"
+                        placeholder='["econ_intuition","seed_patterns"]'
+                    />
+                </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="llmConfig">
+                LLM Override Config
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Selected LLM provides default model credentials. Values in agent llm_config override them.
+              </p>
+              <Textarea
+                id="llmConfig"
+                value={llmConfigText}
+                onChange={(e) => setLlmConfigText(e.target.value)}
+                className="min-h-[160px] font-mono text-xs"
+                placeholder='{"model":"gpt-4.1","temperature":0.2,"max_tokens":2000}'
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
                 <div className="grid gap-2 flex-1 min-h-0">
                   <Label>System Prompt (Markdown)</Label>
@@ -247,7 +355,16 @@ export default function AgentPage() {
 
           <div className="px-6 py-4 border-t flex justify-end gap-2">
             <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={() => handleSave(formData)} disabled={isSaving}>
+            <Button
+              onClick={() =>
+                handleSave({
+                  ...formData,
+                  llmConfig: parseJsonText(llmConfigText, {}),
+                  knowledgeNamespaces: parseJsonText(knowledgeNamespacesText, []),
+                })
+              }
+              disabled={isSaving}
+            >
               {isSaving ? "Saving..." : "Save Agent"}
             </Button>
           </div>
