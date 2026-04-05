@@ -18,15 +18,15 @@ export function WorkspaceTabBar() {
             <div
               key={tab.key}
               className={cn(
-                "group flex min-w-[160px] max-w-[260px] items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-sm",
+                "interactive-surface group flex min-w-[160px] max-w-[260px] items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-sm",
                 active
-                  ? "bg-background text-foreground shadow-sm"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted/70",
+                  ? "bg-background text-foreground shadow-sm hover:bg-background"
+                  : "bg-muted/40 text-muted-foreground hover:text-foreground",
               )}
             >
               <button
                 type="button"
-                className="min-w-0 flex-1 truncate text-left"
+                className="min-w-0 flex-1 truncate text-left transition-colors hover:text-foreground"
                 onClick={() => activateTab(tab.pathname)}
               >
                 {tab.title}

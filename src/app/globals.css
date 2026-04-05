@@ -126,9 +126,34 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  a[href],
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    @apply cursor-pointer transition-colors duration-150;
+  }
+
+  summary {
+    @apply rounded-md;
+  }
+
+  summary:hover {
+    color: color-mix(in oklch, var(--foreground) 100%, var(--primary) 12%);
+  }
 }
 
 @layer components {
+  .interactive-surface {
+    @apply transition-all duration-150;
+  }
+
+  .interactive-surface:hover {
+    border-color: color-mix(in oklch, var(--border) 68%, var(--primary));
+    background: color-mix(in oklch, var(--card) 88%, var(--accent));
+    box-shadow: 0 10px 24px -18px color-mix(in oklch, var(--foreground) 22%, transparent);
+  }
+
   .markdown-editor-shell .w-md-editor {
     background: var(--card);
     color: var(--card-foreground);

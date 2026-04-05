@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { GitBranch, History, Play, Workflow as WorkflowIcon } from "lucide-react"
+import { GitBranch, Play, Workflow as WorkflowIcon } from "lucide-react"
 
 import { useMeta } from "@/hooks/use-meta"
 import {
@@ -15,7 +15,6 @@ import { type SearchFilterItem } from "@/components/common/query-filters"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { RunWorkflowDialog } from "@/components/workflow/dialogs/run-workflow-dialog"
-import { WorkflowVersionsDialog } from "@/components/workflow/dialogs/versions-dialog"
 import type { JsonObject } from "@/types/json"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
@@ -28,14 +27,9 @@ export default function WorkflowPage() {
     workflowCrud,
     publishAction,
     deleteAction,
-    setVersionTarget,
-    versionTarget,
     runningWorkflow,
     setRunningWorkflow,
-    versionsCrud,
     handlePublishWorkflow,
-    handleOpenVersions,
-    handleDuplicateAsNewVersion,
     handleOpenRunDialog,
   } = useWorkflowStudio()
 
@@ -136,7 +130,7 @@ export default function WorkflowPage() {
     {
       key: "actions",
       title: "Actions",
-      width: 320,
+      width: 232,
       render: (_value, item) => (
         <div className="flex items-center gap-2">
           <Button
@@ -157,15 +151,6 @@ export default function WorkflowPage() {
             onClick={() => handlePublishWorkflow(item.id)}
           >
             Publish
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleOpenVersions(item)}
-          >
-            <History className="mr-1 h-3.5 w-3.5" />
-            Versions
           </Button>
           <ActionButtons
             onEdit={() => navigate(`/dashboard/workflow/${item.id}`)}
@@ -212,21 +197,6 @@ export default function WorkflowPage() {
         initialKwargs={
           ((((runningWorkflow?.definitionJson || {}) as JsonObject).run_defaults as JsonObject | undefined)?.kwargs as Record<string, unknown> | undefined) || {}
         }
-      />
-
-      <WorkflowVersionsDialog
-        open={!!versionTarget}
-        onOpenChange={(open) => !open && setVersionTarget(null)}
-        workflowName={versionTarget?.name}
-        versions={versionsCrud.data}
-        isLoading={versionsCrud.isLoading || versionsCrud.isValidating}
-        getStatusLabel={(status) => String(getLabel("WorkflowDefinition", "STATUS_NAME_MAPPING", String(status)))}
-        onRun={handleOpenRunDialog}
-        onDuplicate={handleDuplicateAsNewVersion}
-        onOpenInEditor={(record) => {
-          setVersionTarget(null)
-          navigate(`/dashboard/workflow/${record.id}`)
-        }}
       />
     </>
   )

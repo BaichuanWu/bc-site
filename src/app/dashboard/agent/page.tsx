@@ -1,14 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Bot, GitBranchPlus } from "lucide-react"
+import { Bot } from "lucide-react"
 
 import { ActionButtons } from "@/components/common/action-buttons"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { type Column } from "@/components/common/data-table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useCrud } from "@/hooks/use-crud"
 import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
@@ -80,17 +79,9 @@ export default function AgentPage() {
     {
       key: "actions",
       title: "Actions",
-      width: 220,
+      width: 96,
       render: (_: unknown, item: AgentRecord) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/dashboard/agent/${item.id}`)}
-          >
-            <GitBranchPlus className="mr-2 h-4 w-4" />
-            Detail
-          </Button>
+        <div className="flex items-center justify-end">
           <ActionButtons
             onEdit={() => navigate(`/dashboard/agent/${item.id}`)}
             onConfirmDelete={async () => {
