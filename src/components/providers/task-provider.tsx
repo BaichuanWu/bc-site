@@ -15,6 +15,10 @@ type TaskEventRecord = {
     payload?: {
         step?: string
         status?: number
+        message?: string
+        payload?: {
+            message?: string
+        } | null
     } | null
     createTime?: string
 }
@@ -210,6 +214,22 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                         newState.events = mergeTaskEvents(existing.events as TaskEventRecord[], [
                             normalizedEvent,
                         ])
+                        if (eventData.typ === TASK_EVENT_TYPE.ERROR) {
+                            const errorMessage =
+                                eventData.payload?.message ||
+                                eventData.payload?.payload?.message ||
+                                existing.error ||
+                                "Task failed"
+                            newState = {
+                                ...newState,
+                                status: 'failed',
+                                error: errorMessage,
+                                lastUpdated: Date.now(),
+                            }
+                            if (existing.status !== 'failed') {
+                                toast.error(`Task ${tid} failed`, { description: errorMessage })
+                            }
+                        }
                     } else {
                         newState = {
                             ...newState,

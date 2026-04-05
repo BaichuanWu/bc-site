@@ -1,9 +1,10 @@
+import { PageShell } from "@/components/common/page-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Activity, FileText, Lightbulb, User } from "lucide-react"
 
 export default function DashboardOverviewPage() {
     return (
-        <div className="space-y-6">
+        <PageShell>
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
                 <p className="text-muted-foreground">
@@ -71,6 +72,6 @@ export default function DashboardOverviewPage() {
             </div>
 
             {/* Additional charts could go here */}
-        </div>
+        </PageShell>
     )
 }

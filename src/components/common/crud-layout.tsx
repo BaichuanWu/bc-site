@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Plus, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Plus, ChevronLeft, ChevronRight, Loader2, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
@@ -12,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { ListPageActions, ListPageShell } from "@/components/common/list-page-shell"
 
 export type ItemsRenderProps<T> = {
     items: T[]
@@ -24,10 +25,13 @@ export type ItemsRenderProps<T> = {
 
 export type CrudLayoutProps<T extends { id: string | number }> = {
     title: string
-    description: string
+    icon?: LucideIcon
+    description?: string
     addButtonLabel?: string
     searchPlaceholder?: string
     onAdd?: () => void
+    headerActions?: React.ReactNode
+    embedded?: boolean
 
     // Internal Fetching Props
     endpoint?: string
@@ -46,15 +50,20 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     onFilterChange?: (filters: Record<string, unknown>) => void
     pageSizeOptions?: number[]
     defaultPageSize?: number
+    footer?: React.ReactNode
 
+    // Legacy escape hatch during migration to dedicated detail routes.
     children?: React.ReactNode
 }
 
 export function CrudLayout<T extends { id: string | number }>({
     title,
+    icon,
     description,
     addButtonLabel,
     onAdd,
+    headerActions,
+    embedded = false,
     isLoading: manualIsLoading,
     items: manualItems,
     columns = [],
@@ -66,16 +75,22 @@ export function CrudLayout<T extends { id: string | number }>({
     stickyTop = 56, // Default to dashboard header height (h-14)
     onFilterChange,
     pageSizeOptions = [10, 20, 30, 40, 50],
-    defaultPageSize = 20
+    defaultPageSize = 20,
+    footer,
 }: CrudLayoutProps<T>) {
     const [filters, setFilters] = React.useState<Record<string, unknown>>({})
     const ResolvedItemsRender = itemsRender ?? DataTable<T>
-
-    const handleFilterChange = (newFilters: Record<string, unknown>) => {
-        setFilters(newFilters)
-        internalCrud.setPage(1) // Explicitly reset page on filter change
-        onFilterChange?.(newFilters)
-    }
+    const pageActions = React.useMemo(() => {
+        const nodes = React.Children.toArray(headerActions)
+        if (addButtonLabel && onAdd) {
+            nodes.push(
+                <Button key="crud-add" onClick={onAdd}>
+                    <Plus className="mr-2 h-4 w-4" /> {addButtonLabel}
+                </Button>
+            )
+        }
+        return nodes
+    }, [addButtonLabel, headerActions, onAdd])
 
     // If endpoint is provided, use internal useCrud
     const internalCrud = useCrud<T>(
@@ -100,13 +115,19 @@ export function CrudLayout<T extends { id: string | number }>({
         isValidating
     } = internalCrud
 
+    const handleFilterChange = React.useCallback((newFilters: Record<string, unknown>) => {
+        setFilters(newFilters)
+        setPage(1) // Explicitly reset page on filter change
+        onFilterChange?.(newFilters)
+    }, [onFilterChange, setPage])
+
     /**
      * Multi-column sort handler:
      *  - Click new column → append as desc
      *  - Click existing desc → toggle to asc
      *  - Click existing asc → remove from sorts
      */
-    const handleSort = (key: string) => {
+    const handleSort = React.useCallback((key: string) => {
         updateSorts((prev: SortEntry[]) => {
             const idx = prev.findIndex((s: SortEntry) => s.key === key)
             if (idx === -1) {
@@ -121,27 +142,27 @@ export function CrudLayout<T extends { id: string | number }>({
             // Already asc, remove
             return prev.filter((_: SortEntry, i: number) => i !== idx)
         })
-    }
+    }, [updateSorts])
 
     const totalPages = Math.ceil(total / pageSize)
 
-    return (
+    const showSectionHeader = embedded || !icon
+
+    const content = (
         <div className="space-y-2">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
-                    <p className="text-muted-foreground">{description}</p>
+            {showSectionHeader ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+                        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+                    </div>
+                    <ListPageActions actions={pageActions} />
                 </div>
-                {addButtonLabel && onAdd && (
-                    <Button onClick={onAdd}>
-                        <Plus className="mr-2 h-4 w-4" /> {addButtonLabel}
-                    </Button>
-                )}
-            </div>
+            ) : null}
 
             {filterItems && endpoint && (
                 <SearchFilterGroup
-                    title="Filters"
+                    title="Filter"
                     items={filterItems}
                     onSearch={handleFilterChange}
                     storageKey={storageKey}
@@ -173,7 +194,7 @@ export function CrudLayout<T extends { id: string | number }>({
 
                 {/* Internal Pagination - Only if using internal Fetching */}
                 {endpoint && total > 0 && (
-                    <div className="flex items-center justify-between px-2 py-4 border-t mt-4">
+                    <div className="mt-3 flex items-center justify-between border-t px-2 py-3">
                         <div className="text-sm text-muted-foreground">
                             Total <span className="font-medium">{total}</span> items
                         </div>
@@ -227,7 +248,17 @@ export function CrudLayout<T extends { id: string | number }>({
                 )}
             </div>
 
-            {children}
+            {footer ?? children}
         </div>
+    )
+
+    if (showSectionHeader) {
+        return content
+    }
+
+    return (
+        <ListPageShell title={title} icon={icon} actions={pageActions}>
+            {content}
+        </ListPageShell>
     )
 }

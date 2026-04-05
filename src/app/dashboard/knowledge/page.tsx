@@ -12,6 +12,7 @@ import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useMeta } from "@/hooks/use-meta"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { ActionButtons } from "@/components/common/action-buttons"
+import { ListPageShell } from "@/components/common/list-page-shell"
 import { MarkdownEditor } from "@/components/common/markdown-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,6 +41,7 @@ import {
     knowledgeDocumentTemplates,
     knowledgeRawTemplates,
 } from "@/lib/markdown-templates"
+import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
 type KnowledgeOptionsResponse = {
     defaults?: {
@@ -197,6 +199,7 @@ function preventDialogEscapeWhileFullscreen(event: KeyboardEvent) {
 export default function KnowledgePage() {
     const deleteAction = useDeleteAction()
     const { getOptions, getLabel } = useMeta()
+    useWorkspaceTabTitle("/dashboard/knowledge", "Knowledge")
     const { data: options } = useSWR<KnowledgeOptionsResponse>("/knowledge/options", (url: string) =>
         apiClient.get(url).then((res) => res as KnowledgeOptionsResponse)
     )
@@ -578,23 +581,7 @@ export default function KnowledgePage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        Knowledge Workspace
-                    </div>
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight">Build your knowledge base while you learn</h2>
-                        <p className="text-muted-foreground">
-                            Capture raw notes from study, experiments, and project work first. Curate the durable pieces into
-                            formal knowledge documents when they are ready.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
+        <ListPageShell title="Knowledge" icon={BookOpen}>
             <Tabs defaultValue="raw" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="raw">Raw Inbox</TabsTrigger>
@@ -603,8 +590,8 @@ export default function KnowledgePage() {
 
                 <TabsContent value="raw" className="space-y-4">
                     <CrudLayout<KnowledgeRawRecord>
+                        embedded
                         title="Raw Knowledge Inbox"
-                        description="Capture rough ideas, study notes, experiment observations, and system output before formal curation."
                         endpoint="/knowledge/raw"
                         columns={rawColumns}
                         filterItems={rawFilterItems}
@@ -720,8 +707,8 @@ export default function KnowledgePage() {
 
                 <TabsContent value="documents" className="space-y-4">
                     <CrudLayout<KnowledgeDocumentRecord>
+                        embedded
                         title="Knowledge Library"
-                        description="Published and curated knowledge documents that will feed your long-term RAG and project memory."
                         endpoint="/knowledge/document"
                         columns={documentColumns}
                         filterItems={documentFilterItems}
@@ -896,6 +883,6 @@ export default function KnowledgePage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </ListPageShell>
     )
 }

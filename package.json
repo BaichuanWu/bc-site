@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:dashboard-standards": "node scripts/check-dashboard-standards.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

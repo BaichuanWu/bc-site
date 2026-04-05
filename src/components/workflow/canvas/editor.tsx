@@ -24,13 +24,6 @@ import { DefaultCanvas } from "@/components/canvas/default-canvas"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   addDefaultWorkflowEdge,
   validateWorkflowConnection,
 } from "@/components/workflow/canvas/edge-rules"
@@ -41,6 +34,7 @@ import {
   buildDefinitionFromCanvas,
   CanvasNodeData,
   cloneJson,
+  getEdgeLabel,
   getEdgeFingerprint,
   NODE_KIND_STYLES,
   SPECIAL_NODE_IDS,
@@ -51,7 +45,7 @@ import { WorkflowDisplayNode } from "@/components/workflow/canvas/display-node"
 import { WorkflowNodeInspector } from "@/components/workflow/canvas/node-inspector"
 import { WorkflowNodePickerDialog } from "@/components/workflow/canvas/node-picker-dialog"
 import { ModelSchemaEditor } from "@/components/workflow/schema/model-schema-editor"
-import { getJsonObject, getJsonString, type JsonObject } from "@/types/json"
+import { getJsonObject, type JsonObject } from "@/types/json"
 
 type WorkflowCanvasEditorProps = {
   value: {
@@ -69,12 +63,25 @@ type WorkflowCanvasEditorProps = {
     version: string
     agent_class: string
     description?: string
+    version_description?: string
     config_json?: Record<string, unknown>
   }>
   agentSearch?: string
   onAgentSearchChange?: (value: string) => void
   isLoadingAgents?: boolean
-  availableRouters?: string[]
+  onEditAgentVersion?: (
+    agent: {
+      id: number
+      agent_id: number
+      name: string
+      version: string
+      agent_class: string
+      description?: string
+      version_description?: string
+      config_json?: Record<string, unknown>
+    },
+    nodeKey: string,
+  ) => void
   preview?: {
     warnings?: string[]
     invalid_edges?: Record<string, unknown>[]
@@ -99,7 +106,7 @@ function WorkflowCanvasEditorInner({
   agentSearch = "",
   onAgentSearchChange,
   isLoadingAgents = false,
-  availableRouters = [],
+  onEditAgentVersion,
   preview = null,
 }: WorkflowCanvasEditorProps) {
   const definition = value.definition
@@ -284,25 +291,6 @@ function WorkflowCanvasEditorInner({
     [nodes, onAgentSearchChange, reactFlow]
   )
 
-  const updateEntryRouter = React.useCallback(
-    (routerName: string) => {
-      const nextDefinition = cloneJson(definition || {})
-      nextDefinition.entry_router = {
-        ...(getJsonObject(nextDefinition.entry_router) || {}),
-        name: routerName === "__none__" ? undefined : routerName,
-      }
-      lastSyncedSignatureRef.current = JSON.stringify({
-        definition: cloneJson(nextDefinition || {}),
-        uiSchema: cloneJson(uiSchema || {}),
-      })
-      onChange({
-        definition: nextDefinition,
-        uiSchema,
-      })
-    },
-    [definition, onChange, uiSchema]
-  )
-
   const handleDeleteSelected = React.useCallback(() => {
     if (selectedNode && !SPECIAL_NODE_IDS.has(selectedNode.id)) {
       setNodes((prev) => prev.filter((node) => node.id !== selectedNode.id))
@@ -382,24 +370,24 @@ function WorkflowCanvasEditorInner({
           nodes={nodes}
           edges={edges}
           availableAgents={availableAgents}
+          onEditAgentVersion={onEditAgentVersion}
           onChangeNodeId={renameSelectedNode}
           onUpdateNode={updateSelectedNode}
-      onCreateEdge={(targetNodeId) =>
-        appendEdge(
-          {
-            source: selectedNode.id,
-            target: targetNodeId,
-            sourceHandle: "out",
-            targetHandle: "in",
-          },
-          "select-edge"
-        )
-      }
-    />
+          onCreateEdge={(targetNodeId) =>
+            appendEdge(
+              {
+                source: selectedNode.id,
+                target: targetNodeId,
+                sourceHandle: "out",
+                targetHandle: "in",
+              },
+              "select-edge"
+            )
+          }
+        />
   ) : selectedEdge ? (
     <WorkflowEdgeInspector
       edge={selectedEdge}
-      availableRouters={availableRouters}
       onUpdateEdge={updateSelectedEdge}
     />
   ) : (
@@ -427,30 +415,6 @@ function WorkflowCanvasEditorInner({
             >
               State Schema
             </Button>
-            {availableRouters.length > 0 ? (
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">Entry Router</span>
-                <Select
-                  value={getJsonString(
-                    getJsonObject(definition.entry_router)?.name,
-                    "__none__"
-                  )}
-                  onValueChange={updateEntryRouter}
-                >
-                  <SelectTrigger className="h-8 min-w-[220px]">
-                    <SelectValue placeholder="Select entry router" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">No router</SelectItem>
-                    {availableRouters.map((router) => (
-                      <SelectItem key={router} value={router}>
-                        {router}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
             {preview?.warnings && preview.warnings.length > 0 ? (
               <Badge variant="destructive" className="max-w-full">
                 {preview.warnings.length} warning
@@ -485,16 +449,21 @@ function WorkflowCanvasEditorInner({
           <ReactFlow
             nodes={renderNodes}
             edges={edges.map((edge) => {
+              const edgeModel = {
+                source: edge.source,
+                target: edge.target,
+                ...(edge.data?.model || {}),
+              }
               const invalid = invalidEdgeFingerprints.has(
-                getEdgeFingerprint({
-                  source: edge.source,
-                  target: edge.target,
-                  ...(edge.data?.model || {}),
-                })
+                getEdgeFingerprint(edgeModel)
               )
-              if (!invalid) return edge
-              return {
+              const nextEdge = {
                 ...edge,
+                label: getEdgeLabel(getJsonObject(edge.data?.model) || ({} as JsonObject)),
+              }
+              if (!invalid) return nextEdge
+              return {
+                ...nextEdge,
                 labelStyle: { fill: "#dc2626", fontWeight: 700 },
                 style: { stroke: "#dc2626", strokeWidth: 2 },
                 markerEnd: { type: MarkerType.ArrowClosed, color: "#dc2626" },

@@ -20,7 +20,10 @@ type WorkflowCanvasShellProps = {
   agentSearch: string
   onAgentSearchChange: (value: string) => void
   isLoadingAgents: boolean
-  availableRouters: string[]
+  onEditAgentVersion: (
+    agent: AgentRecord,
+    nodeKey: string,
+  ) => void
   onChange: (value: { definitionJson: string; uiSchemaJson: string }) => void
   onPreview: () => Promise<void>
 }
@@ -37,10 +40,14 @@ function WorkflowCanvasPreview({
   const definition = parseJsonText<JsonObject>(definitionJson, {})
   const nodeCount = Array.isArray(definition.nodes) ? definition.nodes.length : 0
   const edgeCount = Array.isArray(definition.edges) ? definition.edges.length : 0
-  const entryRouter =
-    definition.entry_router && typeof definition.entry_router === "object"
-      ? (definition.entry_router as Record<string, unknown>).name
-      : undefined
+  const conditionalEdgeCount = Array.isArray(definition.edges)
+    ? definition.edges.filter(
+        (edge) =>
+          edge &&
+          typeof edge === "object" &&
+          (edge as Record<string, unknown>).type === "conditional"
+      ).length
+    : 0
 
   return (
     <div className="space-y-4 rounded-2xl border bg-muted/10 p-5">
@@ -67,13 +74,9 @@ function WorkflowCanvasPreview({
           <div className="mt-1 text-lg font-semibold">{preview?.edge_count ?? edgeCount}</div>
         </div>
         <div className="rounded-xl border bg-background p-3">
-          <div className="text-[11px] uppercase text-muted-foreground">Entry Router</div>
+          <div className="text-[11px] uppercase text-muted-foreground">Conditional Edges</div>
           <div className="mt-1 text-sm font-medium">
-            {typeof preview?.entry_router === "string"
-              ? preview.entry_router
-              : typeof entryRouter === "string"
-                ? entryRouter
-                : "-"}
+            {conditionalEdgeCount}
           </div>
         </div>
         <div className="rounded-xl border bg-background p-3">
@@ -107,12 +110,24 @@ export function WorkflowEditorShell({
   agentSearch,
   onAgentSearchChange,
   isLoadingAgents,
-  availableRouters,
+  onEditAgentVersion,
   onChange,
   onPreview,
 }: WorkflowCanvasShellProps) {
   const [isFullscreen, setIsFullscreen] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
+  const definition = React.useMemo(
+    () => parseJsonText<JsonObject>(definitionJson, {}),
+    [definitionJson]
+  )
+  const conditionalEdgeCount = Array.isArray(definition.edges)
+    ? definition.edges.filter(
+        (edge) =>
+          edge &&
+          typeof edge === "object" &&
+          (edge as Record<string, unknown>).type === "conditional"
+      ).length
+    : 0
 
   React.useEffect(() => {
     setIsMounted(true)
@@ -165,7 +180,7 @@ export function WorkflowEditorShell({
               agentSearch={agentSearch}
               onAgentSearchChange={onAgentSearchChange}
               isLoadingAgents={isLoadingAgents}
-              availableRouters={availableRouters}
+              onEditAgentVersion={onEditAgentVersion}
               preview={preview}
               onChange={({ definition, uiSchema }) =>
                 onChange({
@@ -198,8 +213,10 @@ export function WorkflowEditorShell({
                 </div>
 
                 <div className="rounded-lg border bg-background p-3">
-                  <div className="text-[11px] uppercase text-muted-foreground">Entry Router</div>
-                  <div className="mt-1 text-sm font-medium">{preview.entry_router || "-"}</div>
+                  <div className="text-[11px] uppercase text-muted-foreground">Conditional Edges</div>
+                  <div className="mt-1 text-sm font-medium">
+                    {conditionalEdgeCount}
+                  </div>
                 </div>
 
                 <div className="rounded-lg border bg-background p-3">

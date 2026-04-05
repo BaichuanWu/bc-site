@@ -1,6 +1,5 @@
 "use client"
 
-import { type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime"
 import { ExternalLink, X } from "lucide-react"
 import { toast } from "sonner"
 
@@ -54,15 +53,17 @@ function TaskStartedToast({ taskId, toastId, onOpen }: TaskStartedToastProps) {
   )
 }
 
-export function showTaskStartedToast(router: AppRouterInstance, taskId: string | number) {
-  const taskHref = `/dashboard/sys-task/${taskId}`
+export function showTaskStartedToast(
+  taskId: string | number,
+  onOpenTask: () => void,
+) {
   toast.custom(
     (toastId) => (
       <TaskStartedToast
         taskId={taskId}
         toastId={toastId}
         onOpen={() => {
-          router.push(taskHref)
+          onOpenTask()
           toast.dismiss(toastId)
         }}
       />

@@ -59,6 +59,7 @@ export function DataTable<T extends { id: string | number }>({
     onRefresh
 }: DataTableProps<T>) {
     const containerRef = React.useRef<HTMLDivElement>(null)
+    const hasExplicitWidths = columns.some((col) => col.width != null)
 
     React.useEffect(() => {
         let frameId: number
@@ -105,7 +106,30 @@ export function DataTable<T extends { id: string | number }>({
                 className="rounded-md border relative shadow-sm"
                 style={{ '--header-offset': '0px' } as React.CSSProperties}
             >
-                <Table className="border-separate border-spacing-0">
+                <Table
+                    className={cn(
+                        "border-separate border-spacing-0",
+                        hasExplicitWidths && "table-fixed",
+                    )}
+                >
+                    {hasExplicitWidths ? (
+                        <colgroup>
+                            {columns.map((col, idx) => (
+                                <col
+                                    key={col.key || idx}
+                                    style={
+                                        col.width != null
+                                            ? {
+                                                  width: col.width,
+                                                  minWidth: col.width,
+                                                  maxWidth: col.width,
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            ))}
+                        </colgroup>
+                    ) : null}
                     <TableHeader
                         className="relative z-30 transition-none will-change-transform"
                         style={{
@@ -127,9 +151,6 @@ export function DataTable<T extends { id: string | number }>({
                                         col.className
                                     )}
                                     style={{
-                                        width: col.width,
-                                        minWidth: col.width,
-                                        maxWidth: col.width,
                                         overflow: col.truncate ? 'hidden' : undefined
                                     }}
                                     onClick={() => col.sortable && onSort && onSort(col.key)}
@@ -195,9 +216,7 @@ export function DataTable<T extends { id: string | number }>({
                                                     col.className
                                                 )}
                                                 style={{
-                                                    width: col.width,
-                                                    minWidth: col.width,
-                                                    maxWidth: col.width
+                                                    overflow: col.truncate ? 'hidden' : undefined,
                                                 }}
                                             >
                                                 {cellContent}

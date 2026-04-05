@@ -78,11 +78,11 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
         }
 
         return (
-            <div className="flex flex-col gap-1.5 w-[200px]">
-                <Label className="text-xs font-semibold text-slate-600">{label}</Label>
+            <div className="flex w-[190px] flex-col gap-1">
+                <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline" className="h-[36px] justify-between text-left font-normal px-3 border-indigo-100 hover:border-indigo-300">
+                        <Button variant="outline" className="h-9 justify-between px-3 text-left text-xs font-normal">
                             {selectedValues.length === 0 ? (
                                 <span className="text-muted-foreground text-xs">Select {label}...</span>
                             ) : (
@@ -100,9 +100,9 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[220px] p-0" align="start">
-                        <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto bg-card">
+                        <div className="max-h-[280px] space-y-1 overflow-y-auto bg-card p-2">
                             {options.map((opt) => (
-                                <label key={opt.value} className="flex items-center gap-2 rounded hover:bg-muted p-2 cursor-pointer transition-colors">
+                                <label key={opt.value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-muted">
                                     <Checkbox
                                         checked={selectedValues.includes(opt.value)}
                                         onCheckedChange={() => toggleOption(opt.value)}
@@ -146,11 +146,11 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
     }
 
     return (
-        <div className="flex flex-col gap-1.5 w-[200px]">
-            <Label className="text-xs font-semibold text-muted-foreground">{label}</Label>
-            <div className="flex items-center border border-input shadow-sm rounded-md transition-shadow hover:shadow-md focus-within:shadow-md focus-within:ring-1 focus-within:ring-indigo-400 overflow-hidden bg-card">
+        <div className="flex w-[190px] flex-col gap-1">
+            <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+            <div className="flex items-center overflow-hidden rounded-md border border-input bg-card shadow-sm transition-shadow hover:shadow-sm focus-within:ring-1 focus-within:ring-indigo-400">
                 <Select value={currentOp} onValueChange={onOpChange}>
-                    <SelectTrigger className="w-[48px] h-[32px] rounded-none border-0 border-r border-border focus:ring-0 bg-muted/50 text-xs px-1 shrink-0 flex justify-center text-foreground">
+                    <SelectTrigger className="flex h-[34px] w-[48px] shrink-0 justify-center rounded-none border-0 border-r border-border bg-muted/50 px-1 text-xs text-foreground focus:ring-0">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -163,10 +163,10 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
                 </Select>
 
                 {currentOp === 'between' ? (
-                    <div className="flex flex-1 items-center h-[32px] bg-card">
+                    <div className="flex h-[34px] flex-1 items-center bg-card">
                         <Input
                             type={type}
-                            className="h-full border-0 focus-visible:ring-0 rounded-none px-1 w-1/2 text-xs text-center text-foreground"
+                            className="h-full w-1/2 rounded-none border-0 px-1 text-center text-xs text-foreground focus-visible:ring-0"
                             placeholder="Min"
                             value={Array.isArray(currentVal) ? currentVal[0] ?? '' : ''}
                             onChange={(e) => {
@@ -178,7 +178,7 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
                         <div className="w-[1px] h-3 bg-border shrink-0" />
                         <Input
                             type={type}
-                            className="h-full border-0 focus-visible:ring-0 rounded-none px-1 w-1/2 text-xs text-center text-foreground"
+                            className="h-full w-1/2 rounded-none border-0 px-1 text-center text-xs text-foreground focus-visible:ring-0"
                             placeholder="Max"
                             value={Array.isArray(currentVal) ? currentVal[1] ?? '' : ''}
                             onChange={(e) => {
@@ -191,7 +191,7 @@ export function DynamicFilter({ label, value, onChange, options, type = 'text' }
                 ) : (
                     <Input
                         type={currentOp === 'in' ? 'text' : type}
-                        className="flex-1 h-[32px] rounded-none border-0 focus-visible:ring-0 text-xs shadow-none px-3 text-center text-foreground"
+                        className="h-[34px] flex-1 rounded-none border-0 px-3 text-center text-xs text-foreground shadow-none focus-visible:ring-0"
                         placeholder={currentOp === 'in' ? '1, 2, 3...' : 'Value...'}
                         value={
                             currentOp === 'in' && Array.isArray(currentVal)
@@ -215,37 +215,46 @@ interface SearchFilterGroupProps {
 }
 
 type FilterTemplates = Record<string, Record<string, FilterClause>>
+const EMPTY_FILTERS: Record<string, FilterClause> = {}
 
 export function SearchFilterGroup({
     items,
     onSearch,
     storageKey,
     title = "Search Filters",
-    initialFilters = {}
+    initialFilters = EMPTY_FILTERS
 }: SearchFilterGroupProps) {
     const [tempFilters, setTempFilters] = React.useState<Record<string, FilterClause>>(initialFilters)
     const [isVisible, setIsVisible] = React.useState(true)
     const [templates, setTemplates] = React.useState<FilterTemplates>({})
     const [newTemplateName, setNewTemplateName] = React.useState("")
     const [isSaveOpen, setIsSaveOpen] = React.useState(false)
+    const onSearchRef = React.useRef(onSearch)
 
     const templatesKey = storageKey ? `${storageKey}_templates` : null
 
+    React.useEffect(() => {
+        onSearchRef.current = onSearch
+    }, [onSearch])
+
     // Load from local storage on mount
     React.useEffect(() => {
+        let nextFilters = initialFilters
+
         if (storageKey) {
             const saved = localStorage.getItem(storageKey)
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved) as Record<string, FilterClause>
-                    setTempFilters(parsed)
-                    // Trigger initial search with saved filters
-                    onSearch(parsed)
+                    nextFilters = parsed
                 } catch (e) {
                     console.error("Failed to parse saved filters", e)
                 }
             }
         }
+
+        setTempFilters(nextFilters)
+        onSearchRef.current(nextFilters)
 
         if (templatesKey) {
             const savedTemplates = localStorage.getItem(templatesKey)
@@ -257,7 +266,7 @@ export function SearchFilterGroup({
                 }
             }
         }
-    }, [onSearch, storageKey, templatesKey])
+    }, [initialFilters, storageKey, templatesKey])
 
     const updateFilter = (key: string, value: FilterClause | undefined) => {
         setTempFilters(prev => {
@@ -324,12 +333,12 @@ export function SearchFilterGroup({
     const hasTemplates = Object.keys(templates).length > 0
 
     return (
-        <Card className="transition-all duration-300 border-border shadow-none hover:shadow-sm">
-            <CardHeader className="py-2 sm:py-1 px-4 flex flex-row flex-wrap items-center justify-between gap-y-2 space-y-0 border-b border-border bg-muted/30 text-card-foreground">
+        <Card className="border-border shadow-none">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-y-2 space-y-0 border-b border-border bg-muted/20 px-3 py-2 text-card-foreground">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-muted-foreground" />
-                        <CardTitle className="text-md font-medium text-foreground">{title}</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
                     </div>
 
                     {storageKey && (
@@ -431,8 +440,8 @@ export function SearchFilterGroup({
                 </div>
             </CardHeader>
             {isVisible && (
-                <CardContent className="py-2 px-4 animate-in fade-in slide-in-from-top-1 duration-300">
-                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                <CardContent className="animate-in fade-in slide-in-from-top-1 px-3 py-3 duration-300">
+                    <div className="flex flex-wrap gap-x-3 gap-y-2">
                         {items.map((item) => (
                             <DynamicFilter
                                 key={item.key}

@@ -1,32 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { useCrud } from "@/hooks/use-crud"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Bot } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import {
-  TooltipProvider,
-} from "@/components/ui/tooltip"
 import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { useDeleteAction } from "@/hooks/use-delete-action"
+import { useCrud } from "@/hooks/use-crud"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
+import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
 type LlmRecord = {
   id: number
@@ -39,36 +22,10 @@ type LlmRecord = {
 }
 
 export default function LlmPage() {
-  const [filters] = React.useState<Record<string, unknown>>({})
+  const navigate = useWorkspaceNavigate()
+  useWorkspaceTabTitle("/dashboard/agent/llm", "LLM Config")
   const deleteAction = useDeleteAction()
-
-  const {
-    isDialogOpen,
-    editingItem,
-    isSaving,
-    handleOpenDialog,
-    handleCloseDialog,
-    handleSave,
-    mutate,
-  } = useCrud<LlmRecord>("/agent/llm", "", filters)
-
-
-  const [formData, setFormData] = React.useState<Partial<LlmRecord>>({})
-
-  React.useEffect(() => {
-    if (editingItem) {
-      setFormData(editingItem)
-    } else {
-      setFormData({
-        name: "",
-        provider: "openai",
-        model_name: "gpt-4o",
-        api_key: "",
-        base_url: "",
-        is_active: 1,
-      })
-    }
-  }, [editingItem, isDialogOpen])
+  const { mutate } = useCrud<LlmRecord>("/agent/llm")
 
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Config Name", type: "text" },
@@ -131,7 +88,7 @@ export default function LlmPage() {
       width: 100,
       render: (_: unknown, item: LlmRecord) => (
         <ActionButtons 
-          onEdit={() => handleOpenDialog(item)}
+          onEdit={() => navigate(`/dashboard/agent/llm/${item.id}`)}
           onConfirmDelete={async () => {
             await deleteAction.remove("/agent/llm", item.id, {
               successMessage: "LLM provider deleted successfully",
@@ -148,98 +105,15 @@ export default function LlmPage() {
   ]
 
   return (
-    <TooltipProvider>
-      <div className="p-6">
-        <CrudLayout<LlmRecord>
-          title="LLM Configuration"
-          description="Manage your LLM providers and API credentials."
-          endpoint="/agent/llm"
-          filterItems={filterItems}
-          storageKey="llm-page-filters"
-          columns={columns}
-          addButtonLabel="Add Provider"
-          onAdd={() => handleOpenDialog()}
-        >
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editingItem ? "Edit Provider" : "Add Provider"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Config Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. GPT-4o Official"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="provider">Provider</Label>
-                <Input
-                  id="provider"
-                  value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                  placeholder="openai, deepseek..."
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="model_name">Model Name</Label>
-                <Input
-                  id="model_name"
-                  value={formData.model_name}
-                  onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                  placeholder="gpt-4o"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="api_key">API Key</Label>
-              <Input
-                id="api_key"
-                type="password"
-                value={formData.api_key}
-                onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="base_url">Base URL (Optional)</Label>
-              <Input
-                id="base_url"
-                value={formData.base_url}
-                onChange={(e) => setFormData({ ...formData, base_url: e.target.value })}
-                placeholder="https://api.openai.com/v1"
-              />
-            </div>
-            {/* We can use a standard button for the status toggle, but since we are editing, let's keep it simple with a select or just let them rely on the Action toggle button outside */}
-            <div className="grid gap-2">
-              <Label htmlFor="is_active">Status</Label>
-              <Select 
-                  value={String(formData.is_active)} 
-                  onValueChange={(val) => setFormData({...formData, is_active: parseInt(val)})}
-              >
-                  <SelectTrigger>
-                      <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="1">Active</SelectItem>
-                      <SelectItem value="0">Inactive</SelectItem>
-                  </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
-            <Button onClick={() => handleSave(formData)} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Configuration"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </CrudLayout>
-      </div>
-    </TooltipProvider>
+    <CrudLayout<LlmRecord>
+      icon={Bot}
+      title="LLM Config"
+      endpoint="/agent/llm"
+      filterItems={filterItems}
+      storageKey="llm-page-filters"
+      columns={columns}
+      addButtonLabel="New Config"
+      onAdd={() => navigate("/dashboard/agent/llm/new")}
+    />
   )
 }

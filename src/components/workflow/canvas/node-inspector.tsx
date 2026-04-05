@@ -2,12 +2,20 @@
 
 import * as React from "react"
 import type { Node } from "@xyflow/react"
+import useSWR from "swr"
 
+import { apiClient } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   SPECIAL_NODE_IDS,
@@ -22,6 +30,17 @@ type AgentOption = {
   version: string
   agent_class: string
   config_json?: Record<string, unknown>
+  description?: string
+  version_description?: string
+}
+
+type AgentVersionRecord = {
+  id: number
+  agent_id: number
+  version: string
+  description?: string
+  config_json?: Record<string, unknown>
+  is_active?: number
 }
 
 type WorkflowNodeInspectorProps = {
@@ -33,6 +52,7 @@ type WorkflowNodeInspectorProps = {
     data?: { model?: JsonObject }
   }>
   availableAgents: AgentOption[]
+  onEditAgentVersion?: (agent: AgentOption, nodeKey: string) => void
   onChangeNodeId: (nextId: string) => void
   onUpdateNode: (patch: (node: Node<CanvasNodeData>) => Node<CanvasNodeData>) => void
   onCreateEdge: (targetNodeId: string) => void
@@ -43,28 +63,89 @@ export function WorkflowNodeInspector({
   nodes,
   edges,
   availableAgents,
+  onEditAgentVersion,
   onChangeNodeId,
   onUpdateNode,
   onCreateEdge,
 }: WorkflowNodeInspectorProps) {
   const model = getJsonObject(node.data.model) || {}
-  const selectedAgent = React.useMemo(
-    () => availableAgents.find((agent) => agent.id === Number(model.agent_version_id)) || null,
-    [availableAgents, model.agent_version_id]
+  const [isAgentPickerOpen, setIsAgentPickerOpen] = React.useState(false)
+  const [agentSearch, setAgentSearch] = React.useState("")
+
+  const selectedAgentFromActive = React.useMemo(
+    () =>
+      availableAgents.find((agent) => agent.id === Number(model.agent_version_id)) ||
+      null,
+    [availableAgents, model.agent_version_id],
   )
+  const selectedAgentIdentityId = selectedAgentFromActive?.agent_id ?? null
+  const { data: agentVersions = [], isLoading: isLoadingVersions } = useSWR<
+    AgentVersionRecord[]
+  >(
+    selectedAgentIdentityId ? `/agent/agent/${selectedAgentIdentityId}/versions` : null,
+    (url: string) =>
+      apiClient.get(url).then((res: unknown) => res as AgentVersionRecord[]),
+  )
+
+  const selectedVersionRecord = React.useMemo(
+    () =>
+      agentVersions.find((version) => version.id === Number(model.agent_version_id)) ||
+      null,
+    [agentVersions, model.agent_version_id],
+  )
+
+  const selectedAgent = React.useMemo(() => {
+    if (selectedAgentFromActive) return selectedAgentFromActive
+    if (!selectedVersionRecord) return null
+    const identity =
+      availableAgents.find((agent) => agent.agent_id === selectedVersionRecord.agent_id) ||
+      null
+    if (!identity) return null
+    return {
+      ...identity,
+      id: selectedVersionRecord.id,
+      version: selectedVersionRecord.version,
+      version_description:
+        selectedVersionRecord.description || identity.version_description,
+      config_json: selectedVersionRecord.config_json || identity.config_json,
+    }
+  }, [availableAgents, selectedAgentFromActive, selectedVersionRecord])
+
+  const agentOptionsByIdentity = React.useMemo(() => {
+    const unique = new Map<number, AgentOption>()
+    for (const agent of availableAgents) {
+      if (!unique.has(agent.agent_id)) {
+        unique.set(agent.agent_id, agent)
+      }
+    }
+    return Array.from(unique.values())
+  }, [availableAgents])
+
+  const filteredAgentIdentities = React.useMemo(() => {
+    const keyword = agentSearch.trim().toLowerCase()
+    if (!keyword) return agentOptionsByIdentity
+    return agentOptionsByIdentity.filter((agent) =>
+      [agent.name, agent.agent_class, agent.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword)),
+    )
+  }, [agentOptionsByIdentity, agentSearch])
+
   const connectableNodes = React.useMemo(
     () => nodes.filter((item) => !SPECIAL_NODE_IDS.has(item.id) && item.id !== node.id),
-    [node.id, nodes]
+    [node.id, nodes],
   )
   const outgoingTargets = React.useMemo(
     () => new Set(edges.filter((edge) => edge.source === node.id).map((edge) => edge.target)),
-    [edges, node.id]
+    [edges, node.id],
   )
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Badge variant="secondary">{SPECIAL_NODE_IDS.has(node.id) ? "special" : "node"}</Badge>
+        <Badge variant="secondary">
+          {SPECIAL_NODE_IDS.has(node.id) ? "special" : "node"}
+        </Badge>
         <span className="text-sm font-medium">{node.id}</span>
       </div>
 
@@ -83,42 +164,41 @@ export function WorkflowNodeInspector({
           </div>
 
           <div className="grid gap-2">
-            <Label>Agent</Label>
-            <Select
-              value={
-                selectedAgent ? String(selectedAgent.id) : "__unselected__"
-              }
-              onValueChange={(value) => {
-                if (value === "__unselected__") return
-                const nextId = Number(value)
-                if (!Number.isFinite(nextId)) return
-                onUpdateNode((current) => ({
-                  ...current,
-                  data: {
-                    ...current.data,
-                    model: {
-                      ...current.data.model,
-                      agent_version_id: nextId,
-                    },
-                  },
-                }))
-              }}
-            >
-              <SelectTrigger><SelectValue placeholder="Select an existing agent" /></SelectTrigger>
-              <SelectContent>
-                {availableAgents.map((agent) => (
-                  <SelectItem key={agent.id} value={String(agent.id)}>
-                    {agent.name} ({agent.version})
-                  </SelectItem>
-                ))}
-                <SelectItem value="__unselected__">Unselected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Version Binding</Label>
-            <Input value={selectedAgent ? `${selectedAgent.name} @ ${selectedAgent.version}` : ""} readOnly />
+            <Label>Agent Version</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-w-0 flex-1 justify-between"
+                onClick={() => setIsAgentPickerOpen(true)}
+              >
+                <span className="truncate">
+                  {selectedAgent
+                    ? `${selectedAgent.name} @ ${selectedAgent.version}`
+                    : "Choose agent version"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {selectedAgent
+                    ? `#${selectedAgent.id}`
+                    : isLoadingVersions
+                      ? "Loading"
+                      : "Search"}
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => selectedAgent && onEditAgentVersion?.(selectedAgent, node.id)}
+                disabled={!selectedAgent || !onEditAgentVersion}
+              >
+                Open Detail
+              </Button>
+            </div>
+            {selectedAgent ? (
+              <div className="text-xs text-muted-foreground">
+                Bound by `agent_version_id={selectedAgent.id}`.
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-2">
@@ -130,7 +210,10 @@ export function WorkflowNodeInspector({
                   const nextValue = JSON.parse(e.target.value || "{}")
                   onUpdateNode((current) => ({
                     ...current,
-                    data: { ...current.data, model: { ...current.data.model, input_mapping: nextValue } },
+                    data: {
+                      ...current.data,
+                      model: { ...current.data.model, input_mapping: nextValue },
+                    },
                   }))
                 } catch {}
               }}
@@ -147,7 +230,10 @@ export function WorkflowNodeInspector({
                   const nextValue = JSON.parse(e.target.value || "{}")
                   onUpdateNode((current) => ({
                     ...current,
-                    data: { ...current.data, model: { ...current.data.model, output_mapping: nextValue } },
+                    data: {
+                      ...current.data,
+                      model: { ...current.data.model, output_mapping: nextValue },
+                    },
                   }))
                 } catch {}
               }}
@@ -181,7 +267,9 @@ export function WorkflowNodeInspector({
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{candidate.id}</div>
                           <div className="text-xs text-muted-foreground">
-                            {String(getJsonObject(candidate.data.model)?.agent_version_id || "Unbound")}
+                            {String(
+                              getJsonObject(candidate.data.model)?.agent_version_id || "Unbound",
+                            )}
                           </div>
                         </div>
                         <Button
@@ -200,7 +288,7 @@ export function WorkflowNodeInspector({
               </div>
             </div>
 
-            {outgoingTargets.size > 0 && (
+            {outgoingTargets.size > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {Array.from(outgoingTargets).map((target) => (
                   <Badge key={target} variant="outline" data-testid="workflow-outgoing-edge">
@@ -208,14 +296,73 @@ export function WorkflowNodeInspector({
                   </Badge>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         </>
       ) : (
         <div className="rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground">
-          Special nodes are generated from workflow edges and only store layout metadata.
+          START and END are built-in workflow system nodes. You can reposition them on the
+          canvas, and connect edges to them, but they do not have editable binding fields.
         </div>
       )}
+
+      <Dialog open={isAgentPickerOpen} onOpenChange={setIsAgentPickerOpen}>
+        <DialogContent className="max-w-[760px]">
+          <DialogHeader>
+            <DialogTitle>Select Agent Version</DialogTitle>
+            <DialogDescription>
+              Bind a single `agent_version_id` to this node. Detailed prompt and config
+              editing lives on the agent detail page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              value={agentSearch}
+              onChange={(e) => setAgentSearch(e.target.value)}
+              placeholder="Search agents by name or class"
+            />
+            <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border bg-muted/10 p-3">
+              {filteredAgentIdentities.length > 0 ? (
+                filteredAgentIdentities.map((agent) => (
+                  <button
+                    key={agent.agent_id}
+                    type="button"
+                    onClick={() => {
+                      onUpdateNode((current) => ({
+                        ...current,
+                        data: {
+                          ...current.data,
+                          model: {
+                            ...current.data.model,
+                            agent_version_id: agent.id,
+                          },
+                        },
+                      }))
+                      setIsAgentPickerOpen(false)
+                    }}
+                    className="flex w-full items-start justify-between rounded-xl border bg-background px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold">{agent.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {agent.description || agent.agent_class}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{agent.agent_class}</Badge>
+                      <Badge variant="secondary">current {agent.version}</Badge>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed bg-background/70 p-6 text-sm text-muted-foreground">
+                  No agents matched your search.
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

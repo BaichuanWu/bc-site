@@ -95,6 +95,38 @@ function getEventStatus(event: TaskEventRecord) {
   return event.payload?.status || 0
 }
 
+function getEventStatusTone(eventStatus: number) {
+  if (eventStatus === TASK_STATE.SUCCESS) {
+    return {
+      badge: "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]",
+      panel: "bg-green-600",
+      dot: "bg-green-500",
+    }
+  }
+
+  if (eventStatus === TASK_STATE.ERROR) {
+    return {
+      badge: "bg-red-500",
+      panel: "bg-red-600",
+      dot: "bg-red-500",
+    }
+  }
+
+  if (eventStatus === TASK_STATE.RUNNING) {
+    return {
+      badge: "bg-blue-500 animate-pulse",
+      panel: "bg-blue-600",
+      dot: "bg-blue-500",
+    }
+  }
+
+  return {
+    badge: "bg-muted",
+    panel: "bg-slate-600",
+    dot: "bg-slate-500",
+  }
+}
+
 function getEventSummary(event: TaskEventRecord) {
   if (event.message) return event.message
   if (event.typ === TASK_EVENT_TYPE.RESULT) return "Final workflow output"
@@ -112,6 +144,7 @@ type TaskEventViewerProps = {
 
 export function TaskEventViewer({ event }: TaskEventViewerProps) {
   const eventStatus = getEventStatus(event)
+  const eventTone = getEventStatusTone(eventStatus)
   const eventTitle = getEventTitle(event)
   const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
   const resultData = event.payload?.result
@@ -130,13 +163,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
       <div
         className={cn(
           "absolute -left-[31px] top-6 h-2 w-2 rounded-full ring-4 ring-background z-10 transition-all group-hover:scale-125",
-          eventStatus === TASK_STATE.SUCCESS
-            ? "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-            : eventStatus === TASK_STATE.RUNNING
-              ? "bg-blue-500 animate-pulse"
-              : eventStatus === TASK_STATE.ERROR
-                ? "bg-red-500"
-                : "bg-muted",
+          eventTone.badge,
         )}
       />
 
@@ -187,7 +214,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
               <div
                 className={cn(
                   "h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-2xl",
-                  eventStatus === TASK_STATE.SUCCESS ? "bg-green-600" : "bg-blue-600",
+                  eventTone.panel,
                 )}
               >
                 <ActivityIcon className="h-8 w-8" />
@@ -200,9 +227,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                   <span
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
-                      eventStatus === TASK_STATE.SUCCESS
-                        ? "bg-green-500"
-                        : "bg-blue-500",
+                      eventTone.dot,
                     )}
                   />
                   {mapStatusToName(mapServerStateToStatus(eventStatus))} •{" "}

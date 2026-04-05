@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
     Menu,
@@ -21,6 +20,10 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/co
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { WorkspaceTabsProvider } from "@/components/workspace/workspace-tabs-provider"
+import { WorkspaceTabBar } from "@/components/workspace/workspace-tab-bar"
+import { WorkspaceHost } from "@/components/workspace/workspace-host"
+import { WorkspaceLink } from "@/components/workspace/workspace-link"
 
 type NavItem = {
     title: string
@@ -38,9 +41,7 @@ const NAV_ITEMS: NavItem[] = [
             {
                 title: "WQB",
                 children: [
-                    { title: "Template", href: "/dashboard/template" },
-                    { title: "Alpha", href: "/dashboard/world-brain-quant/alpha" },
-                    { title: "AI Agent", href: "/dashboard/world-brain-quant/ai-agent" },
+                    { title: "Alpha", href: "/dashboard/wqb/alpha" },
                 ]
             }
         ]
@@ -138,10 +139,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 asChild
                 onClick={() => setIsMobileMenuOpen(false)}
             >
-                <Link href={item.href || "#"}>
+                <WorkspaceLink href={item.href || "#"}>
                     {Icon && <Icon className="mr-2 h-4 w-4" />}
                     {item.title}
-                </Link>
+                </WorkspaceLink>
             </Button>
         )
     }
@@ -161,40 +162,44 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground">
-            {/* Desktop Sidebar */}
-            <aside className="hidden border-r bg-muted/20 md:block md:w-64 lg:w-72 fixed inset-y-0 left-0 z-50">
-                <NavContent />
-            </aside>
+        <WorkspaceTabsProvider>
+            <div className="flex min-h-screen bg-background text-foreground">
+                {/* Desktop Sidebar */}
+                <aside className="hidden border-r bg-muted/20 md:block md:w-64 lg:w-72 fixed inset-y-0 left-0 z-50">
+                    <NavContent />
+                </aside>
 
-            <div className="flex w-full flex-col md:pl-64 lg:pl-72">
-                {/* Mobile Header */}
-                <header className="flex h-14 items-center gap-4 border-b bg-background/95 px-4 md:px-6 flex-shrink-0 sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                        <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-                                <Menu className="h-5 w-5" />
-                                <span className="sr-only">Toggle navigation menu</span>
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="w-[300px] p-0">
-                            <SheetHeader className="p-4 border-b text-left">
-                                <SheetTitle>Navigation</SheetTitle>
-                            </SheetHeader>
-                            <NavContent />
-                        </SheetContent>
-                    </Sheet>
+                <div className="flex w-full flex-col md:pl-64 lg:pl-72">
+                    {/* Mobile Header */}
+                    <header className="flex h-14 items-center gap-4 border-b bg-background/95 px-4 md:px-6 flex-shrink-0 sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+                        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+                                    <Menu className="h-5 w-5" />
+                                    <span className="sr-only">Toggle navigation menu</span>
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="w-[300px] p-0">
+                                <SheetHeader className="p-4 border-b text-left">
+                                    <SheetTitle>Navigation</SheetTitle>
+                                </SheetHeader>
+                                <NavContent />
+                            </SheetContent>
+                        </Sheet>
 
-                    <div className="w-full flex-1 flex justify-end">
-                        <ThemeToggle />
+                        <div className="w-full flex-1 flex justify-end">
+                            <ThemeToggle />
+                        </div>
+                    </header>
+
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <WorkspaceTabBar />
+                        <main className="min-h-0 flex-1 overflow-auto animate-in fade-in duration-500">
+                            <WorkspaceHost>{children}</WorkspaceHost>
+                        </main>
                     </div>
-                </header>
-
-                {/* Main Content */}
-                <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 animate-in fade-in duration-500">
-                    {children}
-                </main>
+                </div>
             </div>
-        </div>
+        </WorkspaceTabsProvider>
     )
 }

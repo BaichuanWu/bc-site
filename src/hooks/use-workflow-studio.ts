@@ -18,7 +18,6 @@ type WorkflowOptionsResponse = {
   meta?: {
     node_types?: Record<string, string>
     edge_types?: Record<string, string>
-    routers?: string[]
   }
 }
 
@@ -38,7 +37,6 @@ export type WorkflowRecord = {
 
 export type WorkflowPreview = {
   dsl_version?: string
-  entry_router?: string
   node_count?: number
   edge_count?: number
   state_fields?: string[]
@@ -69,6 +67,7 @@ export type WorkflowFormState = {
   status: string
   definitionJson: string
   uiSchemaJson: string
+  taskKwargsJson: string
 }
 
 const EMPTY_FORM: WorkflowFormState = {
@@ -80,6 +79,38 @@ const EMPTY_FORM: WorkflowFormState = {
   status: "0",
   definitionJson: "{}",
   uiSchemaJson: "{}",
+  taskKwargsJson: "{}",
+}
+
+function extractTaskKwargs(
+  definitionJson?: Record<string, unknown>,
+): Record<string, unknown> {
+  const runDefaults = definitionJson?.run_defaults
+  if (!runDefaults || typeof runDefaults !== "object") return {}
+  const kwargs = (runDefaults as Record<string, unknown>).kwargs
+  if (!kwargs || typeof kwargs !== "object" || Array.isArray(kwargs)) return {}
+  return kwargs as Record<string, unknown>
+}
+
+function mergeTaskKwargsIntoDefinition(
+  definitionJsonText: string,
+  taskKwargsJson: string,
+): Record<string, unknown> {
+  const definitionJson = parseJsonText<Record<string, unknown>>(definitionJsonText, {})
+  const runDefaults =
+    definitionJson.run_defaults &&
+    typeof definitionJson.run_defaults === "object" &&
+    !Array.isArray(definitionJson.run_defaults)
+      ? { ...(definitionJson.run_defaults as Record<string, unknown>) }
+      : {}
+
+  return {
+    ...definitionJson,
+    run_defaults: {
+      ...runDefaults,
+      kwargs: parseJsonText<Record<string, unknown>>(taskKwargsJson, {}),
+    },
+  }
 }
 
 export function useWorkflowStudio() {
@@ -91,7 +122,7 @@ export function useWorkflowStudio() {
       apiClient.get(url).then((res: unknown) => res as WorkflowOptionsResponse),
   )
   const workflowCrud = useCrud<WorkflowRecord>("/workflow-definition")
-  const { data: activeAgents } = useSWR<AgentRecord[]>(
+  const { data: activeAgents, mutate: mutateActiveAgents } = useSWR<AgentRecord[]>(
     "/agent/active-versions",
     (url: string) => apiClient.get(url).then((res: unknown) => res as AgentRecord[]),
   )
@@ -149,6 +180,7 @@ export function useWorkflowStudio() {
         status: String(item.status ?? 0),
         definitionJson: formatJsonText(item.definitionJson ?? {}, "{}"),
         uiSchemaJson: formatJsonText(item.uiSchemaJson ?? {}, "{}"),
+        taskKwargsJson: formatJsonText(extractTaskKwargs(item.definitionJson), "{}"),
       })
       return
     }
@@ -169,7 +201,10 @@ export function useWorkflowStudio() {
   const handlePreview = React.useCallback(async () => {
     await previewAction.run(
       async () => {
-        const definitionJson = parseJsonText(form.definitionJson, {})
+        const definitionJson = mergeTaskKwargsIntoDefinition(
+          form.definitionJson,
+          form.taskKwargsJson,
+        )
         return (await apiClient.post("/workflow-definition/preview", {
           definition_json: definitionJson,
         })) as WorkflowPreview
@@ -179,19 +214,23 @@ export function useWorkflowStudio() {
         onSuccess: (result) => setPreview(result),
       },
     )
-  }, [form.definitionJson, previewAction])
+  }, [form.definitionJson, form.taskKwargsJson, previewAction])
 
   const handleSaveWorkflow = React.useCallback(async () => {
+    const definitionJson = mergeTaskKwargsIntoDefinition(
+      form.definitionJson,
+      form.taskKwargsJson,
+    )
+
     await workflowCrud.handleSave({
       ...form,
       domain: Number(form.domain),
       status: Number(form.status),
-      definitionJson: parseJsonText(form.definitionJson, {}),
+      definitionJson,
       uiSchemaJson: parseJsonText(form.uiSchemaJson, {}),
     } as unknown as Partial<WorkflowRecord>)
 
     try {
-      const definitionJson = parseJsonText(form.definitionJson, {})
       const res = await apiClient.post("/workflow-definition/preview", {
         definition_json: definitionJson,
       })
@@ -210,6 +249,7 @@ export function useWorkflowStudio() {
       name: prev.name || selectedTemplate,
       title: prev.title || selectedTemplate.replace(/_/g, " "),
       definitionJson: JSON.stringify(template, null, 2),
+      taskKwargsJson: formatJsonText(extractTaskKwargs(template), "{}"),
     }))
   }, [options?.templates, selectedTemplate])
 
@@ -257,6 +297,10 @@ export function useWorkflowStudio() {
         status: "0",
         definitionJson: formatJsonText(workflow.definitionJson ?? {}, "{}"),
         uiSchemaJson: formatJsonText(workflow.uiSchemaJson ?? {}, "{}"),
+        taskKwargsJson: formatJsonText(
+          extractTaskKwargs(workflow.definitionJson),
+          "{}",
+        ),
       })
     },
     [workflowCrud],
@@ -283,6 +327,7 @@ export function useWorkflowStudio() {
       setSearch: setAgentSearch,
       isLoading: !activeAgents,
       isValidating: false,
+      refresh: mutateActiveAgents,
     },
     previewAction,
     publishAction,

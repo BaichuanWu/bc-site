@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { apiClient } from "@/lib/api"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 
 type Alpha = {
     id: string | number
@@ -37,11 +38,10 @@ interface AlphaActionMenuProps {
     onSuccess?: () => void
 }
 
-import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
-    const router = useRouter()
+    const navigate = useWorkspaceNavigate()
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
     const [editedExpression, setEditedExpression] = React.useState(alpha.expression)
     const [isLoading, setIsLoading] = React.useState(false)
@@ -139,7 +139,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                         if (alpha.id) params.set("ids", String(alpha.id))
                         if (alpha.parentId) params.append("ids", String(alpha.parentId))
                         if (alpha.ancestorId) params.append("ids", String(alpha.ancestorId))
-                        router.push(`/dashboard/world-brain-quant/alpha/analysis?${params.toString()}`)
+                        navigate("/dashboard/wqb/alpha/analysis", params.toString())
                     }}>
                         <TreePine className="mr-2 h-4 w-4" /> Analysis Tree
                     </DropdownMenuItem>

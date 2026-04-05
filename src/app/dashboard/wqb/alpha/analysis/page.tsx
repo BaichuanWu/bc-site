@@ -13,14 +13,16 @@ import {
     Legend,
     ResponsiveContainer,
 } from "recharts"
-import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { PageShell } from "@/components/common/page-shell"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { WorkspaceLink } from "@/components/workspace/workspace-link"
 import { apiClient } from "@/lib/api"
 import { getJsonArray, getJsonObject } from "@/types/json"
+import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
 type Alpha = {
     id: string | number
@@ -69,6 +71,12 @@ function AnalysisContent() {
     const [alphas, setAlphas] = React.useState<Alpha[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [chartData, setChartData] = React.useState<ChartPoint[]>([])
+
+    useWorkspaceTabTitle(
+        "/dashboard/wqb/alpha/analysis",
+        ids.length > 0 ? `WQB Alpha Analysis (${ids.length})` : "WQB Alpha Analysis",
+        { cachedSearch: searchParams.toString() },
+    )
 
     React.useEffect(() => {
         async function fetchAlphas() {
@@ -139,32 +147,34 @@ function AnalysisContent() {
 
     if (alphas.length === 0) {
         return (
-            <div className="p-8 text-center pt-20">
-                <h3 className="text-xl font-bold">No Alphas Found</h3>
-                <p className="text-muted-foreground mt-2">Could not retrieve data for IDs: {ids.join(", ")}</p>
-                <Button asChild className="mt-6" variant="outline">
-                    <Link href="/dashboard/world-brain-quant/alpha">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Search Table
-                    </Link>
-                </Button>
-            </div>
+            <PageShell>
+                <div className="pt-20 text-center">
+                    <h3 className="text-xl font-bold">No Alphas Found</h3>
+                    <p className="mt-2 text-muted-foreground">Could not retrieve data for IDs: {ids.join(", ")}</p>
+                    <Button asChild className="mt-6" variant="outline">
+                        <WorkspaceLink href="/dashboard/wqb/alpha">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Search Table
+                        </WorkspaceLink>
+                    </Button>
+                </div>
+            </PageShell>
         )
     }
 
     const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4"]
 
     return (
-        <div className="space-y-6 pb-12 transition-colors duration-300">
+        <PageShell contentClassName="space-y-6 pb-12 transition-colors duration-300">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button asChild variant="ghost" size="icon" className="rounded-full">
-                        <Link href="/dashboard/world-brain-quant/alpha">
+                        <WorkspaceLink href="/dashboard/wqb/alpha">
                             <ArrowLeft className="h-5 w-5" />
-                        </Link>
+                        </WorkspaceLink>
                     </Button>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-400">
-                            Alpha Intelligence Analysis
+                            WQB Alpha Intelligence Analysis
                         </h1>
                         <p className="text-sm text-muted-foreground">Deep performance comparison of {alphas.length} selected variants.</p>
                     </div>
@@ -290,6 +300,6 @@ function AnalysisContent() {
                     ))}
                 </CardContent>
             </Card>
-        </div>
+        </PageShell>
     )
 }

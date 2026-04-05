@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { RefreshCcw } from "lucide-react"
+import { LineChart, RefreshCcw } from "lucide-react"
 import {
     Tooltip,
     TooltipContent,
@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { getJsonObject } from "@/types/json"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
+import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
 type Alpha = {
     id: string | number
@@ -54,6 +55,7 @@ const getStateBadge = (state: number) => {
 
 export default function AlphaPage() {
     const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>({})
+    useWorkspaceTabTitle("/dashboard/wqb/alpha", "WQB Alphas")
 
     const handleBatchSimulate = async () => {
         try {
@@ -224,20 +226,18 @@ export default function AlphaPage() {
 
     return (
         <CrudLayout<Alpha>
-            title="Alphas Query Panel"
-            description="Interactive filter panel for multidimensional search over WQB metrics."
+            icon={LineChart}
+            title="WQB Alpha"
             endpoint="/quants/wqb/alpha"
             idKey="wqbAlphaId"
             filterItems={filterItems}
             storageKey="alpha-page-filters"
             columns={columns}
             onFilterChange={setCurrentFilters}
-            addButtonLabel="Simulate Alphas by Query"
+            addButtonLabel="Simulate by Query"
             onAdd={handleBatchSimulate}
             pageSizeOptions={[20, 50, 100, 200]}
             defaultPageSize={50}
-        >
-        </CrudLayout>
+        />
     )
 }
-

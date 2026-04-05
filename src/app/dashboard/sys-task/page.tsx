@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
+    Activity,
     ActivityIcon, 
     Loader2Icon, 
     ChevronRightIcon
 } from 'lucide-react'
-import Link from 'next/link'
 import { CrudLayout, type ItemsRenderProps } from '@/components/common/crud-layout'
 import { type SearchFilterItem } from '@/components/common/query-filters'
 
@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
 import { useMeta } from '@/hooks/use-meta'
 import { TASK_STATE } from '@/lib/constants'
 import { mapServerStateToStatus } from '@/lib/task-utils'
+import { WorkspaceLink } from '@/components/workspace/workspace-link'
+import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
 
 // --- Types ---
 
@@ -77,12 +79,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                         {task.state === TASK_STATE.RUNNING && <Loader2Icon className="mr-1 h-2.5 w-2.5 animate-spin" />}
                         {stateName}
                     </Badge>
-                    <Link href={`/dashboard/sys-task/${id}`}>
+                    <WorkspaceLink href={`/dashboard/sys-task/${id}`}>
                         <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-tighter gap-1 opacity-0 group-hover:opacity-100 transition-all px-2">
                             Details
                             <ChevronRightIcon className="h-3.5 w-3.5" />
                         </Button>
-                    </Link>
+                    </WorkspaceLink>
                 </div>
             </CardHeader>
             <CardContent className="pb-4 mt-auto">
@@ -120,6 +122,7 @@ const TaskCardGrid: React.FC<ItemsRenderProps<SystemTaskListItem>> = ({ items })
 
 export default function SystemTaskPage() {
     const { getOptions, isLoading } = useMeta()
+    useWorkspaceTabTitle("/dashboard/sys-task", "System Tasks")
 
     const filterItems: SearchFilterItem[] = [
         { key: "name", label: "Task Name", type: "text" },
@@ -146,16 +149,14 @@ export default function SystemTaskPage() {
     }
 
     return (
-        <div className="p-6 animate-in fade-in duration-700">
-            <CrudLayout<SystemTaskListItem>
-                title="System Monitor"
-                description="Orchestration audit trail and live execution tracking."
-                endpoint="/sys/tasks"
-                filterItems={filterItems}
-                storageKey="sys-task-filters"
-                itemsRender={TaskCardGrid}
-                stickyTop={0}
-            />
-        </div>
+        <CrudLayout<SystemTaskListItem>
+            icon={Activity}
+            title="System Tasks"
+            endpoint="/sys/tasks"
+            filterItems={filterItems}
+            storageKey="sys-task-filters"
+            itemsRender={TaskCardGrid}
+            stickyTop={0}
+        />
     )
 }

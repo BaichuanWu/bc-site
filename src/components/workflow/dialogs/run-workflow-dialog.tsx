@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -10,6 +9,7 @@ import { apiClient } from "@/lib/api"
 import { parseJsonText } from "@/lib/json-utils"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { showTaskStartedToast } from "@/components/task/task-started-toast"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
@@ -42,7 +42,7 @@ export function RunWorkflowDialog({
   showSessionId = false,
   renderForm,
 }: RunWorkflowDialogProps) {
-  const router = useRouter()
+  const navigate = useWorkspaceNavigate()
   const runAction = useAsyncAction()
   const [sessionId, setSessionId] = React.useState("")
   const [kwargsText, setKwargsText] = React.useState(() =>
@@ -68,7 +68,9 @@ export function RunWorkflowDialog({
       {
         errorMessage: "Failed to start workflow",
         onSuccess: async (res) => {
-          showTaskStartedToast(router, res.task_id)
+          showTaskStartedToast(res.task_id, () =>
+            navigate(`/dashboard/sys-task/${res.task_id}`),
+          )
           onOpenChange(false)
         },
       }

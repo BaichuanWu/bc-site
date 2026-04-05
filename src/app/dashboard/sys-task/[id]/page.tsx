@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { 
     ActivityIcon, 
     ArrowLeftIcon, 
+    AlertTriangleIcon,
     ClockIcon, 
     DatabaseIcon, 
     Loader2Icon
@@ -18,10 +19,13 @@ import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api'
 
 import { JsonNode } from '@/components/common/json-node'
+import { PageShell } from '@/components/common/page-shell'
 import { TaskEventViewer, type TaskEventRecord } from '@/components/task/task-event-viewer'
 import { useTask } from '@/hooks/use-task'
 import { TaskProgressBar } from '@/components/common/task-progress-bar'
 import { type TaskStatus } from '@/types/task'
+import { useWorkspaceNavigate } from '@/hooks/use-workspace-navigate'
+import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
 import { 
     mapStatusToServerState, 
     mapStatusToName, 
@@ -39,19 +43,21 @@ type TaskDetailRecord = {
     createTime?: string
     snapshot?: unknown
     context?: unknown
+    errorLog?: string | null
 }
 
 // --- Main Page ---
 
 export default function TaskDetailPage() {
     const params = useParams()
-    const router = useRouter()
+    const navigate = useWorkspaceNavigate()
     const task_id = params.id as string
     
     const [loading, setLoading] = useState(true)
     const { 
         status, 
         progress, 
+        error,
         events, 
         snapshot, 
         setInitialState 
@@ -71,11 +77,17 @@ export default function TaskDetailPage() {
             state: mapStatusToServerState(effectiveStatus),
             stateName: mapStatusToName(effectiveStatus),
             progress: effectiveStatus === 'completed' ? 100 : (progress?.percent ?? task.progress),
-            snapshot: snapshot ?? task.snapshot
+            snapshot: snapshot ?? task.snapshot,
+            errorLog: error ?? task.errorLog ?? null,
         }
-    }, [task, status, progress, snapshot])
+    }, [task, status, progress, snapshot, error])
 
     const displayEvents = events as TaskEventRecord[]
+
+    useWorkspaceTabTitle(
+        `/dashboard/sys-task/${task_id}`,
+        displayTask?.name ? `Task: ${displayTask.name}` : `Task: ${task_id}`,
+    )
 
     useEffect(() => {
         const fetchTask = async () => {
@@ -93,7 +105,8 @@ export default function TaskDetailPage() {
                     status: mapServerStateToStatus(t.state),
                     progress: { percent: t.progress, message: t.message },
                     snapshot: t.snapshot,
-                    events: evs
+                    events: evs,
+                    error: t.errorLog || null,
                 })
             } catch (err) {
                 console.error("Failed to fetch task:", err)
@@ -117,16 +130,25 @@ export default function TaskDetailPage() {
     }
 
     if (!displayTask) {
-        return <div className="p-20 text-center">Task Not Found</div>
+        return (
+            <PageShell>
+                <div className="py-20 text-center">Task Not Found</div>
+            </PageShell>
+        )
     }
 
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
             <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-6 pb-24 animate-in fade-in duration-500">
+                <PageShell contentClassName="space-y-6 pb-24 animate-in fade-in duration-500">
                     {/* Header */}
                     <div className="flex items-center gap-4 border-b pb-6">
-                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-muted transition-colors">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate("/dashboard/sys-task")}
+                            className="rounded-full hover:bg-muted transition-colors"
+                        >
                             <ArrowLeftIcon className="h-4 w-4" />
                         </Button>
                         <div className="flex-1">
@@ -142,6 +164,22 @@ export default function TaskDetailPage() {
                             </div>
                         </div>
                     </div>
+
+                    {displayTask.errorLog ? (
+                        <Card className="border border-destructive/30 bg-destructive/5 shadow-none">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-destructive">
+                                    <AlertTriangleIcon className="h-4 w-4" />
+                                    Failure Reason
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <pre className="whitespace-pre-wrap break-words rounded-xl bg-background/70 p-4 text-xs text-destructive">
+                                    {displayTask.errorLog}
+                                </pre>
+                            </CardContent>
+                        </Card>
+                    ) : null}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left: Progress & Metadata */}
@@ -226,7 +264,7 @@ export default function TaskDetailPage() {
                             </ScrollArea>
                         </div>
                     </div>
-                </div>
+                </PageShell>
             </div>
         </div>
     )

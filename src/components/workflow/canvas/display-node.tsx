@@ -46,6 +46,7 @@ export function WorkflowDisplayNode({
 }: NodeProps<Node<Record<string, unknown>, string | undefined>>) {
   const safeData = toCanvasNodeData(data)
   const model: WorkflowNodeModel = safeData.model || {}
+  const nodeKey = getJsonString(model.key)
   const kind = safeData.kind || getJsonString(model.kind, "system")
   const badgeClassName = KIND_BADGE_STYLES[kind] || KIND_BADGE_STYLES.system
   const handleClassName =
@@ -63,11 +64,11 @@ export function WorkflowDisplayNode({
           selected && "ring-2 ring-primary/40"
         )}
       >
-        {model.key !== "__start__" && (
+        {nodeKey !== "__start__" && (
           <Handle id="in" type="target" position={Position.Left} className={handleClassName} style={handleStyle} />
         )}
         <div className="text-xs font-black tracking-[0.28em]">{safeData.label}</div>
-        {getJsonString(model.key) !== "__end__" && (
+        {nodeKey !== "__end__" && (
           <Handle id="out" type="source" position={Position.Right} className={handleClassName} style={handleStyle} />
         )}
       </div>

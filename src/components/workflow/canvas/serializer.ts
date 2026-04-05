@@ -63,6 +63,101 @@ export function getLayoutMap(uiSchema: WorkflowUiSchema) {
   return (nodes || {}) as Record<string, { x: number; y: number }>
 }
 
+function getTopologicalLevels(
+  nodeIds: string[],
+  edges: JsonObject[],
+) {
+  const outgoing = new Map<string, string[]>()
+  const incomingCount = new Map<string, number>()
+
+  for (const nodeId of nodeIds) {
+    outgoing.set(nodeId, [])
+    incomingCount.set(nodeId, 0)
+  }
+
+  for (const edge of edges) {
+    const from = getJsonString(edge.from)
+    const to = getJsonString(edge.to)
+    if (!nodeIds.includes(from) || !nodeIds.includes(to)) continue
+    outgoing.get(from)?.push(to)
+    incomingCount.set(to, (incomingCount.get(to) || 0) + 1)
+  }
+
+  const queue: string[] = nodeIds.filter((nodeId) => (incomingCount.get(nodeId) || 0) === 0)
+  const levels = new Map<string, number>()
+
+  queue.forEach((nodeId) => levels.set(nodeId, 0))
+
+  while (queue.length > 0) {
+    const current = queue.shift() as string
+    const currentLevel = levels.get(current) || 0
+
+    for (const next of outgoing.get(current) || []) {
+      const nextLevel = Math.max(levels.get(next) || 0, currentLevel + 1)
+      levels.set(next, nextLevel)
+      incomingCount.set(next, (incomingCount.get(next) || 0) - 1)
+      if ((incomingCount.get(next) || 0) === 0) {
+        queue.push(next)
+      }
+    }
+  }
+
+  let fallbackLevel = Math.max(0, ...Array.from(levels.values()))
+  for (const nodeId of nodeIds) {
+    if (!levels.has(nodeId)) {
+      fallbackLevel += 1
+      levels.set(nodeId, fallbackLevel)
+    }
+  }
+
+  return levels
+}
+
+function buildAutoLayout(
+  workflowNodes: JsonObject[],
+  workflowEdges: JsonObject[],
+) {
+  const nodeIds = workflowNodes
+    .map((node, index) => getJsonString(node.key, `node_${index + 1}`))
+    .filter(Boolean)
+  const levels = getTopologicalLevels(nodeIds, workflowEdges)
+  const grouped = new Map<number, string[]>()
+
+  for (const nodeId of nodeIds) {
+    const level = levels.get(nodeId) || 0
+    grouped.set(level, [...(grouped.get(level) || []), nodeId])
+  }
+
+  const sortedLevels = Array.from(grouped.keys()).sort((a, b) => a - b)
+  const layout: Record<string, { x: number; y: number }> = {}
+  const nodeXStart = 300
+  const nodeXGap = 320
+  const nodeYStart = 80
+  const nodeYGap = 220
+
+  for (const level of sortedLevels) {
+    const nodesAtLevel = grouped.get(level) || []
+    const totalHeight = Math.max(0, (nodesAtLevel.length - 1) * nodeYGap)
+    const levelStartY = nodeYStart + Math.max(0, 220 - totalHeight / 2)
+    nodesAtLevel.forEach((nodeId, index) => {
+      layout[nodeId] = {
+        x: nodeXStart + level * nodeXGap,
+        y: levelStartY + index * nodeYGap,
+      }
+    })
+  }
+
+  const maxLevel = sortedLevels.length > 0 ? Math.max(...sortedLevels) : 0
+  const overallRows = Math.max(1, ...Array.from(grouped.values()).map((items) => items.length))
+  const overallHeight = Math.max(0, (overallRows - 1) * nodeYGap)
+  const centerY = nodeYStart + overallHeight / 2 + 110
+
+  layout.__start__ = { x: 40, y: centerY }
+  layout.__end__ = { x: nodeXStart + (maxLevel + 1) * nodeXGap, y: centerY }
+
+  return layout
+}
+
 export function getEdgeModel(edge: Edge | null | undefined): JsonObject {
   return (edge?.data?.model || {}) as JsonObject
 }
@@ -73,44 +168,53 @@ export function getEdgeFingerprint(edgeLike: JsonObject | null | undefined) {
     edgeLike.from || edgeLike.source || "",
     edgeLike.to || edgeLike.target || "",
     edgeLike.type || "direct",
-    edgeLike.router || "",
+    JSON.stringify(edgeLike.condition || null),
+    edgeLike.priority ?? "",
   ].join("::")
+}
+
+export function getEdgeLabel(model: JsonObject) {
+  const edgeType = getJsonString(model.type, "direct")
+  if (edgeType !== "conditional") return "direct"
+  const condition = getJsonObject(model.condition)
+  const field = getJsonString(condition?.field)
+  const operator = getJsonString(condition?.operator, "not_null")
+  return field ? `if ${field} ${operator}` : "conditional"
 }
 
 export function buildCanvasState(definition: WorkflowDefinition, uiSchema: WorkflowUiSchema) {
   const workflowNodes = (getJsonArray(definition.nodes) || []).filter(isJsonObject)
   const workflowEdges = (getJsonArray(definition.edges) || []).filter(isJsonObject)
-  const layout = getLayoutMap(uiSchema)
-
-  const specialNodeIds = new Set<string>()
-  workflowEdges.forEach((edge) => {
-    if (getJsonString(edge.from) === "__start__") specialNodeIds.add("__start__")
-    if (getJsonString(edge.to) === "__end__") specialNodeIds.add("__end__")
-  })
+  const explicitLayout = getLayoutMap(uiSchema)
+  const autoLayout = buildAutoLayout(workflowNodes, workflowEdges)
+  const layout = { ...autoLayout, ...explicitLayout }
 
   const nodes: Node<CanvasNodeData>[] = []
 
-  if (specialNodeIds.has("__start__")) {
-    nodes.push({
-      id: "__start__",
-      type: "workflowNode",
-      position: layout.__start__ || { x: 40, y: 220 },
+  nodes.push({
+    id: "__start__",
+    type: "workflowNode",
+    position: layout.__start__ || { x: 40, y: 220 },
+    width: 140,
+    height: 64,
+    data: {
+      label: "START",
+      special: true,
+      kind: "system",
+      model: { key: "__start__", type: "system" },
+    },
+    draggable: true,
+    selectable: true,
+    style: {
       width: 140,
       height: 64,
-      data: { label: "START", special: true, kind: "system" },
-      draggable: true,
-      selectable: true,
-      style: {
-        width: 140,
-        height: 64,
-        borderRadius: 18,
-        border: "1px dashed rgba(148, 163, 184, 0.5)",
-        background: "rgba(15, 23, 42, 0.92)",
-        color: "white",
-      },
-      sourcePosition: Position.Right,
-    })
-  }
+      borderRadius: 18,
+      border: "1px dashed rgba(148, 163, 184, 0.5)",
+      background: "rgba(15, 23, 42, 0.92)",
+      color: "white",
+    },
+    sourcePosition: Position.Right,
+  })
 
   workflowNodes.forEach((node, index) => {
     const normalizedNode = normalizeWorkflowNodeModel(node)
@@ -143,37 +247,37 @@ export function buildCanvasState(definition: WorkflowDefinition, uiSchema: Workf
     })
   })
 
-  if (specialNodeIds.has("__end__")) {
-    nodes.push({
-      id: "__end__",
-      type: "workflowNode",
-      position: layout.__end__ || { x: 1140, y: 220 },
+  nodes.push({
+    id: "__end__",
+    type: "workflowNode",
+    position: layout.__end__ || { x: 1140, y: 220 },
+    width: 140,
+    height: 64,
+    data: {
+      label: "END",
+      special: true,
+      kind: "system",
+      model: { key: "__end__", type: "system" },
+    },
+    draggable: true,
+    selectable: true,
+    style: {
       width: 140,
       height: 64,
-      data: { label: "END", special: true, kind: "system" },
-      draggable: true,
-      selectable: true,
-      style: {
-        width: 140,
-        height: 64,
-        borderRadius: 18,
-        border: "1px dashed rgba(148, 163, 184, 0.5)",
-        background: "rgba(15, 23, 42, 0.92)",
-        color: "white",
-      },
-      targetPosition: Position.Left,
-    })
-  }
+      borderRadius: 18,
+      border: "1px dashed rgba(148, 163, 184, 0.5)",
+      background: "rgba(15, 23, 42, 0.92)",
+      color: "white",
+    },
+    targetPosition: Position.Left,
+  })
 
   const edges: Edge[] = workflowEdges.map((edge, index) => ({
     id: `${getJsonString(edge.from)}->${getJsonString(edge.to)}-${index}`,
     source: getJsonString(edge.from),
     target: getJsonString(edge.to),
     type: "smoothstep",
-    label:
-      getJsonString(edge.type) === "conditional"
-        ? `conditional${getJsonString(edge.router) ? `:${getJsonString(edge.router)}` : ""}`
-        : "direct",
+    label: getEdgeLabel(edge),
     data: {
       model: cloneJson(edge),
     },
