@@ -2,7 +2,7 @@ import * as React from "react"
 import { Plus, ChevronLeft, ChevronRight, Loader2, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SearchFilterGroup, type SearchFilterItem } from "@/components/common/query-filters"
+import { SearchFilterGroup, resolveInitialFilterState, type SearchFilterItem } from "@/components/common/query-filters"
 import { DataTable, type Column } from "@/components/common/data-table"
 import { useCrud, type SortEntry } from "@/hooks/use-crud"
 import {
@@ -78,7 +78,9 @@ export function CrudLayout<T extends { id: string | number }>({
     defaultPageSize = 20,
     footer,
 }: CrudLayoutProps<T>) {
-    const [filters, setFilters] = React.useState<Record<string, unknown>>({})
+    const [filters, setFilters] = React.useState<Record<string, unknown>>(() =>
+        resolveInitialFilterState(storageKey)
+    )
     const ResolvedItemsRender = itemsRender ?? DataTable<T>
     const pageActions = React.useMemo(() => {
         const nodes = React.Children.toArray(headerActions)

@@ -17,6 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api'
+import { normalizeCrudListResponse } from '@/lib/crud-response'
 
 import { JsonNode } from '@/components/common/json-node'
 import { PageShell } from '@/components/common/page-shell'
@@ -97,7 +98,7 @@ export default function TaskDetailPage() {
                     apiClient.get(`/sys/task/${task_id}/events`)
                 ])
                 const t = taskRes as unknown as TaskDetailRecord
-                const evs = eventsRes as unknown as TaskEventRecord[]
+                const evs = normalizeCrudListResponse<TaskEventRecord>(eventsRes)
                 setTask(t)
                 
                 // Seed the global provider so other components (like breadcrumbs) know the state

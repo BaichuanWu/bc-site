@@ -217,6 +217,27 @@ interface SearchFilterGroupProps {
 type FilterTemplates = Record<string, Record<string, FilterClause>>
 const EMPTY_FILTERS: Record<string, FilterClause> = {}
 
+export function resolveInitialFilterState(
+    storageKey?: string,
+    initialFilters: Record<string, FilterClause> = EMPTY_FILTERS
+) {
+    if (typeof window === "undefined" || !storageKey) {
+        return initialFilters
+    }
+
+    const saved = window.localStorage.getItem(storageKey)
+    if (!saved) {
+        return initialFilters
+    }
+
+    try {
+        return JSON.parse(saved) as Record<string, FilterClause>
+    } catch (e) {
+        console.error("Failed to parse saved filters", e)
+        return initialFilters
+    }
+}
+
 export function SearchFilterGroup({
     items,
     onSearch,
@@ -224,38 +245,17 @@ export function SearchFilterGroup({
     title = "Search Filters",
     initialFilters = EMPTY_FILTERS
 }: SearchFilterGroupProps) {
-    const [tempFilters, setTempFilters] = React.useState<Record<string, FilterClause>>(initialFilters)
+    const [tempFilters, setTempFilters] = React.useState<Record<string, FilterClause>>(() =>
+        resolveInitialFilterState(storageKey, initialFilters)
+    )
     const [isVisible, setIsVisible] = React.useState(true)
     const [templates, setTemplates] = React.useState<FilterTemplates>({})
     const [newTemplateName, setNewTemplateName] = React.useState("")
     const [isSaveOpen, setIsSaveOpen] = React.useState(false)
-    const onSearchRef = React.useRef(onSearch)
 
     const templatesKey = storageKey ? `${storageKey}_templates` : null
 
     React.useEffect(() => {
-        onSearchRef.current = onSearch
-    }, [onSearch])
-
-    // Load from local storage on mount
-    React.useEffect(() => {
-        let nextFilters = initialFilters
-
-        if (storageKey) {
-            const saved = localStorage.getItem(storageKey)
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved) as Record<string, FilterClause>
-                    nextFilters = parsed
-                } catch (e) {
-                    console.error("Failed to parse saved filters", e)
-                }
-            }
-        }
-
-        setTempFilters(nextFilters)
-        onSearchRef.current(nextFilters)
-
         if (templatesKey) {
             const savedTemplates = localStorage.getItem(templatesKey)
             if (savedTemplates) {
@@ -266,7 +266,7 @@ export function SearchFilterGroup({
                 }
             }
         }
-    }, [initialFilters, storageKey, templatesKey])
+    }, [templatesKey])
 
     const updateFilter = (key: string, value: FilterClause | undefined) => {
         setTempFilters(prev => {

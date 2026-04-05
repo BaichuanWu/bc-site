@@ -38,3 +38,10 @@ Use this template before starting a new dashboard page or a structural dashboard
 - Preserves tab rules
 - Passes dashboard review checklist
 
+## 8. Contract And TDD Check
+- Is the request / response contract written down before implementation?
+- If this is a list endpoint, does it return only `dataSource`?
+- If the contract changed, were old compatibility branches removed?
+- What are the expected first-load requests for this page?
+- What state should still exist after leaving and returning to this page?
+- What regression must not happen after this change?

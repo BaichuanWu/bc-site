@@ -50,6 +50,16 @@ type WorkspaceTabsContextValue = {
 const WorkspaceTabsContext =
   React.createContext<WorkspaceTabsContextValue | null>(null)
 
+function keepCurrentActiveTab(
+  prev: WorkspaceTabsState,
+  next: WorkspaceTabsState,
+): WorkspaceTabsState {
+  return ensureWorkspaceDefaults({
+    ...next,
+    activeTabKey: prev.activeTabKey,
+  })
+}
+
 export function WorkspaceTabsProvider({
   children,
 }: {
@@ -95,7 +105,7 @@ export function WorkspaceTabsProvider({
   }, [hydrated, state])
 
   const openTab = React.useCallback<WorkspaceTabsContextValue["openTab"]>((input) => {
-    setState((prev) => upsertWorkspaceTab(prev, input))
+    setState((prev) => keepCurrentActiveTab(prev, upsertWorkspaceTab(prev, input)))
   }, [])
 
   const activateTab = React.useCallback<WorkspaceTabsContextValue["activateTab"]>(
@@ -149,12 +159,15 @@ export function WorkspaceTabsProvider({
         ? targetPathname
         : `/dashboard${targetPathname.startsWith("/") ? "" : "/"}${targetPathname}`
       setState((prev) =>
-        upsertWorkspaceTab(prev, {
-          pathname: normalizedPath,
-          search: targetSearch,
-          title: options?.title,
-          closable: options?.closable,
-        }),
+        keepCurrentActiveTab(
+          prev,
+          upsertWorkspaceTab(prev, {
+            pathname: normalizedPath,
+            search: targetSearch,
+            title: options?.title,
+            closable: options?.closable,
+          }),
+        ),
       )
       router.push(buildWorkspaceHref(normalizedPath, targetSearch))
     },

@@ -19,6 +19,7 @@ import { useAsyncAction } from "@/hooks/use-async-action"
 import { apiClient, fetcher } from "@/lib/api"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
+import { normalizeCrudListResponse } from "@/lib/crud-response"
 
 type AgentRecord = {
   id: number
@@ -84,19 +85,15 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   const initialVersionId = props.mode === "edit" ? props.initialVersionId : undefined
   const initialVersionAppliedRef = React.useRef(false)
 
-  const { data: agent, mutate: mutateAgent } = useSWR<AgentRecord | null>(
+  const {
+    data: agent,
+    mutate: mutateAgent,
+    isLoading: isLoadingAgent,
+  } = useSWR<AgentRecord | null>(
     agentId ? `/agent/agent?q=${encodeURIComponent(JSON.stringify({ id: agentId }))}&limit=1` : null,
     async (url: string) => {
       const response = await fetcher<unknown>(url)
-      const data = Array.isArray(response)
-        ? response
-        : typeof response === "object" && response !== null && "data" in response
-          ? (response as { data?: unknown }).data
-          : response
-      if (!Array.isArray(data) || data.length === 0) {
-        return null
-      }
-      return data[0] as AgentRecord
+      return normalizeCrudListResponse<AgentRecord>(response)[0] || null
     },
   )
   const { data: agentOptions } = useSWR<AgentOptionsResponse>(
@@ -105,7 +102,10 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   )
   const { data: versions = [], mutate: mutateVersions } = useSWR<AgentVersionRecord[]>(
     agentId ? `/agent/agent/${agentId}/versions` : null,
-    fetcher,
+    async (url: string) => {
+      const response = await fetcher<unknown>(url)
+      return normalizeCrudListResponse<AgentVersionRecord>(response)
+    },
   )
 
   const agentClassOptions = React.useMemo(
@@ -246,7 +246,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     )
   }, [agent, editingVersion, mutateAgent, mutateVersions, versionForm, versionSaveAction])
 
-  if (!isCreate && agentId && !agent) {
+  if (!isCreate && agentId && isLoadingAgent) {
     return (
       <DetailPageLayout
         title="Agent"
@@ -260,6 +260,25 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       >
         <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
           Loading agent detail...
+        </div>
+      </DetailPageLayout>
+    )
+  }
+
+  if (!isCreate && agentId && !agent) {
+    return (
+      <DetailPageLayout
+        title="Agent"
+        subtitle="Agent detail could not be loaded."
+        actions={
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Agents
+          </Button>
+        }
+      >
+        <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
+          Agent not found or response payload was empty.
         </div>
       </DetailPageLayout>
     )

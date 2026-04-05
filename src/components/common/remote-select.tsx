@@ -57,11 +57,7 @@ export function RemoteSelect({
 
   const { data, isLoading } = useSWR<RemoteOption[]>(endpoint, async (url: string) =>
     apiClient.get(url).then((res) => {
-      const unwrapped = Array.isArray(res)
-        ? res
-        : getJsonArray(getJsonObject(res)?.dataSource) ??
-          getJsonArray(getJsonObject(res)?.data) ??
-          []
+      const unwrapped = getJsonArray(getJsonObject(res)?.dataSource) ?? []
 
       return unwrapped
         .map((item) => {

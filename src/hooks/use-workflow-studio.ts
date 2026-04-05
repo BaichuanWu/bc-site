@@ -4,6 +4,7 @@ import * as React from "react"
 import useSWR from "swr"
 
 import { apiClient } from "@/lib/api"
+import { normalizeCrudListResponse } from "@/lib/crud-response"
 import { formatJsonText, parseJsonText } from "@/lib/json-utils"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { useCrud } from "@/hooks/use-crud"
@@ -124,7 +125,10 @@ export function useWorkflowStudio() {
   const workflowCrud = useCrud<WorkflowRecord>("/workflow-definition")
   const { data: activeAgents, mutate: mutateActiveAgents } = useSWR<AgentRecord[]>(
     "/agent/active-versions",
-    (url: string) => apiClient.get(url).then((res: unknown) => res as AgentRecord[]),
+    (url: string) =>
+      apiClient
+        .get(url)
+        .then((res: unknown) => normalizeCrudListResponse<AgentRecord>(res)),
   )
   const filteredAgents = React.useMemo(() => {
     const items = activeAgents || []

@@ -6,10 +6,8 @@ import { toast } from "sonner"
 export type SortEntry = { key: string; dir: 'asc' | 'desc' }
 type CrudListResponse<T> = {
     dataSource?: T[]
-    data?: T[]
     total?: number
-    totalCount?: number
-} | T[]
+}
 
 export function useCrud<T extends { id: string | number }>(
     endpoint: string,
@@ -86,15 +84,11 @@ export function useCrud<T extends { id: string | number }>(
     )
 
     const { data, total } = React.useMemo(() => {
-        const listResult = resultData && !Array.isArray(resultData) ? resultData : null
+        const listResult = resultData ?? null
         const resolvedData: T[] = Array.isArray(listResult?.dataSource)
             ? listResult.dataSource
-            : Array.isArray(listResult?.data)
-                ? listResult.data
-                : Array.isArray(resultData)
-                    ? resultData
-                    : []
-        const resolvedTotal = listResult?.total || listResult?.totalCount || 0
+            : []
+        const resolvedTotal = listResult?.total || 0
         return { data: resolvedData, total: resolvedTotal }
     }, [resultData])
 

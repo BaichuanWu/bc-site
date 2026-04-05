@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import useSWR from 'swr'
+import useSWRImmutable from 'swr/immutable'
 import { apiClient } from '@/lib/api'
 
 export interface MetaMapping {
@@ -21,7 +21,10 @@ export interface SystemMeta {
 }
 
 export const useMeta = () => {
-    const { data, error, isLoading } = useSWR<SystemMeta>('/meta', (url: string) => apiClient.get(url) as Promise<SystemMeta>)
+    const { data, error, isLoading } = useSWRImmutable<SystemMeta>(
+        '/meta',
+        (url: string) => apiClient.get(url) as Promise<SystemMeta>
+    )
 
     const getOptions = useMemo(() => (modelName: string, mappingName: string) => {
         if (!data?.models[modelName]) return []

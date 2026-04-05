@@ -3,6 +3,7 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import { Expand, Minimize2 } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 import { JsonNode } from "@/components/common/json-node"
 import { WorkflowCanvasEditor } from "@/components/workflow/canvas/editor"
@@ -114,8 +115,14 @@ export function WorkflowEditorShell({
   onChange,
   onPreview,
 }: WorkflowCanvasShellProps) {
+  const pathname = usePathname()
+  const fullscreenStorageKey = React.useMemo(
+    () => `bc:workflow-editor:fullscreen:${pathname || "unknown"}`,
+    [pathname]
+  )
   const [isFullscreen, setIsFullscreen] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
+  const [isFullscreenHydrated, setIsFullscreenHydrated] = React.useState(false)
   const definition = React.useMemo(
     () => parseJsonText<JsonObject>(definitionJson, {}),
     [definitionJson]
@@ -132,6 +139,22 @@ export function WorkflowEditorShell({
   React.useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  React.useEffect(() => {
+    if (!isMounted) return
+    setIsFullscreen(
+      window.sessionStorage.getItem(fullscreenStorageKey) === "true"
+    )
+    setIsFullscreenHydrated(true)
+  }, [fullscreenStorageKey, isMounted])
+
+  React.useEffect(() => {
+    if (!isMounted || !isFullscreenHydrated) return
+    window.sessionStorage.setItem(
+      fullscreenStorageKey,
+      isFullscreen ? "true" : "false"
+    )
+  }, [fullscreenStorageKey, isFullscreen, isFullscreenHydrated, isMounted])
 
   React.useEffect(() => {
     if (!isMounted) return
@@ -270,7 +293,9 @@ export function WorkflowEditorShell({
         definitionJson={definitionJson}
         onEdit={() => setIsFullscreen(true)}
       />
-      {isMounted && isFullscreen ? createPortal(fullscreenContent, document.body) : null}
+      {isMounted && isFullscreenHydrated && isFullscreen
+        ? createPortal(fullscreenContent, document.body)
+        : null}
     </div>
   )
 }

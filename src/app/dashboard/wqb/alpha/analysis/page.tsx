@@ -94,7 +94,7 @@ function AnalysisContent() {
                 })
 
                 const responseObject = getJsonObject(res)
-                const fetchedAlphas = (Array.isArray(res) ? res : getJsonArray(responseObject?.dataSource) ?? getJsonArray(responseObject?.data_source) ?? getJsonArray(responseObject?.data) ?? []) as Alpha[]
+                const fetchedAlphas = (getJsonArray(responseObject?.dataSource) ?? []) as Alpha[]
                 setAlphas(fetchedAlphas || [])
 
                 // Process PnL data for Recharts

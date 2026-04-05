@@ -149,7 +149,10 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   )
   const { data: activeAgents = [] } = useSWR<AgentRecord[]>(
     "/agent/active-versions",
-    fetcher,
+    async (url: string) => {
+      const response = await fetcher<unknown>(url)
+      return normalizeCrudListResponse<AgentRecord>(response)
+    },
   )
 
   const workflow = React.useMemo(

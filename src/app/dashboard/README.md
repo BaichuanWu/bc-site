@@ -20,6 +20,7 @@ Dashboard 页面开发默认遵循以下规则：
 - `docs/standards/dashboard-architecture.md`
 - `docs/standards/dashboard-review-checklist.md`
 - `docs/standards/dashboard-dev-check-template.md`
+- `docs/standards/dashboard-tdd.md`
 
 建议在两处使用这些规范：
 

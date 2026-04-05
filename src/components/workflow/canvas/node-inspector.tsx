@@ -5,6 +5,7 @@ import type { Node } from "@xyflow/react"
 import useSWR from "swr"
 
 import { apiClient } from "@/lib/api"
+import { normalizeCrudListResponse } from "@/lib/crud-response"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -84,7 +85,9 @@ export function WorkflowNodeInspector({
   >(
     selectedAgentIdentityId ? `/agent/agent/${selectedAgentIdentityId}/versions` : null,
     (url: string) =>
-      apiClient.get(url).then((res: unknown) => res as AgentVersionRecord[]),
+      apiClient
+        .get(url)
+        .then((res: unknown) => normalizeCrudListResponse<AgentVersionRecord>(res)),
   )
 
   const selectedVersionRecord = React.useMemo(
@@ -164,7 +167,7 @@ export function WorkflowNodeInspector({
           </div>
 
           <div className="grid gap-2">
-            <Label>Agent Version</Label>
+            <Label>Agent Binding</Label>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -175,7 +178,7 @@ export function WorkflowNodeInspector({
                 <span className="truncate">
                   {selectedAgent
                     ? `${selectedAgent.name} @ ${selectedAgent.version}`
-                    : "Choose agent version"}
+                    : "Search and choose agent"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {selectedAgent
@@ -196,7 +199,7 @@ export function WorkflowNodeInspector({
             </div>
             {selectedAgent ? (
               <div className="text-xs text-muted-foreground">
-                Bound by `agent_version_id={selectedAgent.id}`.
+                Bound by `agent_version_id={selectedAgent.id}`. Use search to replace the agent binding.
               </div>
             ) : null}
           </div>
@@ -309,17 +312,17 @@ export function WorkflowNodeInspector({
       <Dialog open={isAgentPickerOpen} onOpenChange={setIsAgentPickerOpen}>
         <DialogContent className="max-w-[760px]">
           <DialogHeader>
-            <DialogTitle>Select Agent Version</DialogTitle>
+            <DialogTitle>Search Agent</DialogTitle>
             <DialogDescription>
-              Bind a single `agent_version_id` to this node. Detailed prompt and config
-              editing lives on the agent detail page.
+              Search agent identities, then bind the current active version to this node.
+              Detailed prompt and config editing lives on the agent detail page.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
               value={agentSearch}
               onChange={(e) => setAgentSearch(e.target.value)}
-              placeholder="Search agents by name or class"
+              placeholder="Search agents by name, class, or description"
             />
             <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border bg-muted/10 p-3">
               {filteredAgentIdentities.length > 0 ? (

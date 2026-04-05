@@ -34,7 +34,11 @@ export function WorkspaceHost({ children }: { children: React.ReactNode }) {
           key={tab.key}
           className={tab.key === activeTabKey ? "h-full" : "hidden h-full"}
         >
-          {tab.key === activeTabKey ? children : cache[tab.key] ?? null}
+          {tab.key === currentPathname
+            ? children
+            : tab.key === activeTabKey
+              ? cache[tab.key] ?? null
+              : cache[tab.key] ?? null}
         </div>
       ))}
     </div>
