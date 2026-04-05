@@ -19,7 +19,6 @@ import { useAsyncAction } from "@/hooks/use-async-action"
 import { apiClient, fetcher } from "@/lib/api"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
-import { normalizeCrudListResponse } from "@/lib/crud-response"
 
 type AgentRecord = {
   id: number
@@ -85,9 +84,20 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   const initialVersionId = props.mode === "edit" ? props.initialVersionId : undefined
   const initialVersionAppliedRef = React.useRef(false)
 
-  const { data: agentsResponse, mutate: mutateAgents } = useSWR<unknown>(
-    "/agent/agent",
-    fetcher,
+  const { data: agent, mutate: mutateAgent } = useSWR<AgentRecord | null>(
+    agentId ? `/agent/agent?q=${encodeURIComponent(JSON.stringify({ id: agentId }))}&limit=1` : null,
+    async (url: string) => {
+      const response = await fetcher<unknown>(url)
+      const data = Array.isArray(response)
+        ? response
+        : typeof response === "object" && response !== null && "data" in response
+          ? (response as { data?: unknown }).data
+          : response
+      if (!Array.isArray(data) || data.length === 0) {
+        return null
+      }
+      return data[0] as AgentRecord
+    },
   )
   const { data: agentOptions } = useSWR<AgentOptionsResponse>(
     "/agent/options",
@@ -96,15 +106,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   const { data: versions = [], mutate: mutateVersions } = useSWR<AgentVersionRecord[]>(
     agentId ? `/agent/agent/${agentId}/versions` : null,
     fetcher,
-  )
-
-  const agents = React.useMemo(
-    () => normalizeCrudListResponse<AgentRecord>(agentsResponse),
-    [agentsResponse],
-  )
-  const agent = React.useMemo(
-    () => (agentId ? agents.find((item) => item.id === agentId) || null : null),
-    [agentId, agents],
   )
 
   const agentClassOptions = React.useMemo(
@@ -211,7 +212,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
         successMessage: isCreate ? "Agent created" : "Agent updated",
         errorMessage: "Failed to save agent",
         onSuccess: async (saved) => {
-          await mutateAgents()
+          await mutateAgent()
           const targetId = Number((saved as AgentRecord)?.id || agent?.id)
           if (Number.isFinite(targetId) && targetId > 0) {
             navigate(`/dashboard/agent/${targetId}`)
@@ -219,7 +220,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
         },
       },
     )
-  }, [agent, agentForm, isCreate, mutateAgents, navigate, saveAction])
+  }, [agent, agentForm, isCreate, mutateAgent, navigate, saveAction])
 
   const handleSaveVersion = React.useCallback(async () => {
     if (!agent) return
@@ -239,11 +240,11 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
         onSuccess: async () => {
           setIsVersionEditorOpen(false)
           setEditingVersion(null)
-          await Promise.all([mutateVersions(), mutateAgents()])
+          await Promise.all([mutateVersions(), mutateAgent()])
         },
       },
     )
-  }, [agent, editingVersion, mutateAgents, mutateVersions, versionForm, versionSaveAction])
+  }, [agent, editingVersion, mutateAgent, mutateVersions, versionForm, versionSaveAction])
 
   if (!isCreate && agentId && !agent) {
     return (
