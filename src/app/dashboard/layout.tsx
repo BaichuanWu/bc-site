@@ -80,6 +80,11 @@ const NAV_ITEMS: NavItem[] = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const isItemActive = React.useCallback((item: NavItem): boolean => {
         if (item.href && (pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/dashboard"))) {
@@ -172,20 +177,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="flex w-full flex-col md:pl-64 lg:pl-72">
                     {/* Mobile Header */}
                     <header className="flex h-14 items-center gap-4 border-b bg-background/95 px-4 md:px-6 flex-shrink-0 sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-                        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-                                    <Menu className="h-5 w-5" />
-                                    <span className="sr-only">Toggle navigation menu</span>
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-[300px] p-0">
-                                <SheetHeader className="p-4 border-b text-left">
-                                    <SheetTitle>Navigation</SheetTitle>
-                                </SheetHeader>
-                                <NavContent />
-                            </SheetContent>
-                        </Sheet>
+                        {mounted ? (
+                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+                                        <Menu className="h-5 w-5" />
+                                        <span className="sr-only">Toggle navigation menu</span>
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-[300px] p-0">
+                                    <SheetHeader className="p-4 border-b text-left">
+                                        <SheetTitle>Navigation</SheetTitle>
+                                    </SheetHeader>
+                                    <NavContent />
+                                </SheetContent>
+                            </Sheet>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0 md:hidden"
+                                type="button"
+                                aria-label="Toggle navigation menu"
+                                disabled
+                            >
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Toggle navigation menu</span>
+                            </Button>
+                        )}
 
                         <div className="w-full flex-1 flex justify-end">
                             <ThemeToggle />
