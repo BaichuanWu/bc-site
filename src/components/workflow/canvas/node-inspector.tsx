@@ -310,15 +310,17 @@ export function WorkflowNodeInspector({
       )}
 
       <Dialog open={isAgentPickerOpen} onOpenChange={setIsAgentPickerOpen}>
-        <DialogContent className="max-w-[760px]">
+        <DialogContent className="max-h-[min(720px,calc(100vh-2rem))] max-w-[760px] overflow-hidden p-0">
           <DialogHeader>
-            <DialogTitle>Search Agent</DialogTitle>
-            <DialogDescription>
-              Search agent identities, then bind the current active version to this node.
-              Detailed prompt and config editing lives on the agent detail page.
-            </DialogDescription>
+            <div className="px-6 pt-6">
+              <DialogTitle>Search Agent</DialogTitle>
+              <DialogDescription>
+                Search agent identities, then bind the current active version to this node.
+                Detailed prompt and config editing lives on the agent detail page.
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 pb-6">
             <Input
               value={agentSearch}
               onChange={(e) => setAgentSearch(e.target.value)}
@@ -343,17 +345,21 @@ export function WorkflowNodeInspector({
                       }))
                       setIsAgentPickerOpen(false)
                     }}
-                    className="flex w-full items-start justify-between rounded-xl border bg-background px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    className="flex w-full min-w-0 items-start justify-between gap-3 rounded-xl border bg-background px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                   >
-                    <div className="space-y-1">
-                      <div className="text-sm font-semibold">{agent.name}</div>
-                      <div className="text-xs text-muted-foreground">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="truncate text-sm font-semibold">{agent.name}</div>
+                      <div className="line-clamp-2 break-words text-xs text-muted-foreground">
                         {agent.description || agent.agent_class}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{agent.agent_class}</Badge>
-                      <Badge variant="secondary">current {agent.version}</Badge>
+                    <div className="flex max-w-[45%] shrink-0 flex-wrap items-center justify-end gap-2">
+                      <Badge variant="outline" className="max-w-full truncate">
+                        {agent.agent_class}
+                      </Badge>
+                      <Badge variant="secondary" className="max-w-full truncate">
+                        current {agent.version}
+                      </Badge>
                     </div>
                   </button>
                 ))

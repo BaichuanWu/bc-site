@@ -10,6 +10,8 @@ type PageShellProps = {
   contentClassName?: string
 }
 
+// PageShell owns only page-level spacing and rhythm.
+// It should stay context-agnostic and never encode module-specific structure.
 export function PageShell({
   children,
   className,

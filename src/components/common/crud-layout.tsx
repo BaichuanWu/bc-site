@@ -56,6 +56,9 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     children?: React.ReactNode
 }
 
+// CrudLayout is a list-oriented composition component.
+// It may orchestrate filters, pagination, and rendering, but it should not encode
+// resource-specific page structure beyond generic list semantics.
 export function CrudLayout<T extends { id: string | number }>({
     title,
     icon,
@@ -72,7 +75,7 @@ export function CrudLayout<T extends { id: string | number }>({
     endpoint,
     filterItems,
     storageKey,
-    stickyTop = 56, // Default to dashboard header height (h-14)
+    stickyTop = 0,
     onFilterChange,
     pageSizeOptions = [10, 20, 30, 40, 50],
     defaultPageSize = 20,

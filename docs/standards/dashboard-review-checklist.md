@@ -10,6 +10,7 @@
 - 是否复用了 `PageShell`、`ListPageShell` 或 `DetailPageLayout`
 - 是否避免重复实现 header/filter/content 结构
 - 页面文件是否保持足够薄，只做组合而不是承载大段布局代码
+- 公共组件是否保持通用语义，而不是被某个页面上下文绑死
 
 ## List Page
 - 顶部是否只显示 `icon + title + actions`
@@ -17,10 +18,14 @@
 - filter 是否默认展开
 - filter 与 content 间距是否紧凑
 - 是否错误地把长描述重新加回标准列表页顶部
+- 如果使用 `DataTable` sticky header，是否保证只有一个主滚动容器
+- 是否保持“页面纵向滚动，table 自身横向滚动”的职责分离
+- 是否在 table 外层又叠加了会破坏 sticky 的 `overflow-*` 祖先
 
 ## Detail Page
 - 是否使用统一详情页壳层
 - 是否把 section 级 spacing 和页面级 spacing 混在一起
+- 创建页和编辑页是否共用同一个 detail component，而不是重复实现两套页面
 
 ## Tab Behavior
 - 是否符合 `Overview` 不可关闭、其他页可关闭的规则
@@ -42,3 +47,4 @@
 - 业务页自行处理页面壳层 spacing
 - 在 page 文件里重复手写 list page header
 - 公共组件职责继续膨胀而没有抽层
+- 在通用组件里出现资源名、来源页或固定路由语义耦合

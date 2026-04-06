@@ -28,11 +28,15 @@ export function WorkspaceHost({ children }: { children: React.ReactNode }) {
   }, [tabs])
 
   return (
-    <div className="min-h-0 flex-1 overflow-hidden">
+    <div className="min-h-full flex-1">
       {tabs.map((tab) => (
         <div
           key={tab.key}
-          className={tab.key === activeTabKey ? "h-full" : "hidden h-full"}
+          className={
+            tab.key === activeTabKey
+              ? "min-h-full"
+              : "hidden min-h-full"
+          }
         >
           {tab.key === currentPathname
             ? children

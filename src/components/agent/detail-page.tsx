@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import useSWR from "swr"
-import { ArrowLeft, GitBranchPlus } from "lucide-react"
+import { GitBranchPlus } from "lucide-react"
 
 import {
   AgentConfigEditor,
@@ -17,7 +17,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { apiClient, fetcher } from "@/lib/api"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
 
@@ -76,7 +75,6 @@ type AgentDetailPageProps =
     }
 
 export function AgentDetailPage(props: AgentDetailPageProps) {
-  const navigate = useWorkspaceNavigate()
   const { updateTabMeta } = useWorkspaceTabs()
   const saveAction = useAsyncAction()
   const versionSaveAction = useAsyncAction()
@@ -184,10 +182,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     initialVersionAppliedRef.current = true
   }, [initialVersionId, versions])
 
-  const handleBack = React.useCallback(() => {
-    navigate("/dashboard/agent")
-  }, [navigate])
-
   const handleSaveAgent = React.useCallback(async () => {
     await saveAction.run(
       async () => {
@@ -215,12 +209,12 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
           await mutateAgent()
           const targetId = Number((saved as AgentRecord)?.id || agent?.id)
           if (Number.isFinite(targetId) && targetId > 0) {
-            navigate(`/dashboard/agent/${targetId}`)
+            window.history.replaceState(null, "", `/dashboard/agent/${targetId}`)
           }
         },
       },
     )
-  }, [agent, agentForm, isCreate, mutateAgent, navigate, saveAction])
+  }, [agent, agentForm, isCreate, mutateAgent, saveAction])
 
   const handleSaveVersion = React.useCallback(async () => {
     if (!agent) return
@@ -251,12 +245,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       <DetailPageLayout
         title="Agent"
         subtitle="Loading agent detail..."
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Agents
-          </Button>
-        }
       >
         <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
           Loading agent detail...
@@ -270,12 +258,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       <DetailPageLayout
         title="Agent"
         subtitle="Agent detail could not be loaded."
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Agents
-          </Button>
-        }
       >
         <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
           Agent not found or response payload was empty.
@@ -305,10 +287,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       }
       actions={
         <>
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Agents
-          </Button>
           {!isCreate && agent ? (
             <Button
               onClick={() => {
@@ -321,7 +299,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
             </Button>
           ) : null}
           <Button onClick={handleSaveAgent} disabled={saveAction.isLoading}>
-            {saveAction.isLoading ? "Saving..." : isCreate ? "Create Agent" : "Save Agent"}
+            {saveAction.isLoading ? "Saving..." : "Save Agent"}
           </Button>
         </>
       }

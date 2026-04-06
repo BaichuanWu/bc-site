@@ -19,6 +19,8 @@ type ListPageShellProps = {
   className?: string
 }
 
+// ListPageShell defines the shared list-page frame only.
+// Fetching, filters, and resource-specific actions belong to composition layers above it.
 export function ListPageActions({ actions }: { actions?: React.ReactNode }) {
   const actionNodes = React.Children.toArray(actions).filter(Boolean)
 

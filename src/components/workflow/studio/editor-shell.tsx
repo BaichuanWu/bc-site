@@ -3,9 +3,9 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import { Expand, Minimize2 } from "lucide-react"
-import { usePathname } from "next/navigation"
 
 import { JsonNode } from "@/components/common/json-node"
+import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 import { WorkflowCanvasEditor } from "@/components/workflow/canvas/editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ type WorkflowCanvasShellProps = {
   agentSearch: string
   onAgentSearchChange: (value: string) => void
   isLoadingAgents: boolean
+  pageKey: string
   onEditAgentVersion: (
     agent: AgentRecord,
     nodeKey: string,
@@ -111,18 +112,14 @@ export function WorkflowEditorShell({
   agentSearch,
   onAgentSearchChange,
   isLoadingAgents,
+  pageKey,
   onEditAgentVersion,
   onChange,
   onPreview,
 }: WorkflowCanvasShellProps) {
-  const pathname = usePathname()
-  const fullscreenStorageKey = React.useMemo(
-    () => `bc:workflow-editor:fullscreen:${pathname || "unknown"}`,
-    [pathname]
-  )
+  const { currentPathname } = useWorkspaceTabs()
   const [isFullscreen, setIsFullscreen] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
-  const [isFullscreenHydrated, setIsFullscreenHydrated] = React.useState(false)
   const definition = React.useMemo(
     () => parseJsonText<JsonObject>(definitionJson, {}),
     [definitionJson]
@@ -142,24 +139,9 @@ export function WorkflowEditorShell({
 
   React.useEffect(() => {
     if (!isMounted) return
-    setIsFullscreen(
-      window.sessionStorage.getItem(fullscreenStorageKey) === "true"
-    )
-    setIsFullscreenHydrated(true)
-  }, [fullscreenStorageKey, isMounted])
-
-  React.useEffect(() => {
-    if (!isMounted || !isFullscreenHydrated) return
-    window.sessionStorage.setItem(
-      fullscreenStorageKey,
-      isFullscreen ? "true" : "false"
-    )
-  }, [fullscreenStorageKey, isFullscreen, isFullscreenHydrated, isMounted])
-
-  React.useEffect(() => {
-    if (!isMounted) return
     const previousOverflow = document.body.style.overflow
-    if (isFullscreen) {
+    const isCurrentWorkflowRoute = currentPathname === pageKey
+    if (isFullscreen && isCurrentWorkflowRoute) {
       document.body.style.overflow = "hidden"
       document.documentElement.dataset.workflowEditorFullscreen = "true"
     } else {
@@ -169,7 +151,7 @@ export function WorkflowEditorShell({
       document.body.style.overflow = previousOverflow
       delete document.documentElement.dataset.workflowEditorFullscreen
     }
-  }, [isFullscreen, isMounted])
+  }, [currentPathname, isFullscreen, isMounted, pageKey])
 
   const fullscreenContent = (
     <div className="fixed inset-0 z-[130] bg-background p-4 md:p-6">
@@ -293,7 +275,7 @@ export function WorkflowEditorShell({
         definitionJson={definitionJson}
         onEdit={() => setIsFullscreen(true)}
       />
-      {isMounted && isFullscreenHydrated && isFullscreen
+      {isMounted && isFullscreen && currentPathname === pageKey
         ? createPortal(fullscreenContent, document.body)
         : null}
     </div>

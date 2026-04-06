@@ -152,16 +152,17 @@ export default function AlphaPage() {
         { key: "region", title: "Region", width: 80, align: 'center', className: "font-bold text-blue-500/80" },
         { key: "universe", title: "Universe", width: 100, truncate: true },
         { key: "delay", title: "Delay", width: 70, align: 'center' },
-        { key: "sharpe", title: "Sharpe", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
-        { key: "operatorCount", title: "Operator Count", align: 'right', sortable: true },
-        { key: "failCount", title: "Fail Count", align: 'right', sortable: true },
-        { key: "warnCount", title: "Warn Count", align: 'right', sortable: true },
-        { key: "fitness", title: "Fitness", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
-        { key: "margin", title: "Margin (ⱱ)", align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
-        { key: "turnover", title: "Turnover", align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
+        { key: "sharpe", title: "Sharpe", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
+        { key: "operatorCount", title: "Ops", width: 84, align: 'right', sortable: true },
+        { key: "failCount", title: "Fails", width: 84, align: 'right', sortable: true },
+        { key: "warnCount", title: "Warns", width: 84, align: 'right', sortable: true },
+        { key: "fitness", title: "Fitness", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
+        { key: "margin", title: "Margin", width: 96, align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
+        { key: "turnover", title: "Turn", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
         { 
             key: "pc", 
             title: "PC", 
+            width: 108,
             align: 'right', 
             sortable: true, 
             render: (val, item) => (
@@ -206,7 +207,7 @@ export default function AlphaPage() {
         {
             key: "wqbTyp",
             title: "Type",
-            width: 100,
+            width: 110,
             render: (_, item) => <Badge variant="outline">{item.wqbTypName || 'Regular (0)'}</Badge>
         },
         {

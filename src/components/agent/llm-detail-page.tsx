@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import useSWR from "swr"
-import { ArrowLeft } from "lucide-react"
 
 import { DetailPageLayout } from "@/components/common/detail-page-layout"
 import { Badge } from "@/components/ui/badge"
@@ -17,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAsyncAction } from "@/hooks/use-async-action"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { apiClient, fetcher } from "@/lib/api"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
@@ -55,7 +53,6 @@ type LlmDetailPageProps =
   | { mode: "edit"; llmId: number }
 
 export function LlmDetailPage(props: LlmDetailPageProps) {
-  const navigate = useWorkspaceNavigate()
   const saveAction = useAsyncAction()
   const isCreate = props.mode === "create"
   const llmId = props.mode === "edit" ? props.llmId : null
@@ -94,10 +91,6 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     })
   }, [isCreate, llm])
 
-  const handleBack = React.useCallback(() => {
-    navigate("/dashboard/agent/llm")
-  }, [navigate])
-
   const handleSave = React.useCallback(async () => {
     await saveAction.run(
       async () => {
@@ -124,24 +117,18 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           const nextId = Number((saved as LlmRecord)?.id || llmId)
           if (Number.isFinite(nextId) && nextId > 0) {
             await mutate()
-            navigate(`/dashboard/agent/llm/${nextId}`)
+            window.history.replaceState(null, "", `/dashboard/agent/llm/${nextId}`)
           }
         },
       },
     )
-  }, [form, isCreate, llmId, mutate, navigate, saveAction])
+  }, [form, isCreate, llmId, mutate, saveAction])
 
   if (!isCreate && llmId && !llm) {
     return (
       <DetailPageLayout
         title="LLM Configuration"
         subtitle="Loading provider detail..."
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to LLM Configs
-          </Button>
-        }
       >
         <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
           Loading provider detail...
@@ -163,16 +150,8 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       }
       actions={
         <>
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to LLM Configs
-          </Button>
           <Button onClick={handleSave} disabled={saveAction.isLoading}>
-            {saveAction.isLoading
-              ? "Saving..."
-              : isCreate
-                ? "Create LLM Config"
-                : "Save LLM Config"}
+            {saveAction.isLoading ? "Saving..." : "Save LLM Config"}
           </Button>
         </>
       }
@@ -252,4 +231,3 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     </DetailPageLayout>
   )
 }
-

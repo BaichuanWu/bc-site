@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import useSWR from "swr"
-import { ArrowLeft } from "lucide-react"
 
 import { DetailPageLayout } from "@/components/common/detail-page-layout"
 import { JsonNode } from "@/components/common/json-node"
@@ -129,6 +128,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   const { getOptions } = useMeta()
   const isCreate = props.mode === "create"
   const workflowId = props.mode === "edit" ? props.workflowId : null
+  const pageKey = isCreate ? "/dashboard/workflow/new" : `/dashboard/workflow/${workflowId}`
   const previewAction = useAsyncAction()
   const saveAction = useAsyncAction()
   const publishAction = useAsyncAction()
@@ -261,12 +261,12 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
           const nextId = Number((saved as WorkflowRecord)?.id || workflowId)
           if (Number.isFinite(nextId) && nextId > 0) {
             await mutateWorkflow()
-            navigate(`/dashboard/workflow/${nextId}`)
+            window.history.replaceState(null, "", `/dashboard/workflow/${nextId}`)
           }
         },
       },
     )
-  }, [form, isCreate, mutateWorkflow, navigate, saveAction, workflowId])
+  }, [form, isCreate, mutateWorkflow, saveAction, workflowId])
 
   const handleApplyTemplate = React.useCallback(() => {
     if (!selectedTemplate) return
@@ -301,10 +301,6 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
     )
   }, [mutateWorkflow, publishAction, workflowId])
 
-  const handleBack = React.useCallback(() => {
-    navigate("/dashboard/workflow")
-  }, [navigate])
-
   const domainOptions = getOptions("WorkflowDefinition", "DOMAIN_NAME_MAPPING").map((option) => ({
     label: String(option.label),
     value: String(option.value),
@@ -319,12 +315,6 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       <DetailPageLayout
         title="Workflow"
         subtitle="Loading workflow detail..."
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Workflow List
-          </Button>
-        }
       >
         <div className="rounded-2xl border border-dashed p-8 text-sm text-muted-foreground">
           Loading workflow detail...
@@ -352,12 +342,8 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       }
       actions={
         <>
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Workflow List
-          </Button>
           <Button onClick={handleSaveWorkflow} disabled={saveAction.isLoading}>
-            {saveAction.isLoading ? "Saving..." : isCreate ? "Create Workflow" : "Save Workflow"}
+            {saveAction.isLoading ? "Saving..." : "Save Workflow"}
           </Button>
         </>
       }
@@ -440,6 +426,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
         </div>
 
         <WorkflowEditorShell
+          pageKey={pageKey}
           definitionJson={form.definitionJson}
           uiSchemaJson={form.uiSchemaJson}
           availableAgents={filteredAgents}

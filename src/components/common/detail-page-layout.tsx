@@ -15,6 +15,8 @@ type DetailPageLayoutProps = {
   className?: string
 }
 
+// DetailPageLayout owns detail-page structure, not resource-specific flows.
+// Back navigation and data loading decisions should stay outside this shell.
 export function DetailPageLayout({
   title,
   subtitle,

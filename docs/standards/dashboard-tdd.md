@@ -22,6 +22,7 @@
 - tab 切换行为是什么
 - 返回上一个页面后的恢复行为是什么
 - 哪些行为绝对不允许出现
+- 当前抽象表达的是通用能力，还是偷偷带入了某个页面上下文
 
 ## Contract-First Rules
 
@@ -64,6 +65,22 @@
 - 当前页面到底是 list contract 还是 detail contract
 - 前端是否错误复用了 list parser
 
+### 2.1 Create / Edit Component Contract
+同一类资源的创建页和编辑页默认共用一个 detail component。
+
+规则：
+- route page 只负责传 `mode` 和 `id`
+- create 和 edit 的差异只应体现在：
+  - 初始值
+  - 数据加载
+  - 保存分支
+  - 少量条件动作
+- 不允许因为“创建”和“编辑”就复制两套页面结构
+
+开发前验收项：
+- create / edit 是否能由同一个 detail component 表达
+- 是否只是参数不同，却被拆成了两个 UI 文件
+
 ### 3. Options / Meta Contract
 元数据和 options 接口属于稳定会话数据。
 
@@ -90,6 +107,21 @@
 - 当前页面的 page-level spacing 由谁拥有
 - 这个页面是否复用了 `PageShell` / `ListPageShell` / `DetailPageLayout`
 
+### 4.1 Table Sticky Contract
+`DataTable` sticky header 只有在滚动上下文清晰时才成立。
+
+规则：
+- sticky header 依赖唯一主滚动容器
+- 页面主内容区负责纵向滚动，table 自身只负责横向滚动
+- `DataTable` 外层不应再叠加多个滚动祖先
+- 带显式列宽或固定列的复杂 table，应优先验证分离式 header/body 模式
+- `stickyTop` 只负责补偿宿主容器内部的固定顶部元素
+
+开发前验收项：
+- 当前 table 的主滚动容器是谁
+- table 外层是否还有第二个会影响 sticky 的 `overflow-*` 祖先
+- 这个 table 是页面级列表，还是局部嵌入式列表
+
 ### 5. Workspace Tab Contract
 tab 行为属于平台 contract，不属于单页自定义逻辑。
 
@@ -113,6 +145,7 @@ tab 行为属于平台 contract，不属于单页自定义逻辑。
 fullscreen、筛选器、当前上下文这类状态必须先定义恢复规则。
 
 规则：
+- 不跨 page 的纯 UI 状态必须保留在页面实例内，不得写入 `sessionStorage` / `localStorage`
 - 如果用户从编辑态跳到附属详情页，再返回，关键页面状态必须恢复
 - 恢复键必须和 route identity 绑定
 - hydrate 之前不能抢先把默认状态写回 storage
@@ -123,6 +156,7 @@ fullscreen、筛选器、当前上下文这类状态必须先定义恢复规则�
 - hydrate 和 persist 谁先发生
 
 禁止：
+- 为了保留单页 UI 状态把它写进 `sessionStorage`
 - mount 时“先写默认值，再读 storage”
 - 多个路由共用一个模糊 storage key
 
@@ -171,6 +205,7 @@ fullscreen、筛选器、当前上下文这类状态必须先定义恢复规则�
 - tab behavior
 - restore behavior
 - forbidden regressions
+- component semantic boundary
 
 ### Step 2. Write Verification Notes
 至少写出这 4 类检查：

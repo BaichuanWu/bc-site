@@ -168,13 +168,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <WorkspaceTabsProvider>
-            <div className="flex min-h-screen bg-background text-foreground">
+            <div className="flex h-screen overflow-hidden bg-background text-foreground">
                 {/* Desktop Sidebar */}
                 <aside className="hidden border-r bg-muted/20 md:block md:w-64 lg:w-72 fixed inset-y-0 left-0 z-50">
                     <NavContent />
                 </aside>
 
-                <div className="flex w-full flex-col md:pl-64 lg:pl-72">
+                <div className="flex min-h-0 w-full flex-col md:pl-64 lg:pl-72">
                     {/* Mobile Header */}
                     <header className="flex h-14 items-center gap-4 border-b bg-background/95 px-4 md:px-6 flex-shrink-0 sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
                         {mounted ? (
@@ -213,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <WorkspaceTabBar />
-                        <main className="min-h-0 flex-1 overflow-auto animate-in fade-in duration-500">
+                        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden animate-in fade-in duration-500">
                             <WorkspaceHost>{children}</WorkspaceHost>
                         </main>
                     </div>
