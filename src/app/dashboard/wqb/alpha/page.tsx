@@ -18,6 +18,7 @@ import { type SearchFilterItem } from "@/components/common/query-filters"
 import { getJsonObject } from "@/types/json"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
+import { useTaskAction } from "@/hooks/use-task-action"
 
 type Alpha = {
     id: string | number
@@ -56,18 +57,13 @@ const getStateBadge = (state: number) => {
 export default function AlphaPage() {
     const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>({})
     useWorkspaceTabTitle("/dashboard/wqb/alpha", "WQB Alphas")
+    const { runTask } = useTaskAction()
 
     const handleBatchSimulate = async () => {
-        try {
-            const res = await apiClient.post("/quants/wqb/alpha/simulate-batch", currentFilters)
-            const data = getJsonObject(res)
-            const taskId = typeof data?.task_id === "number" ? data.task_id : undefined
-            toast.success("Batch simulation started", {
-                description: taskId ? `Task ID: ${taskId}` : undefined
-            })
-        } catch {
-            toast.error("Failed to start batch simulation")
-        }
+        await runTask(
+            () => apiClient.post("/sys/tasks/run/simulate_batch_task", { kwargs: { query: currentFilters } }),
+            { fallbackSuccessMessage: "Batch simulation started", errorMessage: "Failed to start batch simulation" }
+        )
     }
 
     const filterItems: SearchFilterItem[] = React.useMemo(() => [
@@ -179,16 +175,10 @@ export default function AlphaPage() {
                                     className="h-6 w-6 opacity-0 group-hover/pc:opacity-100 transition-opacity"
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        try {
-                                            const res = await apiClient.post(`/quants/wqb/alpha/${item.id}/query-pc`);
-                                            const data = getJsonObject(res)
-                                            toast.success("PC update task started", {
-                                                description: typeof data?.task_id === "number" ? `Task ID: ${data.task_id}` : undefined
-                                            });
-                                            // onRefresh is passed from CrudLayout to DataTable
-                                        } catch {
-                                            toast.error("Failed to start PC update");
-                                        }
+                                        await runTask(
+                                            () => apiClient.post(`/sys/tasks/run/update_alpha_pc_task`, { kwargs: { alpha_id: item.id } }),
+                                            { fallbackSuccessMessage: "PC update task started", errorMessage: "Failed to start PC update" }
+                                        )
                                     }}
                                 >
                                     <RefreshCcw className="h-3.5 w-3.5 text-muted-foreground hover:text-indigo-600 transition-colors" />

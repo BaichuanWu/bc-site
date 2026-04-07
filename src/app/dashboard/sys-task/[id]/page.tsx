@@ -139,9 +139,8 @@ export default function TaskDetailPage() {
     }
 
     return (
-        <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
-            <div className="flex-1 overflow-y-auto">
-                <PageShell contentClassName="space-y-6 pb-24 animate-in fade-in duration-500">
+        <div className="bg-background font-sans">
+            <PageShell contentClassName="space-y-6 pb-24 animate-in fade-in duration-500">
                     {/* Header */}
                     <div className="flex items-center gap-4 border-b pb-6">
                         <Button
@@ -265,8 +264,7 @@ export default function TaskDetailPage() {
                             </ScrollArea>
                         </div>
                     </div>
-                </PageShell>
-            </div>
+            </PageShell>
         </div>
     )
 }

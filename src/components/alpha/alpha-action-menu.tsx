@@ -38,53 +38,47 @@ interface AlphaActionMenuProps {
     onSuccess?: () => void
 }
 
+import { useTaskAction } from "@/hooks/use-task-action"
 import { toast } from "sonner"
 
 export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
     const navigate = useWorkspaceNavigate()
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
     const [editedExpression, setEditedExpression] = React.useState(alpha.expression)
-    const [isLoading, setIsLoading] = React.useState(false)
+    const { runTask, isLoading } = useTaskAction()
 
-    const handleAction = async (action: string, endpoint: string) => {
-        try {
-            setIsLoading(true)
-            const res = await apiClient.post(endpoint)
-            const taskId = res.data?.task_id
-            toast.success(`${action} task created`, {
-                description: taskId ? `Task ID: ${taskId}` : undefined
-            })
-            onSuccess?.()
-        } catch {
-            toast.error(`Failed to ${action.toLowerCase()}`)
-        } finally {
-            setIsLoading(false)
-        }
+    const handleAction = async (action: string, taskName: string, kwargs: Record<string, any>) => {
+        await runTask(
+            () => apiClient.post(`/sys/tasks/run/${taskName}`, { kwargs }),
+            {
+                fallbackSuccessMessage: `${action} task created`,
+                errorMessage: `Failed to ${action.toLowerCase()}`,
+                onSuccess
+            }
+        )
     }
 
     const handleEditAndSimulate = async () => {
-        try {
-            setIsLoading(true)
-            // First update the alpha with new expression
-            await apiClient.put(`/quants/wqb/alpha`, {
-                id: alpha.id,
-                expression: editedExpression,
-                state: 1
-            })
-
-            // Then trigger simulation
-            const res = await apiClient.post(`/quants/wqb/alpha/${alpha.id}/simulate`)
-
-            toast.success("Alpha updated and simulation started", {
-                description: `Task ID: ${res.data?.task_id}`
-            })
-            setIsEditDialogOpen(false)
-            onSuccess?.()
-        } catch {
-            toast.error("Failed to update and simulate")
-        } finally {
-            setIsLoading(false)
-        }
+        await runTask(
+            async () => {
+                await apiClient.put(`/quants/wqb/alpha`, {
+                    id: alpha.id,
+                    expression: editedExpression,
+                    state: 1
+                })
+                return await apiClient.post(`/sys/tasks/run/alpha_simulate`, {
+                    kwargs: { alpha_ids: [alpha.id] }
+                })
+            },
+            {
+                fallbackSuccessMessage: "Alpha updated and simulation started",
+                errorMessage: "Failed to update and simulate",
+                onSuccess: () => {
+                    setIsEditDialogOpen(false)
+                    onSuccess?.()
+                }
+            }
+        )
     }
 
     // State conditions (assuming state 10 is Simulated, 20+ is Submitted/Active)
@@ -104,12 +98,12 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                 <DropdownMenuContent align="end" className="w-[200px]">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-                    <DropdownMenuItem onClick={() => handleAction("Simulate", `/quants/wqb/alpha/${alpha.id}/simulate`)}>
+                    <DropdownMenuItem onClick={() => handleAction("Simulate", "alpha_simulate", { alpha_ids: [alpha.id] })}>
                         <Play className="mr-2 h-4 w-4" /> Simulate
                     </DropdownMenuItem>
 
                     {isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Batch Neutralizations", `/quants/wqb/alpha/${alpha.id}/simulate-neutralizations`)}>
+                        <DropdownMenuItem onClick={() => handleAction("Batch Neutralizations", "simulate_neutralizations_task", { alpha_id: alpha.id })}>
                             <Zap className="mr-2 h-4 w-4" /> All Neutralizations
                         </DropdownMenuItem>
                     )}
@@ -121,13 +115,13 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     <DropdownMenuSeparator />
 
                     {isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Query PC", `/quants/wqb/alpha/${alpha.id}/query-pc`)}>
+                        <DropdownMenuItem onClick={() => handleAction("Query PC", "update_alpha_pc_task", { alpha_id: alpha.id })}>
                             <Search className="mr-2 h-4 w-4" /> Query PC
                         </DropdownMenuItem>
                     )}
 
                     {!isSubmitted && isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Submit", `/quants/wqb/alpha/${alpha.id}/submit`)}>
+                        <DropdownMenuItem onClick={() => handleAction("Submit", "submit_alpha_task", { alpha_id: alpha.id })}>
                             <Send className="mr-2 h-4 w-4" /> Submit to WQB
                         </DropdownMenuItem>
                     )}

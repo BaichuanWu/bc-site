@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { apiClient } from "@/lib/api"
 import { TokenChip } from "./token-chip"
 import { toast } from "sonner"
+import { showTaskStartedToast } from "@/components/task/task-started-toast"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 
 const FORM_FIELDS = [
     { name: 'instrumentType', label: 'Instrument Type' },
@@ -61,6 +63,7 @@ export function TaskDialog({
     const [bindings, setBindings] = React.useState<Record<string, string[]>>({})
     const [formData, setFormData] = React.useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const navigate = useWorkspaceNavigate()
 
     React.useEffect(() => {
         if (open) {
@@ -87,8 +90,14 @@ export function TaskDialog({
                 fieldData: bindings,
                 template_id: template?.id,
             }
-            await apiClient.post(`/quants/wqb/alpha-task`, payload)
-            toast.success("Task parameters saved and testing started!")
+            const res = await apiClient.post(`/quants/wqb/alpha-task`, payload)
+            const taskId = res.data?.task_id
+            
+            if (taskId) {
+                showTaskStartedToast(taskId, () => navigate(`/sys-task/${taskId}`))
+            } else {
+                toast.success("Task parameters saved and testing started!")
+            }
             onOpenChange(false)
         } catch (e) {
             toast.error("Failed to submit task")

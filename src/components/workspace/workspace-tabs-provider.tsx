@@ -60,6 +60,14 @@ function keepCurrentActiveTab(
   })
 }
 
+function SearchParamsSync({ onSearchChange }: { onSearchChange: (search: string) => void }) {
+  const searchParams = useSearchParams()
+  React.useEffect(() => {
+    onSearchChange(searchParams.toString())
+  }, [searchParams, onSearchChange])
+  return null
+}
+
 export function WorkspaceTabsProvider({
   children,
 }: {
@@ -67,8 +75,7 @@ export function WorkspaceTabsProvider({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const search = searchParams.toString()
+  const [search, setSearch] = React.useState("")
   const [state, setState] = React.useState<WorkspaceTabsState>(() =>
     createDefaultWorkspaceState(),
   )
@@ -200,6 +207,9 @@ export function WorkspaceTabsProvider({
 
   return (
     <WorkspaceTabsContext.Provider value={value}>
+      <React.Suspense fallback={null}>
+        <SearchParamsSync onSearchChange={setSearch} />
+      </React.Suspense>
       {children}
     </WorkspaceTabsContext.Provider>
   )

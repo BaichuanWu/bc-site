@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react"
 import { usePathname } from "next/navigation"
 import {
     Menu,
