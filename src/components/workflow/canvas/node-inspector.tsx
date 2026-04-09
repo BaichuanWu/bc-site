@@ -26,22 +26,22 @@ import { getJsonObject, type JsonObject } from "@/types/json"
 
 type AgentOption = {
   id: number
-  agent_id: number
+  agentId: number
   name: string
   version: string
-  agent_class: string
-  config_json?: Record<string, unknown>
+  agentClass: string
+  configJson?: Record<string, unknown>
   description?: string
-  version_description?: string
+  versionDescription?: string
 }
 
 type AgentVersionRecord = {
   id: number
-  agent_id: number
+  agentId: number
   version: string
   description?: string
-  config_json?: Record<string, unknown>
-  is_active?: number
+  configJson?: Record<string, unknown>
+  isActive?: number
 }
 
 type WorkflowNodeInspectorProps = {
@@ -79,7 +79,7 @@ export function WorkflowNodeInspector({
       null,
     [availableAgents, model.agent_version_id],
   )
-  const selectedAgentIdentityId = selectedAgentFromActive?.agent_id ?? null
+  const selectedAgentIdentityId = selectedAgentFromActive?.agentId ?? null
   const { data: agentVersions = [], isLoading: isLoadingVersions } = useSWR<
     AgentVersionRecord[]
   >(
@@ -101,24 +101,24 @@ export function WorkflowNodeInspector({
     if (selectedAgentFromActive) return selectedAgentFromActive
     if (!selectedVersionRecord) return null
     const identity =
-      availableAgents.find((agent) => agent.agent_id === selectedVersionRecord.agent_id) ||
+      availableAgents.find((agent) => agent.agentId === selectedVersionRecord.agentId) ||
       null
     if (!identity) return null
     return {
       ...identity,
       id: selectedVersionRecord.id,
       version: selectedVersionRecord.version,
-      version_description:
-        selectedVersionRecord.description || identity.version_description,
-      config_json: selectedVersionRecord.config_json || identity.config_json,
+      versionDescription:
+        selectedVersionRecord.description || identity.versionDescription,
+      configJson: selectedVersionRecord.configJson || identity.configJson,
     }
   }, [availableAgents, selectedAgentFromActive, selectedVersionRecord])
 
   const agentOptionsByIdentity = React.useMemo(() => {
     const unique = new Map<number, AgentOption>()
     for (const agent of availableAgents) {
-      if (!unique.has(agent.agent_id)) {
-        unique.set(agent.agent_id, agent)
+      if (!unique.has(agent.agentId)) {
+        unique.set(agent.agentId, agent)
       }
     }
     return Array.from(unique.values())
@@ -128,7 +128,7 @@ export function WorkflowNodeInspector({
     const keyword = agentSearch.trim().toLowerCase()
     if (!keyword) return agentOptionsByIdentity
     return agentOptionsByIdentity.filter((agent) =>
-      [agent.name, agent.agent_class, agent.description]
+      [agent.name, agent.agentClass, agent.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword)),
     )
@@ -330,7 +330,7 @@ export function WorkflowNodeInspector({
               {filteredAgentIdentities.length > 0 ? (
                 filteredAgentIdentities.map((agent) => (
                   <button
-                    key={agent.agent_id}
+                    key={agent.agentId}
                     type="button"
                     onClick={() => {
                       onUpdateNode((current) => ({
@@ -350,12 +350,12 @@ export function WorkflowNodeInspector({
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="truncate text-sm font-semibold">{agent.name}</div>
                       <div className="line-clamp-2 break-words text-xs text-muted-foreground">
-                        {agent.description || agent.agent_class}
+                        {agent.description || agent.agentClass}
                       </div>
                     </div>
                     <div className="flex max-w-[45%] shrink-0 flex-wrap items-center justify-end gap-2">
                       <Badge variant="outline" className="max-w-full truncate">
-                        {agent.agent_class}
+                        {agent.agentClass}
                       </Badge>
                       <Badge variant="secondary" className="max-w-full truncate">
                         current {agent.version}

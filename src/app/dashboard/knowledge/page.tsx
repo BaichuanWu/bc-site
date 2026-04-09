@@ -46,10 +46,10 @@ import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 type KnowledgeOptionsResponse = {
     defaults?: {
         domain?: number
-        source_type?: number
-        content_type?: number
-        raw_status?: number
-        document_status?: number
+        sourceType?: number
+        contentType?: number
+        rawStatus?: number
+        documentStatus?: number
         confidence?: string
     }
 }
@@ -58,19 +58,19 @@ type KnowledgeRawRecord = {
     id: number
     title: string
     domain: number
-    source_type: number
-    content_type: number
+    sourceType: number
+    contentType: number
     status: number
-    namespace_hint?: string
+    namespaceHint?: string
     tags?: string[]
     scope?: Record<string, unknown>
     summary?: string
     content?: string
-    source_ref?: string
-    related_object_type?: string
-    related_object_id?: number
-    reviewed_time?: string
-    update_time?: string
+    sourceRef?: string
+    relatedObjectType?: string
+    relatedObjectId?: number
+    reviewedTime?: string
+    updateTime?: string
 }
 
 type KnowledgeDocumentRecord = {
@@ -78,8 +78,8 @@ type KnowledgeDocumentRecord = {
     title: string
     domain: number
     namespace: string
-    doc_type: string
-    doc_key: string
+    docType: string
+    docKey: string
     version: string
     status: number
     tags?: string[]
@@ -87,32 +87,32 @@ type KnowledgeDocumentRecord = {
     summary?: string
     content?: string
     confidence?: string
-    published_time?: string
-    update_time?: string
+    publishedTime?: string
+    updateTime?: string
 }
 
 type RawFormState = {
     title: string
     domain: string
-    source_type: string
-    content_type: string
+    sourceType: string
+    contentType: string
     status: string
-    namespace_hint: string
+    namespaceHint: string
     tags: string
     scope: string
     summary: string
     content: string
-    source_ref: string
-    related_object_type: string
-    related_object_id: string
+    sourceRef: string
+    relatedObjectType: string
+    relatedObjectId: string
 }
 
 type DocumentFormState = {
     title: string
     domain: string
     namespace: string
-    doc_type: string
-    doc_key: string
+    docType: string
+    docKey: string
     version: string
     status: string
     tags: string
@@ -125,8 +125,8 @@ type DocumentFormState = {
 type PromoteFormState = {
     title: string
     namespace: string
-    doc_type: string
-    doc_key: string
+    docType: string
+    docKey: string
     version: string
     status: string
     confidence: string
@@ -135,25 +135,25 @@ type PromoteFormState = {
 const EMPTY_RAW_FORM: RawFormState = {
     title: "",
     domain: "0",
-    source_type: "0",
-    content_type: "0",
+    sourceType: "0",
+    contentType: "0",
     status: "0",
-    namespace_hint: "",
+    namespaceHint: "",
     tags: "[]",
     scope: "{}",
     summary: "",
     content: "",
-    source_ref: "",
-    related_object_type: "",
-    related_object_id: "",
+    sourceRef: "",
+    relatedObjectType: "",
+    relatedObjectId: "",
 }
 
 const EMPTY_DOCUMENT_FORM: DocumentFormState = {
     title: "",
     domain: "0",
     namespace: "general",
-    doc_type: "note",
-    doc_key: "",
+    docType: "note",
+    docKey: "",
     version: "1.0.0",
     status: "0",
     tags: "[]",
@@ -166,8 +166,8 @@ const EMPTY_DOCUMENT_FORM: DocumentFormState = {
 const EMPTY_PROMOTE_FORM: PromoteFormState = {
     title: "",
     namespace: "general",
-    doc_type: "note",
-    doc_key: "",
+    docType: "note",
+    docKey: "",
     version: "1.0.0",
     status: "0",
     confidence: "medium",
@@ -220,19 +220,19 @@ export default function KnowledgePage() {
         setRawForm((prev) => ({
             ...prev,
             domain: String(defaults.domain ?? 0),
-            source_type: String(defaults.source_type ?? 0),
-            content_type: String(defaults.content_type ?? 0),
-            status: String(defaults.raw_status ?? 0),
+            sourceType: String(defaults.sourceType ?? 0),
+            contentType: String(defaults.contentType ?? 0),
+            status: String(defaults.rawStatus ?? 0),
         }))
         setDocumentForm((prev) => ({
             ...prev,
             domain: String(defaults.domain ?? 0),
-            status: String(defaults.document_status ?? 0),
+            status: String(defaults.documentStatus ?? 0),
             confidence: defaults.confidence ?? "medium",
         }))
         setPromoteForm((prev) => ({
             ...prev,
-            status: String(defaults.document_status ?? 0),
+            status: String(defaults.documentStatus ?? 0),
             confidence: defaults.confidence ?? "medium",
         }))
     }, [options])
@@ -244,25 +244,25 @@ export default function KnowledgePage() {
             setRawForm({
                 title: item.title || "",
                 domain: String(item.domain ?? 0),
-                source_type: String(item.source_type ?? 0),
-                content_type: String(item.content_type ?? 0),
+                sourceType: String(item.sourceType ?? 0),
+                contentType: String(item.contentType ?? 0),
                 status: String(item.status ?? 0),
-                namespace_hint: item.namespace_hint || "",
+                namespaceHint: item.namespaceHint || "",
                 tags: formatJsonText(item.tags ?? [], "[]"),
                 scope: formatJsonText(item.scope ?? {}, "{}"),
                 summary: item.summary || "",
                 content: item.content || "",
-                source_ref: item.source_ref || "",
-                related_object_type: item.related_object_type || "",
-                related_object_id: item.related_object_id ? String(item.related_object_id) : "",
+                sourceRef: item.sourceRef || "",
+                relatedObjectType: item.relatedObjectType || "",
+                relatedObjectId: item.relatedObjectId ? String(item.relatedObjectId) : "",
             })
             return
         }
         setRawForm((prev) => ({
             ...EMPTY_RAW_FORM,
             domain: prev.domain,
-            source_type: prev.source_type,
-            content_type: prev.content_type,
+            sourceType: prev.sourceType,
+            contentType: prev.contentType,
             status: prev.status,
         }))
     }, [rawCrud.isDialogOpen, rawCrud.editingItem])
@@ -275,8 +275,8 @@ export default function KnowledgePage() {
                 title: item.title || "",
                 domain: String(item.domain ?? 0),
                 namespace: item.namespace || "general",
-                doc_type: item.doc_type || "note",
-                doc_key: item.doc_key || "",
+                docType: item.docType || "note",
+                docKey: item.docKey || "",
                 version: item.version || "1.0.0",
                 status: String(item.status ?? 0),
                 tags: formatJsonText(item.tags ?? [], "[]"),
@@ -380,18 +380,18 @@ export default function KnowledgePage() {
                 render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "DOMAIN_NAME_MAPPING", value)}</Badge>,
             },
             {
-                key: "source_type",
+                key: "sourceType",
                 title: "Source",
                 width: 120,
                 render: (value) => <Badge variant="secondary">{getLabel("KnowledgeRaw", "SOURCE_NAME_MAPPING", value)}</Badge>,
             },
             {
-                key: "content_type",
+                key: "contentType",
                 title: "Content",
                 width: 120,
                 render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "CONTENT_NAME_MAPPING", value)}</Badge>,
             },
-            { key: "namespace_hint", title: "Namespace Hint", width: 160 },
+            { key: "namespaceHint", title: "Namespace Hint", width: 160 },
             {
                 key: "status",
                 title: "Status",
@@ -410,15 +410,15 @@ export default function KnowledgePage() {
                             size="sm"
                             onClick={() => {
                                 const title = item.title || ""
-                                const namespace = item.namespace_hint || "general"
+                                const namespace = item.namespaceHint || "general"
                                 setPromotingRaw(item)
                                 setPromoteForm({
                                     title,
                                     namespace,
-                                    doc_type: "note",
-                                    doc_key: buildDocKey(namespace, title),
+                                    docType: "note",
+                                    docKey: buildDocKey(namespace, title),
                                     version: "1.0.0",
-                                    status: String(options?.defaults?.document_status ?? 0),
+                                    status: String(options?.defaults?.documentStatus ?? 0),
                                     confidence: options?.defaults?.confidence ?? "medium",
                                 })
                                 setPromoteOpen(true)
@@ -462,7 +462,7 @@ export default function KnowledgePage() {
                     <div className="space-y-1">
                         <div className="font-medium">{String(value || "-")}</div>
                         <div className="text-xs text-muted-foreground">
-                            {item.namespace} / {item.doc_type}
+                            {item.namespace} / {item.docType}
                         </div>
                     </div>
                 ),
@@ -473,7 +473,7 @@ export default function KnowledgePage() {
                 width: 120,
                 render: (value) => <Badge variant="outline">{getLabel("KnowledgeDocument", "DOMAIN_NAME_MAPPING", value)}</Badge>,
             },
-            { key: "doc_key", title: "Doc Key", width: 220, truncate: true, className: "font-mono text-xs" },
+            { key: "docKey", title: "Doc Key", width: 220, truncate: true, className: "font-mono text-xs" },
             { key: "version", title: "Version", width: 100 },
             {
                 key: "status",
@@ -520,17 +520,17 @@ export default function KnowledgePage() {
         await rawCrud.handleSave({
             title: rawForm.title,
             domain: Number(rawForm.domain || 0),
-            source_type: Number(rawForm.source_type || 0),
-            content_type: Number(rawForm.content_type || 0),
+            sourceType: Number(rawForm.sourceType || 0),
+            contentType: Number(rawForm.contentType || 0),
             status: Number(rawForm.status || 0),
-            namespace_hint: rawForm.namespace_hint || "",
+            namespaceHint: rawForm.namespaceHint || "",
             tags: parseJsonText(rawForm.tags, [] as string[]),
             scope: parseJsonText(rawForm.scope, {} as Record<string, unknown>),
             summary: rawForm.summary || "",
             content: rawForm.content || "",
-            source_ref: rawForm.source_ref || "",
-            related_object_type: rawForm.related_object_type || "",
-            related_object_id: rawForm.related_object_id ? Number(rawForm.related_object_id) : undefined,
+            sourceRef: rawForm.sourceRef || "",
+            relatedObjectType: rawForm.relatedObjectType || "",
+            relatedObjectId: rawForm.relatedObjectId ? Number(rawForm.relatedObjectId) : undefined,
         } as Partial<KnowledgeRawRecord>)
     }
 
@@ -539,8 +539,8 @@ export default function KnowledgePage() {
             title: documentForm.title,
             domain: Number(documentForm.domain || 0),
             namespace: documentForm.namespace,
-            doc_type: documentForm.doc_type,
-            doc_key: documentForm.doc_key || buildDocKey(documentForm.namespace, documentForm.title),
+            docType: documentForm.docType,
+            docKey: documentForm.docKey || buildDocKey(documentForm.namespace, documentForm.title),
             version: documentForm.version,
             status: Number(documentForm.status || 0),
             tags: parseJsonText(documentForm.tags, [] as string[]),
@@ -558,8 +558,8 @@ export default function KnowledgePage() {
             await apiClient.post(`/knowledge/raw/${promotingRaw.id}/promote`, {
                 title: promoteForm.title || undefined,
                 namespace: promoteForm.namespace,
-                doc_type: promoteForm.doc_type,
-                doc_key: promoteForm.doc_key || buildDocKey(promoteForm.namespace, promoteForm.title || promotingRaw.title),
+                docType: promoteForm.docType,
+                docKey: promoteForm.docKey || buildDocKey(promoteForm.namespace, promoteForm.title || promotingRaw.title),
                 version: promoteForm.version,
                 status: Number(promoteForm.status || 0),
                 confidence: promoteForm.confidence,
@@ -620,7 +620,7 @@ export default function KnowledgePage() {
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Namespace Hint</Label>
-                                            <Input value={rawForm.namespace_hint} onChange={(e) => setRawForm((prev) => ({ ...prev, namespace_hint: e.target.value }))} placeholder="econ_intuition" />
+                                            <Input value={rawForm.namespaceHint} onChange={(e) => setRawForm((prev) => ({ ...prev, namespaceHint: e.target.value }))} placeholder="econ_intuition" />
                                         </div>
                                     </div>
 
@@ -634,14 +634,14 @@ export default function KnowledgePage() {
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Source Type</Label>
-                                            <Select value={rawForm.source_type} onValueChange={(value) => setRawForm((prev) => ({ ...prev, source_type: value }))}>
+                                            <Select value={rawForm.sourceType} onValueChange={(value) => setRawForm((prev) => ({ ...prev, sourceType: value }))}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{sourceTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                                             </Select>
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Content Type</Label>
-                                            <Select value={rawForm.content_type} onValueChange={(value) => setRawForm((prev) => ({ ...prev, content_type: value }))}>
+                                            <Select value={rawForm.contentType} onValueChange={(value) => setRawForm((prev) => ({ ...prev, contentType: value }))}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>{contentTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -669,15 +669,15 @@ export default function KnowledgePage() {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="grid gap-2">
                                             <Label>Source Ref</Label>
-                                            <Input value={rawForm.source_ref} onChange={(e) => setRawForm((prev) => ({ ...prev, source_ref: e.target.value }))} placeholder="book / url / task / alpha / note" />
+                                            <Input value={rawForm.sourceRef} onChange={(e) => setRawForm((prev) => ({ ...prev, sourceRef: e.target.value }))} placeholder="book / url / task / alpha / note" />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Related Object Type</Label>
-                                            <Input value={rawForm.related_object_type} onChange={(e) => setRawForm((prev) => ({ ...prev, related_object_type: e.target.value }))} placeholder="task / alpha / article / experiment" />
+                                            <Input value={rawForm.relatedObjectType} onChange={(e) => setRawForm((prev) => ({ ...prev, relatedObjectType: e.target.value }))} placeholder="task / alpha / article / experiment" />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Related Object ID</Label>
-                                            <Input value={rawForm.related_object_id} onChange={(e) => setRawForm((prev) => ({ ...prev, related_object_id: e.target.value }))} />
+                                            <Input value={rawForm.relatedObjectId} onChange={(e) => setRawForm((prev) => ({ ...prev, relatedObjectId: e.target.value }))} />
                                         </div>
                                     </div>
 
@@ -739,7 +739,7 @@ export default function KnowledgePage() {
                                                     setDocumentForm((prev) => ({
                                                         ...prev,
                                                         title: e.target.value,
-                                                        doc_key: prev.doc_key || buildDocKey(prev.namespace, e.target.value),
+                                                        docKey: prev.docKey || buildDocKey(prev.namespace, e.target.value),
                                                     }))
                                                 }
                                             />
@@ -752,7 +752,7 @@ export default function KnowledgePage() {
                                                     setDocumentForm((prev) => ({
                                                         ...prev,
                                                         namespace: e.target.value,
-                                                        doc_key: buildDocKey(e.target.value, prev.title),
+                                                        docKey: buildDocKey(e.target.value, prev.title),
                                                     }))
                                                 }
                                             />
@@ -769,7 +769,7 @@ export default function KnowledgePage() {
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Doc Type</Label>
-                                            <Input value={documentForm.doc_type} onChange={(e) => setDocumentForm((prev) => ({ ...prev, doc_type: e.target.value }))} />
+                                            <Input value={documentForm.docType} onChange={(e) => setDocumentForm((prev) => ({ ...prev, docType: e.target.value }))} />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label>Version</Label>
@@ -790,7 +790,7 @@ export default function KnowledgePage() {
 
                                     <div className="grid gap-2">
                                         <Label>Doc Key</Label>
-                                        <Input value={documentForm.doc_key} onChange={(e) => setDocumentForm((prev) => ({ ...prev, doc_key: e.target.value }))} className="font-mono text-xs" />
+                                        <Input value={documentForm.docKey} onChange={(e) => setDocumentForm((prev) => ({ ...prev, docKey: e.target.value }))} className="font-mono text-xs" />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -852,12 +852,12 @@ export default function KnowledgePage() {
                             </div>
                             <div className="grid gap-2">
                                 <Label>Doc Type</Label>
-                                <Input value={promoteForm.doc_type} onChange={(e) => setPromoteForm((prev) => ({ ...prev, doc_type: e.target.value }))} />
+                                <Input value={promoteForm.docType} onChange={(e) => setPromoteForm((prev) => ({ ...prev, docType: e.target.value }))} />
                             </div>
                         </div>
                         <div className="grid gap-2">
                             <Label>Doc Key</Label>
-                            <Input value={promoteForm.doc_key} onChange={(e) => setPromoteForm((prev) => ({ ...prev, doc_key: e.target.value }))} className="font-mono text-xs" />
+                            <Input value={promoteForm.docKey} onChange={(e) => setPromoteForm((prev) => ({ ...prev, docKey: e.target.value }))} className="font-mono text-xs" />
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="grid gap-2">

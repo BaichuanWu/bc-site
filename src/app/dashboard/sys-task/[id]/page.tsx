@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { 
     ActivityIcon, 
     ArrowLeftIcon, 
     AlertTriangleIcon,
+    ChevronRightIcon,
     ClockIcon, 
     DatabaseIcon, 
-    Loader2Icon
+    Loader2Icon,
+    RotateCcwIcon
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +29,7 @@ import { TaskProgressBar } from '@/components/common/task-progress-bar'
 import { type TaskStatus } from '@/types/task'
 import { useWorkspaceNavigate } from '@/hooks/use-workspace-navigate'
 import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
+import { useAsyncAction } from '@/hooks/use-async-action'
 import { 
     mapStatusToServerState, 
     mapStatusToName, 
@@ -44,7 +47,91 @@ type TaskDetailRecord = {
     createTime?: string
     snapshot?: unknown
     context?: unknown
+    result?: unknown
     errorLog?: string | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+function getWorkflowNodeStatus(event: TaskEventRecord): string | null {
+    const nodeStatus = event.payload?.data?.nodeStatus
+    if (typeof nodeStatus === "string" && nodeStatus.length > 0) return nodeStatus
+    return null
+}
+
+function getWorkflowNodeRunId(event: TaskEventRecord): string | null {
+    const nodeRunId = event.payload?.data?.nodeRunId
+    if (typeof nodeRunId === "string" && nodeRunId.length > 0) return nodeRunId
+    return null
+}
+
+function collapseWorkflowNodeEvents(events: TaskEventRecord[]): TaskEventRecord[] {
+    const collapsed: TaskEventRecord[] = []
+    const openRunningIndexes = new Map<string, number>()
+
+    for (const event of events) {
+        const isWorkflowNode = event.payload?.kind === "workflow_node"
+        const step = event.payload?.step
+        const isRunning = getWorkflowNodeStatus(event) === "running"
+        const isCompleted = getWorkflowNodeStatus(event) === "completed"
+        const nodeRunId = getWorkflowNodeRunId(event)
+        const eventKey =
+            isWorkflowNode && typeof nodeRunId === "string" && nodeRunId.length > 0
+                ? nodeRunId
+                : isWorkflowNode && typeof step === "string"
+                  ? step
+                  : null
+
+        if (eventKey && isCompleted) {
+            const runningIndex = openRunningIndexes.get(eventKey)
+            if (runningIndex !== undefined) {
+                collapsed[runningIndex] = event
+                openRunningIndexes.delete(eventKey)
+                continue
+            }
+        }
+
+        if (eventKey && isRunning) {
+            const runningIndex = openRunningIndexes.get(eventKey)
+            if (runningIndex !== undefined) {
+                collapsed[runningIndex] = event
+                continue
+            }
+            openRunningIndexes.set(eventKey, collapsed.length)
+        }
+
+        collapsed.push(event)
+    }
+
+    return collapsed
+}
+
+function extractRelatedTaskIds(result: unknown, events: TaskEventRecord[]): number[] {
+    const ids: number[] = []
+    const seen = new Set<number>()
+
+    const pushId = (value: unknown) => {
+        if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) return
+        if (seen.has(value)) return
+        seen.add(value)
+        ids.push(value)
+    }
+
+    if (isRecord(result)) {
+        const taskIds = result.task_ids
+        if (Array.isArray(taskIds)) {
+            taskIds.forEach(pushId)
+        }
+    }
+
+    events.forEach((event) => {
+        const workflowTaskId = event.payload?.data?.workflowTaskId
+        pushId(workflowTaskId)
+    })
+
+    return ids
 }
 
 // --- Main Page ---
@@ -52,9 +139,10 @@ type TaskDetailRecord = {
 export default function TaskDetailPage() {
     const params = useParams()
     const navigate = useWorkspaceNavigate()
-    const task_id = params.id as string
+    const taskIdParam = params.id as string
     
     const [loading, setLoading] = useState(true)
+    const recoverAction = useAsyncAction()
     const { 
         status, 
         progress, 
@@ -62,9 +150,26 @@ export default function TaskDetailPage() {
         events, 
         snapshot, 
         setInitialState 
-    } = useTask(parseInt(task_id))
+    } = useTask(parseInt(taskIdParam))
 
     const [task, setTask] = useState<TaskDetailRecord | null>(null)
+
+    const fetchTask = useCallback(async () => {
+        const [taskRes, eventsRes] = await Promise.all([
+            apiClient.get(`/sys/tasks/${taskIdParam}`),
+            apiClient.get(`/sys/tasks/${taskIdParam}/events`)
+        ])
+        const t = taskRes as unknown as TaskDetailRecord
+        const evs = normalizeCrudListResponse<TaskEventRecord>(eventsRes)
+        setTask(t)
+        setInitialState(parseInt(taskIdParam), {
+            status: mapServerStateToStatus(t.state),
+            progress: { percent: t.progress, message: t.message },
+            snapshot: t.snapshot,
+            events: evs,
+            error: t.errorLog || null,
+        })
+    }, [taskIdParam, setInitialState])
 
     // Sync task state from hook back to local 'task' for UI compatibility
     const displayTask = useMemo(() => {
@@ -83,32 +188,24 @@ export default function TaskDetailPage() {
         }
     }, [task, status, progress, snapshot, error])
 
-    const displayEvents = events as TaskEventRecord[]
+    const displayEvents = useMemo(
+        () => collapseWorkflowNodeEvents(events as TaskEventRecord[]),
+        [events],
+    )
+    const relatedWorkflowTaskIds = useMemo(
+        () => extractRelatedTaskIds(displayTask?.result, displayEvents),
+        [displayTask?.result, displayEvents],
+    )
 
     useWorkspaceTabTitle(
-        `/dashboard/sys-task/${task_id}`,
-        displayTask?.name ? `Task: ${displayTask.name}` : `Task: ${task_id}`,
+        `/dashboard/sys-task/${taskIdParam}`,
+        displayTask?.name ? `Task: ${displayTask.name}` : `Task: ${taskIdParam}`,
     )
 
     useEffect(() => {
-        const fetchTask = async () => {
+        const loadTask = async () => {
             try {
-                const [taskRes, eventsRes] = await Promise.all([
-                    apiClient.get(`/sys/task/${task_id}`),
-                    apiClient.get(`/sys/task/${task_id}/events`)
-                ])
-                const t = taskRes as unknown as TaskDetailRecord
-                const evs = normalizeCrudListResponse<TaskEventRecord>(eventsRes)
-                setTask(t)
-                
-                // Seed the global provider so other components (like breadcrumbs) know the state
-                setInitialState(parseInt(task_id), {
-                    status: mapServerStateToStatus(t.state),
-                    progress: { percent: t.progress, message: t.message },
-                    snapshot: t.snapshot,
-                    events: evs,
-                    error: t.errorLog || null,
-                })
+                await fetchTask()
             } catch (err) {
                 console.error("Failed to fetch task:", err)
             } finally {
@@ -116,8 +213,30 @@ export default function TaskDetailPage() {
             }
         }
 
-        fetchTask()
-    }, [task_id, setInitialState])
+        loadTask()
+    }, [fetchTask])
+
+    const recoverableStates: number[] = [
+        TASK_STATE.RUNNING,
+        TASK_STATE.ERROR,
+        TASK_STATE.FAILED,
+    ]
+    const canRecover = displayTask
+        ? recoverableStates.includes(displayTask.state)
+        : false
+
+    const handleRecover = async () => {
+        await recoverAction.run(
+            async () => apiClient.post(`/sys/tasks/recover/${taskIdParam}`),
+            {
+                successMessage: "Task resumed from last checkpoint",
+                errorMessage: "Failed to resume task",
+                onSuccess: async () => {
+                    await fetchTask()
+                },
+            },
+        )
+    }
 
     if (loading) {
         return (
@@ -160,9 +279,23 @@ export default function TaskDetailPage() {
                                 </Badge>
                             </div>
                             <div className="text-[11px] font-mono text-muted-foreground mt-1 opacity-80">
-                                UUID: {task_id} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
+                                UUID: {taskIdParam} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
                             </div>
                         </div>
+                        {canRecover ? (
+                            <Button
+                                onClick={handleRecover}
+                                disabled={recoverAction.isLoading}
+                                className="gap-2 rounded-full"
+                            >
+                                {recoverAction.isLoading ? (
+                                    <Loader2Icon className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <RotateCcwIcon className="h-4 w-4" />
+                                )}
+                                Resume From Checkpoint
+                            </Button>
+                        ) : null}
                     </div>
 
                     {displayTask.errorLog ? (
@@ -195,7 +328,7 @@ export default function TaskDetailPage() {
                                             <span className="text-2xl font-black tracking-tighter text-primary">{displayTask.progress}%</span>
                                         </div>
                                         <TaskProgressBar 
-                                            taskId={parseInt(task_id)} 
+                                            taskId={parseInt(taskIdParam)} 
                                             initialData={{ 
                                                 progress: { percent: displayTask.progress }, 
                                                 status: mapServerStateToStatus(displayTask.state) 
@@ -233,6 +366,27 @@ export default function TaskDetailPage() {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {relatedWorkflowTaskIds.length > 0 ? (
+                                <Card className="border-none shadow-sm bg-muted/5 overflow-hidden border border-white/5">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-[10px] font-black uppercase tracking-tighter opacity-40">Spawned Workflow Tasks</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        {relatedWorkflowTaskIds.map((relatedTaskId) => (
+                                            <Button
+                                                key={relatedTaskId}
+                                                variant="outline"
+                                                className="w-full justify-between rounded-xl"
+                                                onClick={() => navigate(`/dashboard/sys-task/${relatedTaskId}`)}
+                                            >
+                                                <span className="font-mono text-xs">Task #{relatedTaskId}</span>
+                                                <ChevronRightIcon className="h-4 w-4" />
+                                            </Button>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            ) : null}
                         </div>
 
                         {/* Right: Timeline */}

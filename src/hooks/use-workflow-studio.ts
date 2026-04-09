@@ -17,8 +17,8 @@ type WorkflowOptionsResponse = {
   }
   templates?: Record<string, Record<string, unknown>>
   meta?: {
-    node_types?: Record<string, string>
-    edge_types?: Record<string, string>
+    nodeTypes?: Record<string, string>
+    edgeTypes?: Record<string, string>
   }
 }
 
@@ -37,26 +37,26 @@ export type WorkflowRecord = {
 }
 
 export type WorkflowPreview = {
-  dsl_version?: string
-  node_count?: number
-  edge_count?: number
-  state_fields?: string[]
-  node_keys?: string[]
-  duplicate_node_keys?: string[]
-  invalid_edges?: Record<string, unknown>[]
+  dslVersion?: string
+  nodeCount?: number
+  edgeCount?: number
+  stateFields?: string[]
+  nodeKeys?: string[]
+  duplicateNodeKeys?: string[]
+  invalidEdges?: Record<string, unknown>[]
   warnings?: string[]
   nodes?: Array<Record<string, unknown>>
 }
 
 export type AgentRecord = {
   id: number
-  agent_id: number
+  agentId: number
   name: string
   version: string
-  agent_class: string
+  agentClass: string
   description?: string
-  version_description?: string
-  config_json?: Record<string, unknown>
+  versionDescription?: string
+  configJson?: Record<string, unknown>
 }
 
 export type WorkflowFormState = {
@@ -135,7 +135,7 @@ export function useWorkflowStudio() {
     const keyword = agentSearch.trim().toLowerCase()
     if (!keyword) return items
     return items.filter((agent) =>
-      [agent.name, agent.version, agent.agent_class]
+      [agent.name, agent.version, agent.agentClass]
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
@@ -210,7 +210,7 @@ export function useWorkflowStudio() {
           form.taskKwargsJson,
         )
         return (await apiClient.post("/workflow-definition/preview", {
-          definition_json: definitionJson,
+          definitionJson: definitionJson,
         })) as WorkflowPreview
       },
       {
@@ -236,7 +236,7 @@ export function useWorkflowStudio() {
 
     try {
       const res = await apiClient.post("/workflow-definition/preview", {
-        definition_json: definitionJson,
+        definitionJson: definitionJson,
       })
       setPreview(res as WorkflowPreview)
     } catch {
@@ -262,7 +262,7 @@ export function useWorkflowStudio() {
       await publishAction.run(
         async () => {
           await apiClient.post("/workflow-definition/publish", {
-            workflow_id: workflowId,
+            workflowId: workflowId,
           })
         },
         {

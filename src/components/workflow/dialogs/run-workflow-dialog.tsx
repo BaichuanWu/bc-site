@@ -25,7 +25,7 @@ interface RunWorkflowDialogProps {
 }
 
 type RunTaskResponse = {
-  task_id: number | string
+  taskId: number | string
 }
 
 function formatInitialKwargs(initialKwargs?: Record<string, unknown>) {
@@ -61,15 +61,15 @@ export function RunWorkflowDialog({
         const kwargs = parseJsonText(kwargsText, {})
         const payload: Record<string, unknown> = { kwargs }
         if (showSessionId && sessionId.trim()) {
-          payload.session_id = sessionId.trim()
+          payload.sessionId = sessionId.trim()
         }
-        return (await apiClient.post(`/sys/run/${workflowName}`, payload)) as RunTaskResponse
+        return (await apiClient.post(`/sys/tasks/run/${workflowName}`, payload)) as RunTaskResponse
       },
       {
         errorMessage: "Failed to start workflow",
         onSuccess: async (res) => {
-          showTaskStartedToast(res.task_id, () =>
-            navigate(`/dashboard/sys-task/${res.task_id}`),
+          showTaskStartedToast(res.taskId, () =>
+            navigate(`/dashboard/sys-task/${res.taskId}`),
           )
           onOpenChange(false)
         },

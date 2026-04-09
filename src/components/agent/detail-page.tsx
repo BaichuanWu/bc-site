@@ -39,8 +39,8 @@ type AgentVersionRecord = {
 }
 
 type AgentOptionsResponse = {
-  agent_classes?: string[]
-  config_specs?: Record<string, AgentConfigSpec>
+  agentClasses?: string[]
+  configSpecs?: Record<string, AgentConfigSpec>
 }
 
 type AgentFormState = {
@@ -107,12 +107,12 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   )
 
   const agentClassOptions = React.useMemo(
-    () => agentOptions?.agent_classes ?? [],
-    [agentOptions?.agent_classes],
+    () => agentOptions?.agentClasses ?? [],
+    [agentOptions?.agentClasses],
   )
   const currentVersionSpec =
-    agent && agentOptions?.config_specs
-      ? agentOptions.config_specs[agent.agentClass] || null
+    agent && agentOptions?.configSpecs
+      ? agentOptions.configSpecs[agent.agentClass] || null
       : null
 
   const [agentForm, setAgentForm] = React.useState<AgentFormState>(EMPTY_AGENT_FORM)

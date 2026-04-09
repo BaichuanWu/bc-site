@@ -9,7 +9,7 @@ export function useTaskAction() {
     const navigate = useWorkspaceNavigate()
     const { run, isLoading } = useAsyncAction()
 
-    const runTask = useCallback(async <T = any>(
+    const runTask = useCallback(async <T = unknown>(
         action: () => Promise<T>,
         options?: { 
             fallbackSuccessMessage?: string
@@ -21,7 +21,7 @@ export function useTaskAction() {
             errorMessage: options?.errorMessage || "Task execution failed",
             onSuccess: async (res) => {
                 const data = getJsonObject(res)
-                const taskId = typeof data?.task_id === "number" ? data.task_id : typeof data?.task_id === "string" ? parseInt(data.task_id) : undefined
+                const taskId = typeof data?.taskId === "number" ? data.taskId : typeof data?.taskId === "string" ? parseInt(data.taskId) : undefined
                 
                 if (taskId) {
                     showTaskStartedToast(taskId, () => navigate(`/sys-task/${taskId}`))

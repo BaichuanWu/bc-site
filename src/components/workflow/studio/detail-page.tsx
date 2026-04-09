@@ -199,7 +199,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
     const keyword = agentSearch.trim().toLowerCase()
     if (!keyword) return activeAgents
     return activeAgents.filter((agent) =>
-      [agent.name, agent.version, agent.agent_class]
+      [agent.name, agent.version, agent.agentClass]
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
@@ -213,7 +213,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
           form.taskKwargsJson,
         )
         return (await apiClient.post("/workflow-definition/preview", {
-          definition_json: definitionJson,
+          definitionJson: definitionJson,
         })) as WorkflowPreview
       },
       {
@@ -290,7 +290,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   const handlePublish = React.useCallback(async () => {
     if (!workflowId) return
     await publishAction.run(
-      async () => apiClient.post("/workflow-definition/publish", { workflow_id: workflowId }),
+      async () => apiClient.post("/workflow-definition/publish", { workflowId: workflowId }),
       {
         successMessage: "Workflow published",
         errorMessage: "Failed to publish workflow",
@@ -435,7 +435,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
           isLoadingAgents={false}
           onEditAgentVersion={(agent, nodeKey) => {
             void nodeKey
-            navigate(`/dashboard/agent/${agent.agent_id}`, `versionId=${agent.id}`)
+            navigate(`/dashboard/agent/${agent.agentId}`, `versionId=${agent.id}`)
           }}
           preview={preview}
           onPreview={handlePreview}

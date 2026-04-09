@@ -13,12 +13,12 @@ import { Input } from "@/components/ui/input"
 
 type AgentOption = {
   id: number
-  agent_id: number
+  agentId: number
   name: string
   version: string
-  agent_class: string
+  agentClass: string
   description?: string
-  config_json?: Record<string, unknown>
+  configJson?: Record<string, unknown>
 }
 
 type WorkflowNodePickerDialogProps = {
@@ -71,7 +71,7 @@ export function WorkflowNodePickerDialog({
                   <div className="space-y-1">
                     <div className="text-sm font-semibold">{agent.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {agent.description || agent.agent_class}
+                      {agent.description || agent.agentClass}
                     </div>
                   </div>
                   <Badge variant="outline">{agent.version}</Badge>

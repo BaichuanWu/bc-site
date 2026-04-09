@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:dashboard-standards": "node scripts/check-dashboard-standards.mjs"
+    "check:dashboard-standards": "node scripts/check-dashboard-standards.mjs",
+    "check:api-casing": "node scripts/check-api-casing.mjs",
+    "check:frontend-contracts": "pnpm run check:dashboard-standards && pnpm run check:api-casing"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

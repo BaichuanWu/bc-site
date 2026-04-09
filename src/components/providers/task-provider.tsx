@@ -29,7 +29,7 @@ type TaskUpdatePayload = {
     message?: string
     progress?: number
     snapshot?: unknown
-    error_log?: string | null
+    errorLog?: string | null
     event?: TaskEventRecord
 }
 
@@ -102,9 +102,9 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     const updateRemoteSubscription = useCallback(async (taskIds: number[], action: 'subscribe' | 'unsubscribe') => {
         try {
             console.log(`[TaskProvider] ${action} tasks:`, taskIds)
-            await apiClient.post('/sys/subscription', {
-                session_id: sessionId,
-                task_ids: taskIds,
+            await apiClient.post('/sys/tasks/subscription', {
+                sessionId: sessionId,
+                taskIds: taskIds,
                 action
             })
         } catch (err) {
@@ -153,7 +153,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         if (eventSourceRef.current) eventSourceRef.current.close()
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
 
-        const url = `/api/v1/sys/stream/session/${sessionId}`
+        const url = `/api/v1/sys/tasks/stream/session/${sessionId}`
         console.log(`[TaskProvider] Establishing SSE Connection: ${url}`)
         const es = new EventSource(url)
         eventSourceRef.current = es
@@ -239,7 +239,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                                 percent: data.progress,
                             },
                             snapshot: data.snapshot || newState.snapshot,
-                            error: data.error_log || newState.error,
+                            error: data.errorLog || newState.error,
                             lastUpdated: Date.now()
                         }
                     }
@@ -347,9 +347,9 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     const getTaskState = useCallback((taskId: number) => taskStates[taskId], [taskStates])
 
     const runTask = async (taskName: string, context: Record<string, unknown>) => {
-        const res = await apiClient.post(`/sys/run/${taskName}`, context)
+        const res = await apiClient.post(`/sys/tasks/run/${taskName}`, context)
         const data = getJsonObject(res)
-        const taskId = data?.task_id
+        const taskId = data?.taskId
         return typeof taskId === "number" ? taskId : undefined
     }
 

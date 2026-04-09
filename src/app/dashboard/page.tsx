@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { Activity, FileText, Lightbulb, Zap, Rocket, BarChart3, Sparkles, RefreshCcw } from "lucide-react"
+import { Zap, Rocket, BarChart3, Sparkles, RefreshCcw } from "lucide-react"
 
 import { PageShell } from "@/components/common/page-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,18 +13,18 @@ import { showTaskStartedToast } from "@/components/task/task-started-toast"
 import { useTaskSystem } from "@/components/providers/task-provider"
 
 type OverviewStats = {
-    today_submitted: {
+    todaySubmitted: {
         ra: number
         sa: number
         total: number
     }
-    rate_limit: {
+    rateLimit: {
         limit: number
         remaining: number
-        reset_seconds: number
-        updated_at: string
+        resetSeconds: number
+        updatedAt: string
     }
-    last_fetch_time?: string
+    lastFetchTime?: string
 }
 
 export default function DashboardOverviewPage() {
@@ -67,7 +67,7 @@ export default function DashboardOverviewPage() {
                 minute: "2-digit",
                 second: "2-digit",
             })
-        } catch (e) {
+        } catch {
             return isoString
         }
     }
@@ -79,10 +79,10 @@ export default function DashboardOverviewPage() {
                     <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
                     <div className="text-muted-foreground flex items-center gap-2 mt-1">
                         <span>Welcome back to your quantitative workspace.</span>
-                        {stats?.last_fetch_time && (
+                        {stats?.lastFetchTime && (
                             <span className="text-xs border-l pl-2 border-border/60 text-muted-foreground/60 flex items-center gap-1">
                                 <RefreshCcw className="h-3 w-3" />
-                                Last sync: {formatLocalTime(stats.last_fetch_time)}
+                                Last sync: {formatLocalTime(stats.lastFetchTime)}
                             </span>
                         )}
                     </div>
@@ -108,14 +108,14 @@ export default function DashboardOverviewPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : `${stats?.rate_limit?.remaining ?? 0} / ${stats?.rate_limit?.limit ?? 0}`}
+                            {isLoading ? "..." : `${stats?.rateLimit?.remaining ?? 0} / ${stats?.rateLimit?.limit ?? 0}`}
                         </div>
                         <div className="flex flex-col gap-1 mt-1">
                             <p className="text-xs text-muted-foreground">
                                 Remaining backtests for today
                             </p>
                             <p className="text-[10px] text-muted-foreground/60 italic">
-                                Last updated: {formatLocalTime(stats?.rate_limit?.updated_at)}
+                                Last updated: {formatLocalTime(stats?.rateLimit?.updatedAt)}
                             </p>
                         </div>
                     </CardContent>
@@ -129,7 +129,7 @@ export default function DashboardOverviewPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : (stats?.today_submitted?.ra ?? 0)}
+                            {isLoading ? "..." : (stats?.todaySubmitted?.ra ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Regular Alphas today
@@ -145,7 +145,7 @@ export default function DashboardOverviewPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : (stats?.today_submitted?.sa ?? 0)}
+                            {isLoading ? "..." : (stats?.todaySubmitted?.sa ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Super Alphas today
@@ -161,7 +161,7 @@ export default function DashboardOverviewPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {isLoading ? "..." : (stats?.today_submitted?.total ?? 0)}
+                            {isLoading ? "..." : (stats?.todaySubmitted?.total ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Combined alpha submissions

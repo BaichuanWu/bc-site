@@ -11,16 +11,23 @@ export default function LlmEditPage() {
 
   if (!Number.isFinite(llmId) || llmId <= 0) {
     return (
-      <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+      <Suspense
+        fallback={
+          <div className="p-8 text-center text-muted-foreground">Loading...</div>
+        }
+      >
         <LlmDetailPage mode="create" />
       </Suspense>
     )
   }
 
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-muted-foreground">Loading...</div>
+      }
+    >
       <LlmDetailPage mode="edit" llmId={llmId} />
     </Suspense>
   )
 }
-

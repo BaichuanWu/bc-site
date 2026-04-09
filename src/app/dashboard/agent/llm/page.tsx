@@ -15,10 +15,10 @@ type LlmRecord = {
   id: number
   name: string
   provider: string
-  model_name: string
-  api_key: string
-  base_url: string
-  is_active: number
+  modelName: string
+  apiKey: string
+  baseUrl: string
+  isActive: number
 }
 
 export default function LlmPage() {
@@ -30,9 +30,9 @@ export default function LlmPage() {
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Config Name", type: "text" },
     { key: "provider", label: "Provider", type: "text" },
-    { key: "model_name", label: "Model Name", type: "text" },
+    { key: "modelName", label: "Model Name", type: "text" },
     {
-      key: "is_active",
+      key: "isActive",
       label: "Status",
       type: "number",
       options: [
@@ -46,7 +46,7 @@ export default function LlmPage() {
     { key: "name", title: "Name", className: "text-sm font-medium" },
     { key: "provider", title: "Provider", className: "text-sm" },
     {
-      key: "model_name",
+      key: "modelName",
       title: "Default Model",
       render: (value: unknown) => (
         <div className="space-y-1">
@@ -56,7 +56,7 @@ export default function LlmPage() {
       ),
     },
     {
-      key: "base_url",
+      key: "baseUrl",
       title: "Endpoint",
       render: (value: unknown) => (
         <div className="max-w-[220px] truncate text-xs text-muted-foreground">
@@ -65,7 +65,7 @@ export default function LlmPage() {
       ),
     },
     {
-      key: "api_key",
+      key: "apiKey",
       title: "Credential",
       render: (value: unknown) => (
         <span className="text-xs font-mono text-muted-foreground">
@@ -74,7 +74,7 @@ export default function LlmPage() {
       ),
     },
     {
-      key: "is_active",
+      key: "isActive",
       title: "Status",
       render: (val: unknown) => (
         <Badge variant={val ? "default" : "secondary"} className="text-[10px]">

@@ -88,10 +88,10 @@ export function TaskDialog({
             const payload = {
                 ...formData,
                 fieldData: bindings,
-                template_id: template?.id,
+                templateId: template?.id,
             }
             const res = await apiClient.post(`/quants/wqb/alpha-task`, payload)
-            const taskId = res.data?.task_id
+            const taskId = res.data?.taskId
             
             if (taskId) {
                 showTaskStartedToast(taskId, () => navigate(`/sys-task/${taskId}`))

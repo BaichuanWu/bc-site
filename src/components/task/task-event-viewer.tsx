@@ -31,9 +31,18 @@ export type TaskEventPayload = {
   status?: number
   message?: string
   result?: unknown
-  messages?: unknown[]
   trace?: unknown[]
-  data?: Record<string, unknown> | null
+  data?: {
+    displayMode?: "io" | "conversation"
+    displayInput?: unknown
+    displayOutput?: unknown
+    transcriptMessages?: unknown[]
+    traceEvents?: unknown[]
+    nodeStatus?: string
+    agentKind?: string
+    nodeRunId?: string
+    [key: string]: unknown
+  } | null
 }
 
 export type TaskEventRecord = {
@@ -47,17 +56,14 @@ export type TaskEventRecord = {
 type TaskEventKindConfig = {
   title?: string
   summary?: (event: TaskEventRecord) => string
-  showTranscript?: boolean
 }
 
 const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
   workflow_node: {
     summary: (event) => `Audit trail for ${event.payload?.step || "step"}`,
-    showTranscript: true,
   },
   agent_run: {
     summary: (event) => `Agent execution for ${event.payload?.node || "node"}`,
-    showTranscript: true,
   },
   batch_progress: {
     title: "Batch Progress",
@@ -77,8 +83,32 @@ function getTraceArtifacts(trace: unknown): Record<string, unknown>[] {
   if (!Array.isArray(trace)) return []
   return trace.filter(
     (item): item is Record<string, unknown> =>
-      isRecord(item) && item.type !== "message_added",
+      isRecord(item) && item.type !== "conversation_turn",
   )
+}
+
+function getDisplayMode(event: TaskEventRecord) {
+  const mode = event.payload?.data?.displayMode
+  return mode === "conversation" ? "conversation" : "io"
+}
+
+function getArtifactData(event: TaskEventRecord, isResultEvent: boolean) {
+  if (isResultEvent) return null
+  const data = event.payload?.data
+  if (!isRecord(data)) return event.payload
+  const rest = { ...data }
+  delete rest.displayInput
+  delete rest.displayOutput
+  delete rest.transcriptMessages
+  delete rest.traceEvents
+  delete rest.displayMode
+  delete rest.node_input
+  delete rest.node_output
+  delete rest.agent_kind
+  delete rest.nodeStatus
+  delete rest.agentKind
+  delete rest.nodeRunId
+  return rest
 }
 
 function getEventTitle(event: TaskEventRecord) {
@@ -149,14 +179,16 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
   const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
   const resultData = event.payload?.result
   const payloadKind = getPayloadKind(event)
-  const traceArtifacts = getTraceArtifacts(event.payload?.trace)
-  const shouldShowTranscript =
-    !isResultEvent && Boolean(TASK_EVENT_KIND_CONFIG[payloadKind]?.showTranscript)
-  const artifactData = isResultEvent
-    ? null
-    : isRecord(event.payload?.data)
-      ? event.payload.data
-      : event.payload
+  const displayMode = getDisplayMode(event)
+  const transcriptMessages = event.payload?.data?.transcriptMessages || []
+  const traceArtifacts =
+    getTraceArtifacts(event.payload?.data?.traceEvents) ||
+    getTraceArtifacts(event.payload?.trace)
+  const shouldShowTranscript = !isResultEvent && displayMode === "conversation"
+  const displayInput = event.payload?.data?.displayInput
+  const displayOutput = event.payload?.data?.displayOutput
+  const nodeRunId = event.payload?.data?.nodeRunId
+  const artifactData = getArtifactData(event, isResultEvent)
 
   return (
     <>
@@ -235,6 +267,11 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                     ? new Date(event.createTime).toLocaleString()
                     : "N/A"}
                 </SheetDescription>
+                {nodeRunId ? (
+                  <div className="text-[10px] font-mono opacity-50 break-all">
+                    Node Run ID: {nodeRunId}
+                  </div>
+                ) : null}
               </div>
             </div>
           </SheetHeader>
@@ -242,7 +279,34 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="p-8 max-w-full mx-auto">
               {shouldShowTranscript ? (
-                <DialogueTranscript messages={event.payload?.messages || []} />
+                <div className="space-y-6">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
+                    Transcript
+                  </h4>
+                  <DialogueTranscript messages={transcriptMessages} />
+                </div>
+              ) : null}
+
+              {!isResultEvent && displayInput !== undefined ? (
+                <div className={cn("space-y-6", shouldShowTranscript ? "mt-16 pt-16 border-t border-white/5" : "")}>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
+                    Input
+                  </h4>
+                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
+                    <JsonNode data={displayInput} depth={0} />
+                  </div>
+                </div>
+              ) : null}
+
+              {!isResultEvent && displayOutput !== undefined && displayOutput !== null ? (
+                <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
+                    Output
+                  </h4>
+                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
+                    <JsonNode data={displayOutput} depth={0} />
+                  </div>
+                </div>
               ) : null}
 
               {traceArtifacts.length > 0 ? (
@@ -270,7 +334,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
               {isRecord(artifactData) && Object.keys(artifactData).length > 0 ? (
                 <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    {shouldShowTranscript ? "Process Artifacts" : "Event Payload"}
+                    Event Payload
                   </h4>
                   <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
                     <JsonNode data={artifactData} depth={0} />

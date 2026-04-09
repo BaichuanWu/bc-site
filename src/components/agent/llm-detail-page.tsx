@@ -24,28 +24,28 @@ type LlmRecord = {
   id: number
   name: string
   provider: string
-  model_name: string
-  api_key: string
-  base_url: string
-  is_active: number
+  modelName: string
+  apiKey: string
+  baseUrl: string
+  isActive: number
 }
 
 type LlmFormState = {
   name: string
   provider: string
-  model_name: string
-  api_key: string
-  base_url: string
-  is_active: string
+  modelName: string
+  apiKey: string
+  baseUrl: string
+  isActive: string
 }
 
 const EMPTY_FORM: LlmFormState = {
   name: "",
   provider: "openai",
-  model_name: "gpt-4o",
-  api_key: "",
-  base_url: "",
-  is_active: "1",
+  modelName: "gpt-4o",
+  apiKey: "",
+  baseUrl: "",
+  isActive: "1",
 }
 
 type LlmDetailPageProps =
@@ -84,10 +84,10 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     setForm({
       name: llm.name || "",
       provider: llm.provider || "openai",
-      model_name: llm.model_name || "gpt-4o",
-      api_key: llm.api_key || "",
-      base_url: llm.base_url || "",
-      is_active: String(llm.is_active ?? 1),
+      modelName: llm.modelName || "gpt-4o",
+      apiKey: llm.apiKey || "",
+      baseUrl: llm.baseUrl || "",
+      isActive: String(llm.isActive ?? 1),
     })
   }, [isCreate, llm])
 
@@ -97,10 +97,10 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
         const payload = {
           name: form.name,
           provider: form.provider,
-          model_name: form.model_name,
-          api_key: form.api_key,
-          base_url: form.base_url,
-          is_active: Number(form.is_active),
+          modelName: form.modelName,
+          apiKey: form.apiKey,
+          baseUrl: form.baseUrl,
+          isActive: Number(form.isActive),
         }
         if (isCreate) {
           return (await apiClient.post("/agent/llm", payload)) as LlmRecord
@@ -143,8 +143,8 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       subtitle="Manage provider defaults and credentials. Agent runtime can reference these configs."
       badge={
         !isCreate ? (
-          <Badge variant={Number(form.is_active) === 1 ? "default" : "secondary"}>
-            {Number(form.is_active) === 1 ? "Active" : "Inactive"}
+          <Badge variant={Number(form.isActive) === 1 ? "default" : "secondary"}>
+            {Number(form.isActive) === 1 ? "Active" : "Inactive"}
           </Badge>
         ) : undefined
       }
@@ -183,9 +183,9 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           <Label htmlFor="llm-model-name">Model Name</Label>
           <Input
             id="llm-model-name"
-            value={form.model_name}
+            value={form.modelName}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, model_name: event.target.value }))
+              setForm((prev) => ({ ...prev, modelName: event.target.value }))
             }
             placeholder="gpt-4o"
           />
@@ -193,8 +193,8 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
         <div className="grid gap-2">
           <Label htmlFor="llm-status">Status</Label>
           <Select
-            value={form.is_active}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, is_active: value }))}
+            value={form.isActive}
+            onValueChange={(value) => setForm((prev) => ({ ...prev, isActive: value }))}
           >
             <SelectTrigger id="llm-status">
               <SelectValue placeholder="Select status" />
@@ -210,9 +210,9 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           <Input
             id="llm-api-key"
             type="password"
-            value={form.api_key}
+            value={form.apiKey}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, api_key: event.target.value }))
+              setForm((prev) => ({ ...prev, apiKey: event.target.value }))
             }
           />
         </div>
@@ -220,9 +220,9 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           <Label htmlFor="llm-base-url">Base URL</Label>
           <Input
             id="llm-base-url"
-            value={form.base_url}
+            value={form.baseUrl}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, base_url: event.target.value }))
+              setForm((prev) => ({ ...prev, baseUrl: event.target.value }))
             }
             placeholder="https://api.openai.com/v1"
           />

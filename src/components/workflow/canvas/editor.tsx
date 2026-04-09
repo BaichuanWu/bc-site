@@ -58,13 +58,13 @@ type WorkflowCanvasEditorProps = {
   }) => void
   availableAgents?: Array<{
     id: number
-    agent_id: number
+    agentId: number
     name: string
     version: string
-    agent_class: string
+    agentClass: string
     description?: string
-    version_description?: string
-    config_json?: Record<string, unknown>
+    versionDescription?: string
+    configJson?: Record<string, unknown>
   }>
   agentSearch?: string
   onAgentSearchChange?: (value: string) => void
@@ -72,19 +72,19 @@ type WorkflowCanvasEditorProps = {
   onEditAgentVersion?: (
     agent: {
       id: number
-      agent_id: number
+      agentId: number
       name: string
       version: string
-      agent_class: string
+      agentClass: string
       description?: string
-      version_description?: string
-      config_json?: Record<string, unknown>
+      versionDescription?: string
+      configJson?: Record<string, unknown>
     },
     nodeKey: string,
   ) => void
   preview?: {
     warnings?: string[]
-    invalid_edges?: Record<string, unknown>[]
+    invalidEdges?: Record<string, unknown>[]
   } | null
 }
 
@@ -139,7 +139,7 @@ function WorkflowCanvasEditorInner({
         const selectedAgent = availableAgents.find(
           (agent) => agent.id === Number(model?.agent_version_id)
         )
-        const kind = inferNodeKindFromAgent(selectedAgent?.agent_class, selectedAgent?.name)
+        const kind = inferNodeKindFromAgent(selectedAgent?.agentClass, selectedAgent?.name)
         return {
           ...node,
           data: {
@@ -147,7 +147,7 @@ function WorkflowCanvasEditorInner({
             kind,
             agentDisplay: selectedAgent?.name,
             agentVersionDisplay: selectedAgent?.version,
-            agentClassDisplay: selectedAgent?.agent_class,
+            agentClassDisplay: selectedAgent?.agentClass,
           },
           style: SPECIAL_NODE_IDS.has(node.id)
             ? node.style
@@ -164,7 +164,7 @@ function WorkflowCanvasEditorInner({
   const invalidEdgeFingerprints = React.useMemo(
     () =>
       new Set(
-        (preview?.invalid_edges || []).map((edge) =>
+        (preview?.invalidEdges || []).map((edge) =>
           getEdgeFingerprint(edge as JsonObject)
         )
       ),
@@ -265,12 +265,12 @@ function WorkflowCanvasEditorInner({
   const createNodeFromAgent = React.useCallback(
     (agent?: {
       id: number
-      agent_id: number
+      agentId: number
       name: string
       version: string
-      agent_class: string
+      agentClass: string
       description?: string
-      config_json?: Record<string, unknown>
+      configJson?: Record<string, unknown>
     }) => {
       const index =
         nodes.filter((node) => !SPECIAL_NODE_IDS.has(node.id)).length + 1

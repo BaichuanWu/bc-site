@@ -69,11 +69,11 @@ function WorkflowCanvasPreview({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border bg-background p-3">
           <div className="text-[11px] uppercase text-muted-foreground">Nodes</div>
-          <div className="mt-1 text-lg font-semibold">{preview?.node_count ?? nodeCount}</div>
+          <div className="mt-1 text-lg font-semibold">{preview?.nodeCount ?? nodeCount}</div>
         </div>
         <div className="rounded-xl border bg-background p-3">
           <div className="text-[11px] uppercase text-muted-foreground">Edges</div>
-          <div className="mt-1 text-lg font-semibold">{preview?.edge_count ?? edgeCount}</div>
+          <div className="mt-1 text-lg font-semibold">{preview?.edgeCount ?? edgeCount}</div>
         </div>
         <div className="rounded-xl border bg-background p-3">
           <div className="text-[11px] uppercase text-muted-foreground">Conditional Edges</div>
@@ -209,11 +209,11 @@ export function WorkflowEditorShell({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border bg-background p-3">
                     <div className="text-[11px] uppercase text-muted-foreground">Nodes</div>
-                    <div className="mt-1 text-lg font-semibold">{preview.node_count ?? 0}</div>
+                    <div className="mt-1 text-lg font-semibold">{preview.nodeCount ?? 0}</div>
                   </div>
                   <div className="rounded-lg border bg-background p-3">
                     <div className="text-[11px] uppercase text-muted-foreground">Edges</div>
-                    <div className="mt-1 text-lg font-semibold">{preview.edge_count ?? 0}</div>
+                    <div className="mt-1 text-lg font-semibold">{preview.edgeCount ?? 0}</div>
                   </div>
                 </div>
 
@@ -242,7 +242,7 @@ export function WorkflowEditorShell({
                 <div className="rounded-lg border bg-background p-3">
                   <div className="text-[11px] uppercase text-muted-foreground">State Fields</div>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {(preview.state_fields || []).map((fieldName) => (
+                    {(preview.stateFields || []).map((fieldName) => (
                       <Badge key={fieldName} variant="outline">
                         {fieldName}
                       </Badge>
