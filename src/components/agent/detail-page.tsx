@@ -34,7 +34,7 @@ type AgentVersionRecord = {
   version: string
   description?: string
   configJson?: Record<string, unknown>
-  isActive: number
+  isDefault: number
   publishedTime?: string
 }
 
@@ -53,7 +53,7 @@ type AgentFormState = {
 type VersionFormState = {
   version: string
   description: string
-  isActive: boolean
+  isDefault: boolean
   configJson: Record<string, unknown>
 }
 
@@ -122,7 +122,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   const [versionForm, setVersionForm] = React.useState<VersionFormState>({
     version: "1.0.0",
     description: "",
-    isActive: true,
+    isDefault: true,
     configJson: {},
   })
 
@@ -153,7 +153,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       setVersionForm({
         version: editingVersion.version || "1.0.0",
         description: editingVersion.description || "",
-        isActive: Boolean(editingVersion.isActive),
+        isDefault: Boolean(editingVersion.isDefault),
         configJson:
           editingVersion.configJson ||
           (currentVersionSpec?.defaults as Record<string, unknown>) ||
@@ -164,7 +164,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     setVersionForm({
       version: "1.0.0",
       description: "",
-      isActive: true,
+      isDefault: true,
       configJson: (currentVersionSpec?.defaults as Record<string, unknown>) || {},
     })
   }, [agent, currentVersionSpec?.defaults, editingVersion, isVersionEditorOpen])
@@ -225,7 +225,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
           version: versionForm.version,
           description: versionForm.description,
           configJson: versionForm.configJson,
-          isActive: versionForm.isActive ? 1 : 0,
+          isDefault: versionForm.isDefault ? 1 : 0,
           id: editingVersion?.id,
         })) as AgentVersionRecord,
       {
@@ -392,8 +392,8 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">v{version.version}</span>
-                        <Badge variant={version.isActive ? "default" : "secondary"}>
-                          {version.isActive ? "Active" : "Inactive"}
+                        <Badge variant={version.isDefault ? "default" : "secondary"}>
+                          {version.isDefault ? "Default" : "Non-default"}
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -446,19 +446,19 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="versionStatus">Status</Label>
+              <Label htmlFor="versionStatus">Default</Label>
               <div className="flex h-10 items-center rounded-md border px-3">
                 <Checkbox
-                  checked={versionForm.isActive}
+                  checked={versionForm.isDefault}
                   onCheckedChange={(checked: boolean | "indeterminate") =>
                     setVersionForm((prev) => ({
                       ...prev,
-                      isActive: Boolean(checked),
+                      isDefault: Boolean(checked),
                     }))
                   }
                 />
                 <span className="ml-3 text-sm">
-                  {versionForm.isActive ? "Active version" : "Inactive version"}
+                  {versionForm.isDefault ? "Default version" : "Non-default version"}
                 </span>
               </div>
             </div>

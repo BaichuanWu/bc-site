@@ -51,6 +51,7 @@ export type WorkflowPreview = {
 export type AgentRecord = {
   id: number
   agentId: number
+  defaultVersionId: number
   name: string
   version: string
   agentClass: string
@@ -123,15 +124,15 @@ export function useWorkflowStudio() {
       apiClient.get(url).then((res: unknown) => res as WorkflowOptionsResponse),
   )
   const workflowCrud = useCrud<WorkflowRecord>("/workflow-definition")
-  const { data: activeAgents, mutate: mutateActiveAgents } = useSWR<AgentRecord[]>(
-    "/agent/active-versions",
+  const { data: defaultAgents, mutate: mutateDefaultAgents } = useSWR<AgentRecord[]>(
+    "/agent/default-agents",
     (url: string) =>
       apiClient
         .get(url)
         .then((res: unknown) => normalizeCrudListResponse<AgentRecord>(res)),
   )
   const filteredAgents = React.useMemo(() => {
-    const items = activeAgents || []
+    const items = defaultAgents || []
     const keyword = agentSearch.trim().toLowerCase()
     if (!keyword) return items
     return items.filter((agent) =>
@@ -139,7 +140,7 @@ export function useWorkflowStudio() {
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
-  }, [activeAgents, agentSearch])
+  }, [defaultAgents, agentSearch])
   const previewAction = useAsyncAction()
   const publishAction = useAsyncAction()
   const deleteAction = useDeleteAction()
@@ -329,9 +330,9 @@ export function useWorkflowStudio() {
       dataSource: filteredAgents,
       search: agentSearch,
       setSearch: setAgentSearch,
-      isLoading: !activeAgents,
+      isLoading: !defaultAgents,
       isValidating: false,
-      refresh: mutateActiveAgents,
+      refresh: mutateDefaultAgents,
     },
     previewAction,
     publishAction,

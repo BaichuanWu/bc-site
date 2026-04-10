@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,6 +36,20 @@ type LlmRecord = {
   apiKey: string
   baseUrl: string
   isActive: number
+}
+
+type LlmModelOption = {
+  id: number
+  llmId: number
+  modelName: string
+  priority: number
+  isEnabled: number
+  availabilityState: string
+  cooldownUntil: string
+  lastError: string
+  lastCheckedTime: string
+  successCount: number
+  failCount: number
 }
 
 type LlmFormState = {
@@ -64,11 +86,23 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       : null,
     fetcher,
   )
+  const { data: modelOptionsResponse, mutate: mutateModelOptions } = useSWR<{
+    items: LlmModelOption[]
+    total: number
+  }>(
+    llmId ? `/agent/llm/${llmId}/models` : null,
+    fetcher,
+  )
 
   const llm = React.useMemo(
     () => normalizeCrudListResponse<LlmRecord>(llmResponse)[0] || null,
     [llmResponse],
   )
+  const modelOptions = modelOptionsResponse?.items || []
+  const hasActiveCooldown = (option: LlmModelOption) =>
+    option.availabilityState === "cooldown" &&
+    Boolean(option.cooldownUntil) &&
+    !option.cooldownUntil.startsWith("1900-01-01")
 
   useWorkspaceTabTitle(
     isCreate ? "/dashboard/agent/llm/new" : `/dashboard/agent/llm/${llmId}`,
@@ -123,6 +157,42 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       },
     )
   }, [form, isCreate, llmId, mutate, saveAction])
+
+  const handleRefreshModels = React.useCallback(async () => {
+    if (!llmId) return
+    await saveAction.run(
+      async () => apiClient.post(`/agent/llm/${llmId}/models/refresh`),
+      {
+        successMessage: "LLM models refreshed",
+        errorMessage: "Failed to refresh LLM models",
+        onSuccess: async () => {
+          await mutateModelOptions()
+        },
+      },
+    )
+  }, [llmId, mutateModelOptions, saveAction])
+
+  const handleSaveModelOption = React.useCallback(
+    async (option: LlmModelOption, patch: Partial<LlmModelOption>) => {
+      const next = { ...option, ...patch }
+      await saveAction.run(
+        async () =>
+          apiClient.put("/agent/llm/model-option", {
+            id: next.id,
+            priority: Number(next.priority),
+            isEnabled: Number(next.isEnabled),
+          }),
+        {
+          successMessage: "Model option updated",
+          errorMessage: "Failed to update model option",
+          onSuccess: async () => {
+            await mutateModelOptions()
+          },
+        },
+      )
+    },
+    [mutateModelOptions, saveAction],
+  )
 
   if (!isCreate && llmId && !llm) {
     return (
@@ -228,6 +298,113 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           />
         </div>
       </section>
+      {!isCreate ? (
+        <section className="mt-6 space-y-4 rounded-2xl border bg-card p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold">Models</h2>
+              <p className="text-sm text-muted-foreground">
+                Refresh provider models, then tune priority and availability for runtime selection.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleRefreshModels}
+              disabled={saveAction.isLoading}
+            >
+              Refresh Models
+            </Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Model</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Enabled</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Stats</TableHead>
+                <TableHead>Last Error</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {modelOptions.length ? (
+                modelOptions.map((option) => (
+                  <TableRow key={option.id}>
+                    <TableCell className="font-mono text-xs">
+                      {option.modelName}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        className="w-24"
+                        type="number"
+                        defaultValue={option.priority}
+                        onBlur={(event) =>
+                          handleSaveModelOption(option, {
+                            priority: Number(event.target.value),
+                          })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={String(option.isEnabled)}
+                        onValueChange={(value) =>
+                          handleSaveModelOption(option, {
+                            isEnabled: Number(value),
+                          })
+                        }
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Enabled</SelectItem>
+                          <SelectItem value="0">Disabled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <Badge
+                          variant={
+                            option.availabilityState === "available"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {option.availabilityState}
+                        </Badge>
+                        {hasActiveCooldown(option) ? (
+                          <div className="text-[11px] text-muted-foreground">
+                            cooldown: {option.cooldownUntil}
+                          </div>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      success {option.successCount || 0} / fail{" "}
+                      {option.failCount || 0}
+                    </TableCell>
+                    <TableCell className="max-w-[280px] truncate text-xs text-muted-foreground">
+                      {option.lastError || "-"}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No model options yet. Refresh models to initialize the registry.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+      ) : null}
     </DetailPageLayout>
   )
 }

@@ -62,6 +62,10 @@ const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
   workflow_node: {
     summary: (event) => `Audit trail for ${event.payload?.step || "step"}`,
   },
+  task_control: {
+    title: "Task Control",
+    summary: (event) => event.payload?.message || "Task lifecycle control event",
+  },
   agent_run: {
     summary: (event) => `Agent execution for ${event.payload?.node || "node"}`,
   },
@@ -159,6 +163,7 @@ function getEventStatusTone(eventStatus: number) {
 
 function getEventSummary(event: TaskEventRecord) {
   if (event.message) return event.message
+  if (event.payload?.message) return event.payload.message
   if (event.typ === TASK_EVENT_TYPE.RESULT) return "Final workflow output"
   if (event.typ === TASK_EVENT_TYPE.ERROR) {
     return event.payload?.message || "Task execution failed"

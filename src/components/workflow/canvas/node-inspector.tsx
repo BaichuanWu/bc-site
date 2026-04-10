@@ -2,10 +2,7 @@
 
 import * as React from "react"
 import type { Node } from "@xyflow/react"
-import useSWR from "swr"
 
-import { apiClient } from "@/lib/api"
-import { normalizeCrudListResponse } from "@/lib/crud-response"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,21 +24,13 @@ import { getJsonObject, type JsonObject } from "@/types/json"
 type AgentOption = {
   id: number
   agentId: number
+  defaultVersionId: number
   name: string
   version: string
   agentClass: string
   configJson?: Record<string, unknown>
   description?: string
   versionDescription?: string
-}
-
-type AgentVersionRecord = {
-  id: number
-  agentId: number
-  version: string
-  description?: string
-  configJson?: Record<string, unknown>
-  isActive?: number
 }
 
 type WorkflowNodeInspectorProps = {
@@ -73,46 +62,12 @@ export function WorkflowNodeInspector({
   const [isAgentPickerOpen, setIsAgentPickerOpen] = React.useState(false)
   const [agentSearch, setAgentSearch] = React.useState("")
 
-  const selectedAgentFromActive = React.useMemo(
+  const selectedAgent = React.useMemo(
     () =>
-      availableAgents.find((agent) => agent.id === Number(model.agent_version_id)) ||
+      availableAgents.find((agent) => agent.agentId === Number(model.agent_id)) ||
       null,
-    [availableAgents, model.agent_version_id],
+    [availableAgents, model.agent_id],
   )
-  const selectedAgentIdentityId = selectedAgentFromActive?.agentId ?? null
-  const { data: agentVersions = [], isLoading: isLoadingVersions } = useSWR<
-    AgentVersionRecord[]
-  >(
-    selectedAgentIdentityId ? `/agent/agent/${selectedAgentIdentityId}/versions` : null,
-    (url: string) =>
-      apiClient
-        .get(url)
-        .then((res: unknown) => normalizeCrudListResponse<AgentVersionRecord>(res)),
-  )
-
-  const selectedVersionRecord = React.useMemo(
-    () =>
-      agentVersions.find((version) => version.id === Number(model.agent_version_id)) ||
-      null,
-    [agentVersions, model.agent_version_id],
-  )
-
-  const selectedAgent = React.useMemo(() => {
-    if (selectedAgentFromActive) return selectedAgentFromActive
-    if (!selectedVersionRecord) return null
-    const identity =
-      availableAgents.find((agent) => agent.agentId === selectedVersionRecord.agentId) ||
-      null
-    if (!identity) return null
-    return {
-      ...identity,
-      id: selectedVersionRecord.id,
-      version: selectedVersionRecord.version,
-      versionDescription:
-        selectedVersionRecord.description || identity.versionDescription,
-      configJson: selectedVersionRecord.configJson || identity.configJson,
-    }
-  }, [availableAgents, selectedAgentFromActive, selectedVersionRecord])
 
   const agentOptionsByIdentity = React.useMemo(() => {
     const unique = new Map<number, AgentOption>()
@@ -182,10 +137,8 @@ export function WorkflowNodeInspector({
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {selectedAgent
-                    ? `#${selectedAgent.id}`
-                    : isLoadingVersions
-                      ? "Loading"
-                      : "Search"}
+                    ? `#${selectedAgent.agentId}`
+                    : "Search"}
                 </span>
               </Button>
               <Button
@@ -199,7 +152,7 @@ export function WorkflowNodeInspector({
             </div>
             {selectedAgent ? (
               <div className="text-xs text-muted-foreground">
-                Bound by `agent_version_id={selectedAgent.id}`. Use search to replace the agent binding.
+                Bound by `agent_id={selectedAgent.agentId}`. Default version is resolved at runtime.
               </div>
             ) : null}
           </div>
@@ -271,7 +224,7 @@ export function WorkflowNodeInspector({
                           <div className="truncate text-sm font-medium">{candidate.id}</div>
                           <div className="text-xs text-muted-foreground">
                             {String(
-                              getJsonObject(candidate.data.model)?.agent_version_id || "Unbound",
+                              getJsonObject(candidate.data.model)?.agent_id || "Unbound",
                             )}
                           </div>
                         </div>
@@ -315,7 +268,7 @@ export function WorkflowNodeInspector({
             <div className="px-6 pt-6">
               <DialogTitle>Search Agent</DialogTitle>
               <DialogDescription>
-                Search agent identities, then bind the current active version to this node.
+                Search agent identities, then bind the agent identity to this node.
                 Detailed prompt and config editing lives on the agent detail page.
               </DialogDescription>
             </div>
@@ -339,7 +292,7 @@ export function WorkflowNodeInspector({
                           ...current.data,
                           model: {
                             ...current.data.model,
-                            agent_version_id: agent.id,
+                            agent_id: agent.agentId,
                           },
                         },
                       }))

@@ -107,7 +107,7 @@ export function WorkflowDisplayNode({
             <span className="text-muted-foreground">Version</span>
             <span className="font-medium">
               {safeData.agentVersionDisplay ||
-                (model.agent_version_id != null ? `#${String(model.agent_version_id)}` : "-")}
+                (model.agent_id != null ? "runtime default" : "-")}
             </span>
           </div>
           <div className="flex items-center justify-between gap-3">

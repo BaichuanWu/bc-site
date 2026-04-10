@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Bot } from "lucide-react"
+import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
 import { ActionButtons } from "@/components/common/action-buttons"
 import { type SearchFilterItem } from "@/components/common/query-filters"
@@ -10,6 +11,7 @@ import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useCrud } from "@/hooks/use-crud"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
+import { fetcher } from "@/lib/api"
 
 type LlmRecord = {
   id: number
@@ -21,11 +23,26 @@ type LlmRecord = {
   isActive: number
 }
 
+type BestLlmModelResponse = {
+  item?: {
+    llmId: number
+    model: string
+    provider: string
+    priority: number
+    availabilityState: string
+  } | null
+}
+
 export default function LlmPage() {
   const navigate = useWorkspaceNavigate()
   useWorkspaceTabTitle("/dashboard/agent/llm", "LLM Config")
   const deleteAction = useDeleteAction()
   const { mutate } = useCrud<LlmRecord>("/agent/llm")
+  const { data: bestModelResponse } = useSWR<BestLlmModelResponse>(
+    "/agent/llm/best",
+    fetcher,
+  )
+  const bestModel = bestModelResponse?.item
 
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Config Name", type: "text" },
@@ -105,15 +122,31 @@ export default function LlmPage() {
   ]
 
   return (
-    <CrudLayout<LlmRecord>
-      icon={Bot}
-      title="LLM Config"
-      endpoint="/agent/llm"
-      filterItems={filterItems}
-      storageKey="llm-page-filters"
-      columns={columns}
-      addButtonLabel="New Config"
-      onAdd={() => navigate("/dashboard/agent/llm/new")}
-    />
+    <div className="space-y-4">
+      <div className="rounded-2xl border bg-card p-4 text-sm shadow-sm">
+        <div className="font-medium">Current Best Model</div>
+        {bestModel ? (
+          <div className="mt-1 text-muted-foreground">
+            LLM #{bestModel.llmId} ·{" "}
+            <span className="font-mono">{bestModel.model}</span> · priority{" "}
+            {bestModel.priority} · {bestModel.availabilityState}
+          </div>
+        ) : (
+          <div className="mt-1 text-muted-foreground">
+            No available model candidate.
+          </div>
+        )}
+      </div>
+      <CrudLayout<LlmRecord>
+        icon={Bot}
+        title="LLM Config"
+        endpoint="/agent/llm"
+        filterItems={filterItems}
+        storageKey="llm-page-filters"
+        columns={columns}
+        addButtonLabel="New Config"
+        onAdd={() => navigate("/dashboard/agent/llm/new")}
+      />
+    </div>
   )
 }

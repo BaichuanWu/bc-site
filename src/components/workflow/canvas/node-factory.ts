@@ -9,6 +9,7 @@ import {
 
 type AgentOption = {
   id: number
+  agentId?: number
   name: string
   version: string
   description?: string
@@ -40,7 +41,7 @@ export function createWorkflowNodeFromAgent(
       model: {
         key: id,
         type: "agent",
-        agent_version_id: agent?.id || null,
+        agent_id: agent?.agentId || agent?.id || null,
         input_mapping: {},
         output_mapping: {},
       },

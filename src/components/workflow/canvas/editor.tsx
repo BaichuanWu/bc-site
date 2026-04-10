@@ -59,6 +59,7 @@ type WorkflowCanvasEditorProps = {
   availableAgents?: Array<{
     id: number
     agentId: number
+    defaultVersionId: number
     name: string
     version: string
     agentClass: string
@@ -73,6 +74,7 @@ type WorkflowCanvasEditorProps = {
     agent: {
       id: number
       agentId: number
+      defaultVersionId: number
       name: string
       version: string
       agentClass: string
@@ -137,7 +139,7 @@ function WorkflowCanvasEditorInner({
         if (SPECIAL_NODE_IDS.has(node.id)) return node
         const model = getJsonObject(node.data.model)
         const selectedAgent = availableAgents.find(
-          (agent) => agent.id === Number(model?.agent_version_id)
+          (agent) => agent.agentId === Number(model?.agent_id)
         )
         const kind = inferNodeKindFromAgent(selectedAgent?.agentClass, selectedAgent?.name)
         return {
@@ -266,6 +268,7 @@ function WorkflowCanvasEditorInner({
     (agent?: {
       id: number
       agentId: number
+      defaultVersionId: number
       name: string
       version: string
       agentClass: string

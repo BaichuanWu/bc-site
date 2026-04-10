@@ -147,8 +147,8 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       : null,
     fetcher,
   )
-  const { data: activeAgents = [] } = useSWR<AgentRecord[]>(
-    "/agent/active-versions",
+  const { data: defaultAgents = [] } = useSWR<AgentRecord[]>(
+    "/agent/default-agents",
     async (url: string) => {
       const response = await fetcher<unknown>(url)
       return normalizeCrudListResponse<AgentRecord>(response)
@@ -197,13 +197,13 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
 
   const filteredAgents = React.useMemo(() => {
     const keyword = agentSearch.trim().toLowerCase()
-    if (!keyword) return activeAgents
-    return activeAgents.filter((agent) =>
+    if (!keyword) return defaultAgents
+    return defaultAgents.filter((agent) =>
       [agent.name, agent.version, agent.agentClass]
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
-  }, [activeAgents, agentSearch])
+  }, [defaultAgents, agentSearch])
 
   const handlePreview = React.useCallback(async () => {
     await previewAction.run(
@@ -435,7 +435,10 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
           isLoadingAgents={false}
           onEditAgentVersion={(agent, nodeKey) => {
             void nodeKey
-            navigate(`/dashboard/agent/${agent.agentId}`, `versionId=${agent.id}`)
+            navigate(
+              `/dashboard/agent/${agent.agentId}`,
+              `versionId=${agent.defaultVersionId}`,
+            )
           }}
           preview={preview}
           onPreview={handlePreview}

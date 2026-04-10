@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 type AgentOption = {
   id: number
   agentId: number
+  defaultVersionId: number
   name: string
   version: string
   agentClass: string
