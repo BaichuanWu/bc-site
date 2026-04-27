@@ -10,20 +10,23 @@ import { WorkflowCanvasEditor } from "@/components/workflow/canvas/editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { parseJsonText } from "@/lib/json-utils"
-import type { AgentRecord, WorkflowPreview } from "@/hooks/use-workflow-studio"
+import type {
+  WorkflowAgentOption,
+  WorkflowPreview,
+} from "@/hooks/use-workflow-studio"
 import type { JsonObject } from "@/types/json"
 
 type WorkflowCanvasShellProps = {
   definitionJson: string
   uiSchemaJson: string
   preview: WorkflowPreview | null
-  availableAgents: AgentRecord[]
+  availableAgents: WorkflowAgentOption[]
   agentSearch: string
   onAgentSearchChange: (value: string) => void
   isLoadingAgents: boolean
   pageKey: string
   onEditAgentVersion: (
-    agent: AgentRecord,
+    agent: WorkflowAgentOption,
     nodeKey: string,
   ) => void
   onChange: (value: { definitionJson: string; uiSchemaJson: string }) => void

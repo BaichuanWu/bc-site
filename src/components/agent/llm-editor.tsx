@@ -4,7 +4,6 @@ import * as React from "react"
 import useSWR from "swr"
 
 import { DetailPageLayout } from "@/components/common/detail-page-layout"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,26 +15,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { apiClient, fetcher } from "@/lib/api"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
+import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 
 type LlmRecord = {
   id: number
   name: string
   provider: string
-  modelName: string
+  defaultModel: string
   apiKey: string
   baseUrl: string
-  isActive: number
 }
 
 type LlmModelOption = {
@@ -43,42 +35,45 @@ type LlmModelOption = {
   llmId: number
   modelName: string
   priority: number
-  isEnabled: number
-  availabilityState: string
-  cooldownUntil: string
+  recoverTime: string
   lastError: string
   lastCheckedTime: string
   successCount: number
   failCount: number
+  isAvailable: boolean
+}
+
+type RemoteModelOption = {
+  modelName: string
 }
 
 type LlmFormState = {
   name: string
   provider: string
-  modelName: string
+  defaultModel: string
   apiKey: string
   baseUrl: string
-  isActive: string
 }
 
 const EMPTY_FORM: LlmFormState = {
   name: "",
   provider: "openai",
-  modelName: "gpt-4o",
+  defaultModel: "gpt-4o",
   apiKey: "",
   baseUrl: "",
-  isActive: "1",
 }
 
-type LlmDetailPageProps =
+type LlmEditorProps =
   | { mode: "create" }
   | { mode: "edit"; llmId: number }
 
-export function LlmDetailPage(props: LlmDetailPageProps) {
+export function LlmEditor(props: LlmEditorProps) {
   const saveAction = useAsyncAction()
+  const { currentPathname, closeTab } = useWorkspaceTabs()
   const isCreate = props.mode === "create"
   const llmId = props.mode === "edit" ? props.llmId : null
   const [form, setForm] = React.useState<LlmFormState>(EMPTY_FORM)
+  const [remoteModels, setRemoteModels] = React.useState<RemoteModelOption[]>([])
 
   const { data: llmResponse, mutate } = useSWR<unknown>(
     llmId
@@ -98,11 +93,10 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     () => normalizeCrudListResponse<LlmRecord>(llmResponse)[0] || null,
     [llmResponse],
   )
-  const modelOptions = modelOptionsResponse?.items || []
-  const hasActiveCooldown = (option: LlmModelOption) =>
-    option.availabilityState === "cooldown" &&
-    Boolean(option.cooldownUntil) &&
-    !option.cooldownUntil.startsWith("1900-01-01")
+  const modelOptions = React.useMemo(
+    () => modelOptionsResponse?.items || [],
+    [modelOptionsResponse],
+  )
 
   useWorkspaceTabTitle(
     isCreate ? "/dashboard/agent/llm/new" : `/dashboard/agent/llm/${llmId}`,
@@ -118,10 +112,9 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     setForm({
       name: llm.name || "",
       provider: llm.provider || "openai",
-      modelName: llm.modelName || "gpt-4o",
+      defaultModel: llm.defaultModel || "gpt-4o",
       apiKey: llm.apiKey || "",
       baseUrl: llm.baseUrl || "",
-      isActive: String(llm.isActive ?? 1),
     })
   }, [isCreate, llm])
 
@@ -131,10 +124,9 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
         const payload = {
           name: form.name,
           provider: form.provider,
-          modelName: form.modelName,
+          defaultModel: form.defaultModel,
           apiKey: form.apiKey,
           baseUrl: form.baseUrl,
-          isActive: Number(form.isActive),
         }
         if (isCreate) {
           return (await apiClient.post("/agent/llm", payload)) as LlmRecord
@@ -147,30 +139,34 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       {
         successMessage: isCreate ? "LLM config created" : "LLM config updated",
         errorMessage: "Failed to save LLM config",
-        onSuccess: async (saved) => {
-          const nextId = Number((saved as LlmRecord)?.id || llmId)
-          if (Number.isFinite(nextId) && nextId > 0) {
-            await mutate()
-            window.history.replaceState(null, "", `/dashboard/agent/llm/${nextId}`)
-          }
-        },
-      },
-    )
-  }, [form, isCreate, llmId, mutate, saveAction])
-
-  const handleRefreshModels = React.useCallback(async () => {
-    if (!llmId) return
-    await saveAction.run(
-      async () => apiClient.post(`/agent/llm/${llmId}/models/refresh`),
-      {
-        successMessage: "LLM models refreshed",
-        errorMessage: "Failed to refresh LLM models",
         onSuccess: async () => {
-          await mutateModelOptions()
+          await mutate()
+          closeTab(currentPathname)
         },
       },
     )
-  }, [llmId, mutateModelOptions, saveAction])
+  }, [closeTab, currentPathname, form, isCreate, llmId, mutate, saveAction])
+
+  const handleFetchModels = React.useCallback(async () => {
+    await saveAction.run(
+      async () =>
+        (await apiClient.post("/agent/llm/fetch-models", {
+          llmId,
+          apiKey: form.apiKey,
+          baseUrl: form.baseUrl,
+        })) as {
+          items: RemoteModelOption[]
+          total: number
+        },
+      {
+        successMessage: "Remote models fetched",
+        errorMessage: "Failed to fetch remote models",
+        onSuccess: async (response) => {
+          setRemoteModels(response.items || [])
+        },
+      },
+    )
+  }, [form.apiKey, form.baseUrl, llmId, saveAction])
 
   const handleSaveModelOption = React.useCallback(
     async (option: LlmModelOption, patch: Partial<LlmModelOption>) => {
@@ -180,7 +176,6 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           apiClient.put("/agent/llm/model-option", {
             id: next.id,
             priority: Number(next.priority),
-            isEnabled: Number(next.isEnabled),
           }),
         {
           successMessage: "Model option updated",
@@ -192,6 +187,31 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
       )
     },
     [mutateModelOptions, saveAction],
+  )
+
+  const handleCreateModelOption = React.useCallback(
+    async (modelName: string) => {
+      if (!llmId) return
+      const nextPriority =
+        modelOptions.reduce((max, option) => Math.max(max, Number(option.priority) || 0), -10) +
+        10
+      await saveAction.run(
+        async () =>
+          apiClient.post("/agent/llm/model-option", {
+            llmId,
+            modelName,
+            priority: nextPriority,
+          }),
+        {
+          successMessage: `Model option created with priority ${nextPriority}`,
+          errorMessage: "Failed to create model option",
+          onSuccess: async () => {
+            await mutateModelOptions()
+          },
+        },
+      )
+    },
+    [llmId, modelOptions, mutateModelOptions, saveAction],
   )
 
   if (!isCreate && llmId && !llm) {
@@ -211,13 +231,6 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
     <DetailPageLayout
       title={isCreate ? "New LLM Configuration" : llm?.name || "LLM Configuration"}
       subtitle="Manage provider defaults and credentials. Agent runtime can reference these configs."
-      badge={
-        !isCreate ? (
-          <Badge variant={Number(form.isActive) === 1 ? "default" : "secondary"}>
-            {Number(form.isActive) === 1 ? "Active" : "Inactive"}
-          </Badge>
-        ) : undefined
-      }
       actions={
         <>
           <Button onClick={handleSave} disabled={saveAction.isLoading}>
@@ -253,27 +266,12 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
           <Label htmlFor="llm-model-name">Model Name</Label>
           <Input
             id="llm-model-name"
-            value={form.modelName}
+            value={form.defaultModel}
             onChange={(event) =>
-              setForm((prev) => ({ ...prev, modelName: event.target.value }))
+              setForm((prev) => ({ ...prev, defaultModel: event.target.value }))
             }
             placeholder="gpt-4o"
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="llm-status">Status</Label>
-          <Select
-            value={form.isActive}
-            onValueChange={(value) => setForm((prev) => ({ ...prev, isActive: value }))}
-          >
-            <SelectTrigger id="llm-status">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Active</SelectItem>
-              <SelectItem value="0">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         <div className="grid gap-2 lg:col-span-2">
           <Label htmlFor="llm-api-key">API Key</Label>
@@ -304,16 +302,16 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
             <div>
               <h2 className="text-base font-semibold">Models</h2>
               <p className="text-sm text-muted-foreground">
-                Refresh provider models, then tune priority and availability for runtime selection.
+                Load remote models when needed, then create explicit options and tune priority.
               </p>
             </div>
             <Button
               type="button"
               variant="outline"
-              onClick={handleRefreshModels}
+              onClick={handleFetchModels}
               disabled={saveAction.isLoading}
             >
-              Refresh Models
+              Fetch Remote Models
             </Button>
           </div>
           <Table>
@@ -321,7 +319,6 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
               <TableRow>
                 <TableHead>Model</TableHead>
                 <TableHead>Priority</TableHead>
-                <TableHead>Enabled</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Stats</TableHead>
                 <TableHead>Last Error</TableHead>
@@ -347,37 +344,18 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
                       />
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={String(option.isEnabled)}
-                        onValueChange={(value) =>
-                          handleSaveModelOption(option, {
-                            isEnabled: Number(value),
-                          })
-                        }
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">Enabled</SelectItem>
-                          <SelectItem value="0">Disabled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
                       <div className="space-y-1">
-                        <Badge
-                          variant={
-                            option.availabilityState === "available"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {option.availabilityState}
-                        </Badge>
-                        {hasActiveCooldown(option) ? (
+                        <div className="text-sm font-medium">
+                          {option.isAvailable ? "Available" : "Recovering"}
+                        </div>
+                        {!option.isAvailable && option.recoverTime ? (
                           <div className="text-[11px] text-muted-foreground">
-                            cooldown: {option.cooldownUntil}
+                            recover: {option.recoverTime}
+                          </div>
+                        ) : null}
+                        {option.lastCheckedTime ? (
+                          <div className="text-[11px] text-muted-foreground">
+                            checked: {option.lastCheckedTime}
                           </div>
                         ) : null}
                       </div>
@@ -394,15 +372,53 @@ export function LlmDetailPage(props: LlmDetailPageProps) {
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    No model options yet. Refresh models to initialize the registry.
+                    No model options yet. Fetch remote models and add the ones you want to use.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          <div className="space-y-3 rounded-xl border border-dashed p-4">
+            <div>
+              <h3 className="text-sm font-semibold">Remote Models</h3>
+              <p className="text-xs text-muted-foreground">
+                Fetch reads provider models only. Add creates a local option explicitly.
+              </p>
+            </div>
+            {remoteModels.length ? (
+              <div className="space-y-2">
+                {remoteModels.map((item) => {
+                  const exists = modelOptions.some(
+                    (option) => option.modelName === item.modelName,
+                  )
+                  return (
+                    <div
+                      key={item.modelName}
+                      className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                    >
+                      <div className="font-mono text-xs">{item.modelName}</div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={exists || saveAction.isLoading}
+                        onClick={() => handleCreateModelOption(item.modelName)}
+                      >
+                        {exists ? "Added" : "Add Option"}
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                No remote models loaded yet.
+              </div>
+            )}
+          </div>
         </section>
       ) : null}
     </DetailPageLayout>

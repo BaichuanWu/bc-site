@@ -9,8 +9,7 @@ import {
     ChevronRightIcon,
     ClockIcon, 
     DatabaseIcon, 
-    Loader2Icon,
-    RotateCcwIcon
+    Loader2Icon
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,13 +22,13 @@ import { normalizeCrudListResponse } from '@/lib/crud-response'
 
 import { JsonNode } from '@/components/common/json-node'
 import { PageShell } from '@/components/common/page-shell'
-import { TaskEventViewer, type TaskEventRecord } from '@/components/task/task-event-viewer'
+import { TaskEventViewer } from '@/components/task/task-event-viewer'
+import { TaskControlButtons } from '@/components/task/task-control-buttons'
 import { useTask } from '@/hooks/use-task'
 import { TaskProgressBar } from '@/components/common/task-progress-bar'
-import { type TaskStatus } from '@/types/task'
+import { type TaskEventRecord, type TaskStatus } from '@/types/task'
 import { useWorkspaceNavigate } from '@/hooks/use-workspace-navigate'
 import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
-import { useAsyncAction } from '@/hooks/use-async-action'
 import { 
     mapStatusToServerState, 
     mapStatusToName, 
@@ -55,51 +54,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
-function getWorkflowNodeStatus(event: TaskEventRecord): string | null {
-    const nodeStatus = event.payload?.data?.nodeStatus
-    if (typeof nodeStatus === "string" && nodeStatus.length > 0) return nodeStatus
-    return null
-}
+function getWorkflowNodeEventKey(event: TaskEventRecord): string | null {
+    if (event.type !== "task.updated" && event.type !== "task.checkpoint") return null
+    if (!isRecord(event.data)) return null
 
-function getWorkflowNodeRunId(event: TaskEventRecord): string | null {
-    const nodeRunId = event.payload?.data?.nodeRunId
-    if (typeof nodeRunId === "string" && nodeRunId.length > 0) return nodeRunId
-    return null
+    const nodeKey = event.data.key
+    if (typeof nodeKey !== "string" || nodeKey.length === 0) return null
+
+    const kind = typeof event.data.kind === "string" ? event.data.kind : "node"
+    const status = typeof event.data.status === "string" ? event.data.status : "updated"
+    return `${kind}:${nodeKey}:${status}`
 }
 
 function collapseWorkflowNodeEvents(events: TaskEventRecord[]): TaskEventRecord[] {
     const collapsed: TaskEventRecord[] = []
-    const openRunningIndexes = new Map<string, number>()
+    const workflowNodeIndexes = new Map<string, number>()
 
     for (const event of events) {
-        const isWorkflowNode = event.payload?.kind === "workflow_node"
-        const step = event.payload?.step
-        const isRunning = getWorkflowNodeStatus(event) === "running"
-        const isCompleted = getWorkflowNodeStatus(event) === "completed"
-        const nodeRunId = getWorkflowNodeRunId(event)
-        const eventKey =
-            isWorkflowNode && typeof nodeRunId === "string" && nodeRunId.length > 0
-                ? nodeRunId
-                : isWorkflowNode && typeof step === "string"
-                  ? step
-                  : null
+        const nodeEventKey = getWorkflowNodeEventKey(event)
 
-        if (eventKey && isCompleted) {
-            const runningIndex = openRunningIndexes.get(eventKey)
-            if (runningIndex !== undefined) {
-                collapsed[runningIndex] = event
-                openRunningIndexes.delete(eventKey)
+        if (nodeEventKey) {
+            const existingIndex = workflowNodeIndexes.get(nodeEventKey)
+            if (existingIndex !== undefined) {
+                collapsed[existingIndex] = event
                 continue
             }
-        }
-
-        if (eventKey && isRunning) {
-            const runningIndex = openRunningIndexes.get(eventKey)
-            if (runningIndex !== undefined) {
-                collapsed[runningIndex] = event
-                continue
-            }
-            openRunningIndexes.set(eventKey, collapsed.length)
+            workflowNodeIndexes.set(nodeEventKey, collapsed.length)
         }
 
         collapsed.push(event)
@@ -120,14 +100,14 @@ function extractRelatedTaskIds(result: unknown, events: TaskEventRecord[]): numb
     }
 
     if (isRecord(result)) {
-        const taskIds = result.task_ids
+        const taskIds = result.taskIds
         if (Array.isArray(taskIds)) {
             taskIds.forEach(pushId)
         }
     }
 
     events.forEach((event) => {
-        const workflowTaskId = event.payload?.data?.workflowTaskId
+        const workflowTaskId = event.data?.workflowTaskId
         pushId(workflowTaskId)
     })
 
@@ -142,7 +122,6 @@ export default function TaskDetailPage() {
     const taskIdParam = params.id as string
     
     const [loading, setLoading] = useState(true)
-    const recoverAction = useAsyncAction()
     const { 
         status, 
         progress, 
@@ -161,10 +140,11 @@ export default function TaskDetailPage() {
         ])
         const t = taskRes as unknown as TaskDetailRecord
         const evs = normalizeCrudListResponse<TaskEventRecord>(eventsRes)
+        const lastEvent = evs[evs.length - 1]
         setTask(t)
         setInitialState(parseInt(taskIdParam), {
             status: mapServerStateToStatus(t.state),
-            progress: { percent: t.progress, message: t.message },
+            progress: { percent: t.progress, message: lastEvent?.message ?? t.message },
             snapshot: t.snapshot,
             events: evs,
             error: t.errorLog || null,
@@ -216,28 +196,6 @@ export default function TaskDetailPage() {
         loadTask()
     }, [fetchTask])
 
-    const recoverableStates: number[] = [
-        TASK_STATE.RUNNING,
-        TASK_STATE.ERROR,
-        TASK_STATE.FAILED,
-    ]
-    const canRecover = displayTask
-        ? recoverableStates.includes(displayTask.state)
-        : false
-
-    const handleRecover = async () => {
-        await recoverAction.run(
-            async () => apiClient.post(`/sys/tasks/recover/${taskIdParam}`),
-            {
-                successMessage: "Task resumed from last checkpoint",
-                errorMessage: "Failed to resume task",
-                onSuccess: async () => {
-                    await fetchTask()
-                },
-            },
-        )
-    }
-
     if (loading) {
         return (
             <div className="flex h-[80vh] w-full items-center justify-center">
@@ -261,7 +219,7 @@ export default function TaskDetailPage() {
         <div className="bg-background font-sans">
             <PageShell contentClassName="space-y-6 pb-24 animate-in fade-in duration-500">
                     {/* Header */}
-                    <div className="flex items-center gap-4 border-b pb-6">
+                    <div className="flex flex-wrap items-center gap-4 border-b pb-6">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -282,20 +240,11 @@ export default function TaskDetailPage() {
                                 UUID: {taskIdParam} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
                             </div>
                         </div>
-                        {canRecover ? (
-                            <Button
-                                onClick={handleRecover}
-                                disabled={recoverAction.isLoading}
-                                className="gap-2 rounded-full"
-                            >
-                                {recoverAction.isLoading ? (
-                                    <Loader2Icon className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <RotateCcwIcon className="h-4 w-4" />
-                                )}
-                                Resume From Checkpoint
-                            </Button>
-                        ) : null}
+                        <TaskControlButtons
+                            taskId={taskIdParam}
+                            state={displayTask.state}
+                            onRefresh={fetchTask}
+                        />
                     </div>
 
                     {displayTask.errorLog ? (
@@ -408,7 +357,7 @@ export default function TaskDetailPage() {
                                             </div>
                                         ) : (
                                             displayEvents.map((event: TaskEventRecord, idx: number) => (
-                                                <div key={event.id} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div key={event.eventId ?? `${event.type}-${event.sequence ?? idx}-${event.timestamp}`} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
                                                     <TaskEventViewer event={event} />
                                                 </div>
                                             ))

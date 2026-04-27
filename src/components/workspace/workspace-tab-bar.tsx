@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -8,6 +9,17 @@ import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider
 
 export function WorkspaceTabBar() {
   const { tabs, activeTabKey, activateTab, closeTab } = useWorkspaceTabs()
+  const tabRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
+
+  React.useEffect(() => {
+    const activeElement = tabRefs.current[activeTabKey]
+    if (!activeElement) return
+    activeElement.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    })
+  }, [activeTabKey, tabs])
 
   return (
     <div className="border-b bg-background/95">
@@ -17,6 +29,9 @@ export function WorkspaceTabBar() {
           return (
             <div
               key={tab.key}
+              ref={(node) => {
+                tabRefs.current[tab.key] = node
+              }}
               className={cn(
                 "interactive-surface group flex min-w-[160px] max-w-[260px] items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-sm",
                 active

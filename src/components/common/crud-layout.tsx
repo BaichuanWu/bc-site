@@ -117,14 +117,27 @@ export function CrudLayout<T extends { id: string | number }>({
         total,
         sorts,
         updateSorts,
-        isValidating
+        isValidating,
+        mutate,
     } = internalCrud
 
+    const currentFilterSignature = React.useMemo(
+        () => JSON.stringify(filters),
+        [filters]
+    )
+
     const handleFilterChange = React.useCallback((newFilters: Record<string, unknown>) => {
+        const nextFilterSignature = JSON.stringify(newFilters)
+        const shouldForceRefresh = Boolean(endpoint) && nextFilterSignature === currentFilterSignature
+
         setFilters(newFilters)
         setPage(1) // Explicitly reset page on filter change
         onFilterChange?.(newFilters)
-    }, [onFilterChange, setPage])
+
+        if (shouldForceRefresh) {
+            void mutate()
+        }
+    }, [currentFilterSignature, endpoint, mutate, onFilterChange, setPage])
 
     /**
      * Multi-column sort handler:
@@ -193,7 +206,7 @@ export function CrudLayout<T extends { id: string | number }>({
                         stickyTop={stickyTop} 
                         sorts={sorts}
                         onSort={handleSort}
-                        onRefresh={internalCrud.mutate}
+                        onRefresh={mutate}
                     />
                 </div>
 

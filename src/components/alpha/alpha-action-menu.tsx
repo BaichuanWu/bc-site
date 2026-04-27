@@ -39,7 +39,6 @@ interface AlphaActionMenuProps {
 }
 
 import { useTaskAction } from "@/hooks/use-task-action"
-import { toast } from "sonner"
 
 export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
     const navigate = useWorkspaceNavigate()
@@ -47,7 +46,11 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
     const [editedExpression, setEditedExpression] = React.useState(alpha.expression)
     const { runTask, isLoading } = useTaskAction()
 
-    const handleAction = async (action: string, taskName: string, kwargs: Record<string, any>) => {
+    const handleAction = async (
+        action: string,
+        taskName: string,
+        kwargs: Record<string, unknown>,
+    ) => {
         await runTask(
             () => apiClient.post(`/sys/tasks/run/${taskName}`, { kwargs }),
             {
@@ -115,7 +118,20 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     <DropdownMenuSeparator />
 
                     {isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Query PC", "update_alpha_pc_task", { alpha_id: alpha.id })}>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                await runTask(
+                                    () => apiClient.post("/sys/tasks/run/update_alpha_pc_task", { kwargs: { query: { id: alpha.id } } }),
+                                    {
+                                        fallbackSuccessMessage: "Query PC task created",
+                                        errorMessage: "Failed to query pc",
+                                        onTaskCompleted: async () => {
+                                            await onSuccess?.()
+                                        },
+                                    }
+                                )
+                            }}
+                        >
                             <Search className="mr-2 h-4 w-4" /> Query PC
                         </DropdownMenuItem>
                     )}

@@ -3,21 +3,32 @@
 import * as React from "react"
 
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
+import { buildWorkspaceTabKey } from "@/lib/workspace-tabs"
 
 export function WorkspaceHost({ children }: { children: React.ReactNode }) {
   const { tabs, activeTabKey, currentPathname } = useWorkspaceTabs()
   const [cache, setCache] = React.useState<Record<string, React.ReactNode>>({})
-  const lastPathnameRef = React.useRef<string | null>(null)
+  const lastTabKeyRef = React.useRef<string | null>(null)
+  const currentTabKey = React.useMemo(
+    () => buildWorkspaceTabKey(currentPathname),
+    [currentPathname],
+  )
 
   React.useEffect(() => {
-    if (!currentPathname) return
-    if (lastPathnameRef.current === currentPathname) return
+    if (!currentPathname || !currentTabKey) return
+    if (lastTabKeyRef.current === currentTabKey) {
+      setCache((prev) => ({
+        ...prev,
+        [currentTabKey]: children,
+      }))
+      return
+    }
     setCache((prev) => ({
       ...prev,
-      [currentPathname]: children,
+      [currentTabKey]: children,
     }))
-    lastPathnameRef.current = currentPathname
-  }, [children, currentPathname])
+    lastTabKeyRef.current = currentTabKey
+  }, [children, currentPathname, currentTabKey])
 
   React.useEffect(() => {
     setCache((prev) => {
@@ -38,7 +49,7 @@ export function WorkspaceHost({ children }: { children: React.ReactNode }) {
               : "hidden min-h-full"
           }
         >
-          {tab.key === currentPathname
+          {tab.key === currentTabKey
             ? children
             : tab.key === activeTabKey
               ? cache[tab.key] ?? null

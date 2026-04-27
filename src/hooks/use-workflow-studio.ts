@@ -50,6 +50,21 @@ export type WorkflowPreview = {
 
 export type AgentRecord = {
   id: number
+  name: string
+  agentClass: string
+  description?: string
+  defaultVersion?: {
+    id: number
+    agentId: number
+    version: string
+    description?: string
+    configJson?: Record<string, unknown>
+    isDefault: number
+  } | null
+}
+
+export type WorkflowAgentOption = {
+  id: number
   agentId: number
   defaultVersionId: number
   name: string
@@ -124,15 +139,27 @@ export function useWorkflowStudio() {
       apiClient.get(url).then((res: unknown) => res as WorkflowOptionsResponse),
   )
   const workflowCrud = useCrud<WorkflowRecord>("/workflow-definition")
-  const { data: defaultAgents, mutate: mutateDefaultAgents } = useSWR<AgentRecord[]>(
-    "/agent/default-agents",
+  const { data: agents, mutate: mutateAgents } = useSWR<AgentRecord[]>(
+    "/agent/agent",
     (url: string) =>
       apiClient
         .get(url)
         .then((res: unknown) => normalizeCrudListResponse<AgentRecord>(res)),
   )
   const filteredAgents = React.useMemo(() => {
-    const items = defaultAgents || []
+    const items = (agents || [])
+      .filter((agent) => agent.defaultVersion)
+      .map((agent) => ({
+        id: agent.id,
+        agentId: agent.id,
+        defaultVersionId: Number(agent.defaultVersion?.id || 0),
+        name: agent.name,
+        version: String(agent.defaultVersion?.version || ""),
+        agentClass: agent.agentClass,
+        description: agent.description,
+        versionDescription: agent.defaultVersion?.description,
+        configJson: agent.defaultVersion?.configJson,
+      }))
     const keyword = agentSearch.trim().toLowerCase()
     if (!keyword) return items
     return items.filter((agent) =>
@@ -140,7 +167,7 @@ export function useWorkflowStudio() {
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
-  }, [defaultAgents, agentSearch])
+  }, [agents, agentSearch])
   const previewAction = useAsyncAction()
   const publishAction = useAsyncAction()
   const deleteAction = useDeleteAction()
@@ -330,9 +357,9 @@ export function useWorkflowStudio() {
       dataSource: filteredAgents,
       search: agentSearch,
       setSearch: setAgentSearch,
-      isLoading: !defaultAgents,
+      isLoading: !agents,
       isValidating: false,
-      refresh: mutateDefaultAgents,
+      refresh: mutateAgents,
     },
     previewAction,
     publishAction,

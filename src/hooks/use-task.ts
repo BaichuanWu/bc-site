@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTaskSystem } from '@/components/providers/task-provider'
-import { type TaskProgress, type TaskStatus } from '@/types/task'
+import { type TaskEventRecord, type TaskProgress, type TaskStatus } from '@/types/task'
 
 export interface TaskInitialData {
     progress?: TaskProgress | null
     status?: TaskStatus
     error?: string | null
+    snapshot?: unknown
+    events?: TaskEventRecord[]
 }
 
 export const useTask = (taskId?: number, initialData?: TaskInitialData) => {

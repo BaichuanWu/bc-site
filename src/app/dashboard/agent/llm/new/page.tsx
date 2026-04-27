@@ -2,7 +2,7 @@
 
 import { Suspense } from "react"
 
-import { LlmDetailPage } from "@/components/agent/llm-detail-page"
+import { LlmEditor } from "@/components/agent/llm-editor"
 
 export default function NewLlmPage() {
   return (
@@ -11,7 +11,7 @@ export default function NewLlmPage() {
         <div className="p-8 text-center text-muted-foreground">Loading...</div>
       }
     >
-      <LlmDetailPage mode="create" />
+      <LlmEditor mode="create" />
     </Suspense>
   )
 }

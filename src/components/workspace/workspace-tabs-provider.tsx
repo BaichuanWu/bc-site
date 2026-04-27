@@ -4,6 +4,7 @@ import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import {
+  buildWorkspaceTabKey,
   buildWorkspaceHref,
   createDefaultWorkspaceState,
   ensureWorkspaceDefaults,
@@ -80,12 +81,16 @@ export function WorkspaceTabsProvider({
     createDefaultWorkspaceState(),
   )
   const [hydrated, setHydrated] = React.useState(false)
+  const suppressedUpsertKeyRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     const loaded = loadWorkspaceTabsState()
     setState(loaded)
     setHydrated(true)
-    if (pathname === "/dashboard" && loaded.activeTabKey !== "/dashboard") {
+    if (
+      pathname === "/dashboard" &&
+      loaded.activeTabKey !== buildWorkspaceTabKey("/dashboard")
+    ) {
       const activeTab = loaded.tabs.find((tab) => tab.key === loaded.activeTabKey)
       if (activeTab) {
         router.replace(buildWorkspaceHref(activeTab.pathname, activeTab.cachedSearch))
@@ -95,6 +100,10 @@ export function WorkspaceTabsProvider({
 
   React.useEffect(() => {
     if (!hydrated || !isDashboardPath(pathname)) return
+    const currentKey = buildWorkspaceTabKey(pathname)
+    if (suppressedUpsertKeyRef.current === currentKey) {
+      return
+    }
     setState((prev) =>
       upsertWorkspaceTab(prev, {
         pathname,
@@ -117,32 +126,36 @@ export function WorkspaceTabsProvider({
 
   const activateTab = React.useCallback<WorkspaceTabsContextValue["activateTab"]>(
     (targetPathname) => {
+      suppressedUpsertKeyRef.current = null
+      const targetKey = buildWorkspaceTabKey(targetPathname)
       const now = Date.now()
       setState((prev) =>
         ensureWorkspaceDefaults({
           ...prev,
           tabs: prev.tabs.map((tab) =>
-            tab.pathname === targetPathname
+            tab.key === targetKey
               ? {
                   ...tab,
                   lastVisitedAt: now,
                 }
               : tab,
           ),
-          activeTabKey: targetPathname,
+          activeTabKey: targetKey,
         }),
       )
-      const target = state.tabs.find((tab) => tab.pathname === targetPathname)
-      router.push(buildWorkspaceHref(targetPathname, target?.cachedSearch))
+      const target = state.tabs.find((tab) => tab.key === targetKey)
+      router.push(buildWorkspaceHref(target?.pathname || targetPathname, target?.cachedSearch))
     },
     [router, state.tabs],
   )
 
   const closeTab = React.useCallback<WorkspaceTabsContextValue["closeTab"]>(
     (targetPathname) => {
+      const targetKey = buildWorkspaceTabKey(targetPathname)
       const { state: nextState, nextActiveKey } = removeWorkspaceTab(state, targetPathname)
       setState(nextState)
-      if (state.activeTabKey === targetPathname) {
+      if (state.activeTabKey === targetKey) {
+        suppressedUpsertKeyRef.current = targetKey
         const nextTab = nextState.tabs.find((tab) => tab.key === nextActiveKey)
         if (nextTab) {
           router.push(buildWorkspaceHref(nextTab.pathname, nextTab.cachedSearch))

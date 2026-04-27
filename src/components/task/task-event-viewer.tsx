@@ -16,42 +16,14 @@ import {
 } from "@/components/ui/sheet"
 import { JsonNode } from "@/components/common/json-node"
 import { DialogueTranscript } from "@/components/task/dialogue-transcript"
-import { TASK_EVENT_TYPE, TASK_STATE } from "@/lib/constants"
+import { TASK_STATE } from "@/lib/constants"
 import {
   getStatusColor,
   mapServerStateToStatus,
   mapStatusToName,
 } from "@/lib/task-utils"
 import { cn } from "@/lib/utils"
-
-export type TaskEventPayload = {
-  kind?: string
-  step?: string
-  node?: string
-  status?: number
-  message?: string
-  result?: unknown
-  trace?: unknown[]
-  data?: {
-    displayMode?: "io" | "conversation"
-    displayInput?: unknown
-    displayOutput?: unknown
-    transcriptMessages?: unknown[]
-    traceEvents?: unknown[]
-    nodeStatus?: string
-    agentKind?: string
-    nodeRunId?: string
-    [key: string]: unknown
-  } | null
-}
-
-export type TaskEventRecord = {
-  id: number | string
-  typ: number
-  message?: string
-  createTime?: string
-  payload?: TaskEventPayload
-}
+import { type TaskEventRecord, type WorkflowNodeEventData } from "@/types/task"
 
 type TaskEventKindConfig = {
   title?: string
@@ -59,16 +31,6 @@ type TaskEventKindConfig = {
 }
 
 const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
-  workflow_node: {
-    summary: (event) => `Audit trail for ${event.payload?.step || "step"}`,
-  },
-  task_control: {
-    title: "Task Control",
-    summary: (event) => event.payload?.message || "Task lifecycle control event",
-  },
-  agent_run: {
-    summary: (event) => `Agent execution for ${event.payload?.node || "node"}`,
-  },
   batch_progress: {
     title: "Batch Progress",
     summary: () => "Incremental execution progress and runtime artifacts",
@@ -79,54 +41,51 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
-function getPayloadKind(event: TaskEventRecord) {
-  return event?.payload?.kind || "generic"
+function getEventData(event: TaskEventRecord): WorkflowNodeEventData | null {
+  return isRecord(event.data) ? (event.data as WorkflowNodeEventData) : null
 }
 
-function getTraceArtifacts(trace: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(trace)) return []
-  return trace.filter(
-    (item): item is Record<string, unknown> =>
-      isRecord(item) && item.type !== "conversation_turn",
-  )
+function getPayloadKind(event: TaskEventRecord) {
+  const data = getEventData(event)
+  return typeof data?.kind === "string" && data.kind.length > 0 ? data.kind : event.type
 }
 
 function getDisplayMode(event: TaskEventRecord) {
-  const mode = event.payload?.data?.displayMode
-  return mode === "conversation" ? "conversation" : "io"
+  const data = getEventData(event)
+  return Array.isArray(data?.messages) && data.messages.length > 0 ? "conversation" : "io"
 }
 
 function getArtifactData(event: TaskEventRecord, isResultEvent: boolean) {
   if (isResultEvent) return null
-  const data = event.payload?.data
-  if (!isRecord(data)) return event.payload
+  const data = getEventData(event)
+  if (!isRecord(data)) return null
   const rest = { ...data }
-  delete rest.displayInput
-  delete rest.displayOutput
-  delete rest.transcriptMessages
-  delete rest.traceEvents
-  delete rest.displayMode
-  delete rest.node_input
-  delete rest.node_output
-  delete rest.agent_kind
-  delete rest.nodeStatus
-  delete rest.agentKind
-  delete rest.nodeRunId
+  delete rest.input
+  delete rest.output
+  delete rest.messages
   return rest
 }
 
 function getEventTitle(event: TaskEventRecord) {
-  if (event.typ === TASK_EVENT_TYPE.RESULT) return "Final Result"
-  if (event.typ === TASK_EVENT_TYPE.ERROR) return "Task Error"
+  const data = getEventData(event)
+  if (event.type === "task.result") return "Final Result"
+  if (event.type === "task.failed" || event.type === "task.stopped") return "Task Error"
   const config = TASK_EVENT_KIND_CONFIG[getPayloadKind(event)]
   if (config?.title) return config.title
-  return event.payload?.step || event.payload?.node || "Task Event"
+  if (typeof data?.key === "string" && data.key.length > 0) return data.key
+  if (event.type === "task.started") return "Task Started"
+  if (event.type === "task.updated") return "Task Update"
+  if (event.type === "task.checkpoint") return "Checkpoint"
+  return "Task Event"
 }
 
 function getEventStatus(event: TaskEventRecord) {
-  if (event.typ === TASK_EVENT_TYPE.RESULT) return TASK_STATE.SUCCESS
-  if (event.typ === TASK_EVENT_TYPE.ERROR) return TASK_STATE.ERROR
-  return event.payload?.status || 0
+  const data = getEventData(event)
+  if (event.type === "task.result") return TASK_STATE.SUCCESS
+  if (event.type === "task.failed" || event.type === "task.stopped") return TASK_STATE.ERROR
+  if (data?.status === "completed") return TASK_STATE.SUCCESS
+  if (data?.status === "failed") return TASK_STATE.ERROR
+  return TASK_STATE.RUNNING
 }
 
 function getEventStatusTone(eventStatus: number) {
@@ -163,10 +122,9 @@ function getEventStatusTone(eventStatus: number) {
 
 function getEventSummary(event: TaskEventRecord) {
   if (event.message) return event.message
-  if (event.payload?.message) return event.payload.message
-  if (event.typ === TASK_EVENT_TYPE.RESULT) return "Final workflow output"
-  if (event.typ === TASK_EVENT_TYPE.ERROR) {
-    return event.payload?.message || "Task execution failed"
+  if (event.type === "task.result") return "Final workflow output"
+  if (event.type === "task.failed" || event.type === "task.stopped") {
+    return event.message || "Task execution failed"
   }
   const config = TASK_EVENT_KIND_CONFIG[getPayloadKind(event)]
   if (config?.summary) return config.summary(event)
@@ -178,21 +136,18 @@ type TaskEventViewerProps = {
 }
 
 export function TaskEventViewer({ event }: TaskEventViewerProps) {
+  const eventData = getEventData(event)
   const eventStatus = getEventStatus(event)
   const eventTone = getEventStatusTone(eventStatus)
   const eventTitle = getEventTitle(event)
-  const isResultEvent = event.typ === TASK_EVENT_TYPE.RESULT
-  const resultData = event.payload?.result
+  const isResultEvent = event.type === "task.result"
+  const resultData = event.data
   const payloadKind = getPayloadKind(event)
   const displayMode = getDisplayMode(event)
-  const transcriptMessages = event.payload?.data?.transcriptMessages || []
-  const traceArtifacts =
-    getTraceArtifacts(event.payload?.data?.traceEvents) ||
-    getTraceArtifacts(event.payload?.trace)
+  const transcriptMessages = Array.isArray(eventData?.messages) ? eventData.messages : []
   const shouldShowTranscript = !isResultEvent && displayMode === "conversation"
-  const displayInput = event.payload?.data?.displayInput
-  const displayOutput = event.payload?.data?.displayOutput
-  const nodeRunId = event.payload?.data?.nodeRunId
+  const displayInput = eventData?.input
+  const displayOutput = eventData?.output
   const artifactData = getArtifactData(event, isResultEvent)
 
   return (
@@ -229,8 +184,8 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                 </Badge>
               </div>
               <span className="text-[9px] font-mono opacity-40">
-                {event.createTime
-                  ? new Date(event.createTime).toLocaleTimeString()
+                {event.timestamp
+                  ? new Date(event.timestamp).toLocaleTimeString()
                   : "N/A"}
               </span>
             </div>
@@ -268,15 +223,10 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                     )}
                   />
                   {mapStatusToName(mapServerStateToStatus(eventStatus))} •{" "}
-                  {event.createTime
-                    ? new Date(event.createTime).toLocaleString()
+                  {event.timestamp
+                    ? new Date(event.timestamp).toLocaleString()
                     : "N/A"}
                 </SheetDescription>
-                {nodeRunId ? (
-                  <div className="text-[10px] font-mono opacity-50 break-all">
-                    Node Run ID: {nodeRunId}
-                  </div>
-                ) : null}
               </div>
             </div>
           </SheetHeader>
@@ -310,17 +260,6 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                   </h4>
                   <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
                     <JsonNode data={displayOutput} depth={0} />
-                  </div>
-                </div>
-              ) : null}
-
-              {traceArtifacts.length > 0 ? (
-                <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Trace Events
-                  </h4>
-                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                    <JsonNode data={traceArtifacts} depth={0} />
                   </div>
                 </div>
               ) : null}

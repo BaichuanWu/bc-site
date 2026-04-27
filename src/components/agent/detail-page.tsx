@@ -25,7 +25,6 @@ type AgentRecord = {
   name: string
   agentClass: string
   description?: string
-  status: number
 }
 
 type AgentVersionRecord = {
@@ -35,7 +34,6 @@ type AgentVersionRecord = {
   description?: string
   configJson?: Record<string, unknown>
   isDefault: number
-  publishedTime?: string
 }
 
 type AgentOptionsResponse = {
@@ -47,7 +45,6 @@ type AgentFormState = {
   name: string
   agentClass: string
   description: string
-  status: string
 }
 
 type VersionFormState = {
@@ -61,7 +58,6 @@ const EMPTY_AGENT_FORM: AgentFormState = {
   name: "",
   agentClass: "DefaultAgentNode",
   description: "",
-  status: "10",
 }
 
 type AgentDetailPageProps =
@@ -75,7 +71,7 @@ type AgentDetailPageProps =
     }
 
 export function AgentDetailPage(props: AgentDetailPageProps) {
-  const { updateTabMeta } = useWorkspaceTabs()
+  const { currentPathname, updateTabMeta, closeTab } = useWorkspaceTabs()
   const saveAction = useAsyncAction()
   const versionSaveAction = useAsyncAction()
   const isCreate = props.mode === "create"
@@ -140,7 +136,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       name: agent.name || "",
       agentClass: agent.agentClass || "DefaultAgentNode",
       description: agent.description || "",
-      status: String(agent.status ?? 10),
     })
     updateTabMeta(`/dashboard/agent/${agent.id}`, {
       title: `Agent: ${agent.name || `#${agent.id}`}`,
@@ -190,7 +185,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
             name: agentForm.name,
             agentClass: agentForm.agentClass,
             description: agentForm.description,
-            status: Number(agentForm.status),
           })) as AgentRecord
         }
         if (!agent) throw new Error("Agent not found")
@@ -199,22 +193,18 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
           name: agent.name,
           agentClass: agent.agentClass,
           description: agentForm.description,
-          status: Number(agentForm.status),
         })) as AgentRecord
       },
       {
         successMessage: isCreate ? "Agent created" : "Agent updated",
         errorMessage: "Failed to save agent",
-        onSuccess: async (saved) => {
+        onSuccess: async () => {
           await mutateAgent()
-          const targetId = Number((saved as AgentRecord)?.id || agent?.id)
-          if (Number.isFinite(targetId) && targetId > 0) {
-            window.history.replaceState(null, "", `/dashboard/agent/${targetId}`)
-          }
+          closeTab(currentPathname)
         },
       },
     )
-  }, [agent, agentForm, isCreate, mutateAgent, saveAction])
+  }, [agent, agentForm, closeTab, currentPathname, isCreate, mutateAgent, saveAction])
 
   const handleSaveVersion = React.useCallback(async () => {
     if (!agent) return
@@ -273,17 +263,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
         isCreate
           ? "Create a stable agent identity first, then manage versions from the same detail page."
           : agent?.description || "Manage agent identity and versioned runtime configuration."
-      }
-      badge={
-        !isCreate && agent ? (
-          <Badge variant={agent.status === 10 ? "default" : "secondary"}>
-            {agent.status === 10
-              ? "Active"
-              : agent.status === 20
-                ? "Archived"
-                : "Inactive"}
-          </Badge>
-        ) : undefined
       }
       actions={
         <>
@@ -358,16 +337,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
               className="min-h-24"
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="status">Status</Label>
-            <Input
-              id="status"
-              value={agentForm.status}
-              onChange={(e) =>
-                setAgentForm((prev) => ({ ...prev, status: e.target.value }))
-              }
-            />
-          </div>
         </div>
       </section>
 
@@ -399,11 +368,6 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
                       <div className="text-sm text-muted-foreground">
                         {version.description || "No version description"}
                       </div>
-                      {version.publishedTime ? (
-                        <div className="text-xs text-muted-foreground">
-                          Published: {version.publishedTime}
-                        </div>
-                      ) : null}
                     </div>
                     <Button
                       variant="outline"

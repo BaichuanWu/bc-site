@@ -10,15 +10,15 @@ import {
 } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { apiClient } from "@/lib/api"
-import { toast } from "sonner"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type Column } from "@/components/common/data-table"
+import { normalizeCrudListResponse } from "@/lib/crud-response"
 import { Badge } from "@/components/ui/badge"
-import { type SearchFilterItem } from "@/components/common/query-filters"
-import { getJsonObject } from "@/types/json"
+import { resolveInitialFilterState, type SearchFilterItem } from "@/components/common/query-filters"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { useTaskAction } from "@/hooks/use-task-action"
+import { useSWRConfig } from "swr"
 
 type Alpha = {
     id: string | number
@@ -31,10 +31,14 @@ type Alpha = {
     turnover: number
     wqbTypName: string
     state: number
+    isPnlValid?: boolean
+    sc: number
     pc: number
     pcUpdateTime?: string
     failCount: number
     warnCount: number
+    trendScore: number
+    intergrityScore: number
     region: string
     universe: string
     delay: number
@@ -42,27 +46,123 @@ type Alpha = {
     ancestorId?: string | number
 }
 
-const getStateBadge = (state: number) => {
+type AlphaListResponse = {
+    dataSource?: Alpha[]
+    total?: number
+    [key: string]: unknown
+}
+
+const getStateBadge = (state: number, isPnlValid?: boolean) => {
+    if (isPnlValid === false) {
+        return <Badge variant="destructive">{getStateName(state)}</Badge>
+    }
+
+    return <Badge variant={getStateVariant(state)} className={getStateClassName(state)}>{getStateName(state)}</Badge>
+}
+
+const getStateName = (state: number) => {
     switch (state) {
-        case 0: return <Badge variant="outline">Initialized</Badge>
-        case 5: return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">Simulating</Badge>
-        case 8: return <Badge variant="destructive">Failed</Badge>
-        case 10: return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Simulated</Badge>
-        case 20: return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Submitted</Badge>
-        default: return <Badge variant="outline">Unknown ({state})</Badge>
+        case 0: return "Initialized"
+        case 5: return "Simulating"
+        case 8: return "Failed"
+        case 10: return "Simulated"
+        case 20: return "Submitted"
+        default: return `Unknown (${state})`
     }
 }
 
+const getStateVariant = (state: number) => {
+    if (state === 0) return "outline"
+    if (state === 5) return "secondary"
+    if (state === 8) return "destructive"
+    return "default"
+}
+
+const getStateClassName = (state: number) => {
+    if (state === 5) return "bg-yellow-500 hover:bg-yellow-600 text-white"
+    if (state === 10) return "bg-blue-500 hover:bg-blue-600"
+    if (state === 20) return "bg-green-500 hover:bg-green-600"
+    return undefined
+}
 
 export default function AlphaPage() {
-    const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>({})
+    const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>(() =>
+        resolveInitialFilterState("alpha-page-filters")
+    )
     useWorkspaceTabTitle("/dashboard/wqb/alpha", "WQB Alphas")
     const { runTask } = useTaskAction()
+    const { mutate } = useSWRConfig()
+    const hasActiveQuery = React.useMemo(
+        () => Object.keys(currentFilters).length > 0,
+        [currentFilters]
+    )
+
+    const refreshAlphaList = React.useCallback(() => {
+        void mutate(
+            (key: unknown) =>
+                typeof key === "string" && key.startsWith("/quants/wqb/alpha?"),
+            undefined,
+            { revalidate: true }
+        )
+    }, [mutate])
+
+    const patchAlphaInCachedLists = React.useCallback((updatedAlpha: Alpha) => {
+        void mutate(
+            (key: unknown) =>
+                typeof key === "string" && key.startsWith("/quants/wqb/alpha?"),
+            (current: AlphaListResponse | undefined) => {
+                if (!current || !Array.isArray(current.dataSource)) return current
+
+                let changed = false
+                const nextDataSource = current.dataSource.map((alpha) => {
+                    if (String(alpha.id) !== String(updatedAlpha.id)) return alpha
+
+                    changed = true
+                    return {
+                        ...alpha,
+                        ...updatedAlpha,
+                    }
+                })
+
+                if (!changed) return current
+                return {
+                    ...current,
+                    dataSource: nextDataSource,
+                }
+            },
+            { revalidate: false }
+        )
+    }, [mutate])
+
+    const refreshAlphaRow = React.useCallback(async (alphaId: string | number) => {
+        const response = await apiClient.get("/quants/wqb/alpha", {
+            params: {
+                q: JSON.stringify({ id: alphaId }),
+                skip: 0,
+                limit: 1,
+            },
+        })
+        const [updatedAlpha] = normalizeCrudListResponse<Alpha>(response)
+        if (updatedAlpha) {
+            patchAlphaInCachedLists(updatedAlpha)
+        }
+    }, [patchAlphaInCachedLists])
 
     const handleBatchSimulate = async () => {
         await runTask(
             () => apiClient.post("/sys/tasks/run/simulate_batch_task", { kwargs: { query: currentFilters } }),
             { fallbackSuccessMessage: "Batch simulation started", errorMessage: "Failed to start batch simulation" }
+        )
+    }
+
+    const handleBatchUpdatePc = async () => {
+        await runTask(
+            () => apiClient.post("/sys/tasks/run/update_alpha_pc_task", { kwargs: { query: currentFilters } }),
+            {
+                fallbackSuccessMessage: "PC update task started",
+                errorMessage: "Failed to start PC update",
+                onTaskCompleted: refreshAlphaList,
+            }
         )
     }
 
@@ -107,6 +207,10 @@ export default function AlphaPage() {
             ]
         },
         { key: "operatorCount", label: "Operator Count", type: "number" },
+        { key: "trendScore", label: "Trend Score", type: "number" },
+        { key: "intergrityScore", label: "Integrity Score", type: "number" },
+        { key: "sc", label: "Self Corr (SC)", type: "number" },
+        { key: "bc", label: "batch Corr (BC)", type: "number" },
         { key: "pc", label: "Production Corr (PC)", type: "number" },
         { key: "failCount", label: "Fail Count Limit", type: "number" },
         { key: "warnCount", label: "Warn Count Limit", type: "number" },
@@ -149,12 +253,16 @@ export default function AlphaPage() {
         { key: "universe", title: "Universe", width: 100, truncate: true },
         { key: "delay", title: "Delay", width: 70, align: 'center' },
         { key: "sharpe", title: "Sharpe", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
+        { key: "fitness", title: "Fitness", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
+        { key: "turnover", title: "Turn", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
+        { key: "margin", title: "Margin", width: 96, align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
         { key: "operatorCount", title: "Ops", width: 84, align: 'right', sortable: true },
         { key: "failCount", title: "Fails", width: 84, align: 'right', sortable: true },
         { key: "warnCount", title: "Warns", width: 84, align: 'right', sortable: true },
-        { key: "fitness", title: "Fitness", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
-        { key: "margin", title: "Margin", width: 96, align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
-        { key: "turnover", title: "Turn", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
+        { key: "trendScore", title: "Trend", width: 84, align: 'right', sortable: true },
+        { key: "intergrityScore", title: "Integrity", width: 92, align: 'right', sortable: true },
+        { key: "sc", title: "SC", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
+        { key: "bc", title: "BC", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
         { 
             key: "pc", 
             title: "PC", 
@@ -176,8 +284,14 @@ export default function AlphaPage() {
                                     onClick={async (e) => {
                                         e.stopPropagation();
                                         await runTask(
-                                            () => apiClient.post(`/sys/tasks/run/update_alpha_pc_task`, { kwargs: { alpha_id: item.id } }),
-                                            { fallbackSuccessMessage: "PC update task started", errorMessage: "Failed to start PC update" }
+                                            () => apiClient.post(`/sys/tasks/run/update_alpha_pc_task`, { kwargs: { query: { id: item.id } } }),
+                                            {
+                                                fallbackSuccessMessage: "PC update task started",
+                                                errorMessage: "Failed to start PC update",
+                                                onTaskCompleted: async () => {
+                                                    await refreshAlphaRow(item.id)
+                                                },
+                                            }
                                         )
                                     }}
                                 >
@@ -204,7 +318,7 @@ export default function AlphaPage() {
             key: "state",
             title: "State",
             width: 120,
-            render: (val) => getStateBadge(val as number)
+            render: (val, item) => getStateBadge(val as number, item.isPnlValid)
         },
         {
             key: "actions",
@@ -213,7 +327,7 @@ export default function AlphaPage() {
             fixed: 'right',
             render: (_, item, onRefresh) => <AlphaActionMenu alpha={item} onSuccess={onRefresh} />
         }
-    ], [])
+    ], [refreshAlphaRow, runTask])
 
     return (
         <CrudLayout<Alpha>
@@ -221,6 +335,11 @@ export default function AlphaPage() {
             title="WQB Alpha"
             endpoint="/quants/wqb/alpha"
             idKey="wqbAlphaId"
+            headerActions={
+                <Button variant="outline" onClick={handleBatchUpdatePc} disabled={!hasActiveQuery}>
+                    <RefreshCcw className="mr-2 h-4 w-4" /> Update PC by Query
+                </Button>
+            }
             filterItems={filterItems}
             storageKey="alpha-page-filters"
             columns={columns}

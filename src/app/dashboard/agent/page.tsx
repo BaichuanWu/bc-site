@@ -7,7 +7,6 @@ import { ActionButtons } from "@/components/common/action-buttons"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { type Column } from "@/components/common/data-table"
-import { Badge } from "@/components/ui/badge"
 import { useCrud } from "@/hooks/use-crud"
 import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
@@ -18,7 +17,6 @@ type AgentRecord = {
   name: string
   agentClass: string
   description?: string
-  status: number
 }
 
 export default function AgentPage() {
@@ -31,16 +29,6 @@ export default function AgentPage() {
     () => [
       { key: "nameLike", label: "Agent Name", type: "text" },
       { key: "agentClass", label: "Implementation Class", type: "text" },
-      {
-        key: "status",
-        label: "Status",
-        type: "number",
-        options: [
-          { label: "Active (10)", value: 10 },
-          { label: "Inactive (0)", value: 0 },
-          { label: "Archived (20)", value: 20 },
-        ],
-      },
     ],
     [],
   )
@@ -62,20 +50,6 @@ export default function AgentPage() {
       ),
     },
     { key: "agentClass", title: "Class", className: "text-sm" },
-    {
-      key: "status",
-      title: "Status",
-      render: (value: unknown) => {
-        const numeric = Number(value || 0)
-        const label =
-          numeric === 10 ? "Active" : numeric === 20 ? "Archived" : "Inactive"
-        return (
-          <Badge variant={numeric === 10 ? "default" : "secondary"}>
-            {label}
-          </Badge>
-        )
-      },
-    },
     {
       key: "actions",
       title: "Actions",

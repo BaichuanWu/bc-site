@@ -18,6 +18,17 @@ const STORAGE_KEY = "bc:workspace-tabs:v1"
 const DASHBOARD_ROOT = "/dashboard"
 
 export function buildWorkspaceTabKey(pathname: string) {
+  if (!isDashboardPath(pathname) || pathname === DASHBOARD_ROOT) {
+    return pathname
+  }
+
+  const segments = pathname.split("/").filter(Boolean)
+  const lastSegment = segments[segments.length - 1]
+
+  if (segments.length >= 3 && (lastSegment === "new" || /^\d+$/.test(lastSegment))) {
+    return `/${segments.slice(0, -1).join("/")}/$detail`
+  }
+
   return pathname
 }
 
@@ -35,6 +46,19 @@ function normalizeWorkspaceTab(tab: WorkspaceTab): WorkspaceTab {
     closable: isRoot ? false : true,
     lastVisitedAt: Number(tab.lastVisitedAt) || Date.now(),
   }
+}
+
+function dedupeWorkspaceTabs(tabs: WorkspaceTab[]) {
+  const byKey = new Map<string, WorkspaceTab>()
+
+  for (const tab of tabs) {
+    const existing = byKey.get(tab.key)
+    if (!existing || tab.lastVisitedAt >= existing.lastVisitedAt) {
+      byKey.set(tab.key, tab)
+    }
+  }
+
+  return Array.from(byKey.values())
 }
 
 export function isDashboardPath(pathname: string) {
@@ -101,9 +125,10 @@ export function ensureWorkspaceDefaults(
         }),
         ...base.tabs.map((tab) => normalizeWorkspaceTab(tab)),
       ]
-  const activeExists = tabs.some((tab) => tab.key === base.activeTabKey)
+  const uniqueTabs = dedupeWorkspaceTabs(tabs)
+  const activeExists = uniqueTabs.some((tab) => tab.key === base.activeTabKey)
   return {
-    tabs,
+    tabs: uniqueTabs,
     activeTabKey: activeExists ? base.activeTabKey : rootKey,
   }
 }

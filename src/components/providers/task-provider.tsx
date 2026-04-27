@@ -5,23 +5,8 @@ import { apiClient } from "@/lib/api"
 import { toast } from "sonner"
 import { getJsonObject } from "@/types/json"
 
-import { type TaskState } from "@/types/task"
-import { TASK_EVENT_TYPE } from "@/lib/constants"
+import { type TaskEventRecord, type TaskState } from "@/types/task"
 import { mapServerStateToStatus } from "@/lib/task-utils"
-
-type TaskEventRecord = {
-    id?: string | number
-    typ?: number
-    payload?: {
-        step?: string
-        status?: number
-        message?: string
-        payload?: {
-            message?: string
-        } | null
-    } | null
-    createTime?: string
-}
 
 type TaskUpdatePayload = {
     id?: number
@@ -43,20 +28,44 @@ interface TaskContextType {
 
 const TaskContext = createContext<TaskContextType | null>(null)
 
+const getTaskEventMergeKey = (event: TaskEventRecord) => {
+    if (event.eventId !== null && event.eventId !== undefined) {
+        return `event:${event.eventId}`
+    }
+
+    if (event.sequence !== null && event.sequence !== undefined) {
+        return [
+            event.taskId,
+            event.type,
+            event.sequence,
+            event.timestamp || "na",
+        ].join(":")
+    }
+
+    return [
+        event.taskId,
+        event.type,
+        event.timestamp || "na",
+        event.message || "",
+    ].join(":")
+}
+
 const mergeTaskEvents = (existingEvents: TaskEventRecord[], incomingEvents: TaskEventRecord[]) => {
     const unique = new Map<string | number, TaskEventRecord>()
 
     for (const event of [...existingEvents, ...incomingEvents]) {
-        const key =
-            event.id ??
-            `${event.typ}-${event.payload?.step ?? "event"}-${event.payload?.status ?? "na"}`
+        const key = getTaskEventMergeKey(event)
         unique.set(key, event)
     }
 
     return Array.from(unique.values()).sort(
-        (a, b) =>
-            new Date(a.createTime || 0).getTime() -
-            new Date(b.createTime || 0).getTime()
+        (a, b) => {
+            const timeDelta =
+                new Date(a.timestamp || 0).getTime() -
+                new Date(b.timestamp || 0).getTime()
+            if (timeDelta !== 0) return timeDelta
+            return (a.sequence ?? 0) - (b.sequence ?? 0)
+        }
     )
 }
 
@@ -201,25 +210,39 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                     if (data.event) {
                         const eventData = data.event
                         if (!eventData) return prev
-                        const normalizedEvent =
-                            eventData.typ === TASK_EVENT_TYPE.CHECKPOINT &&
-                            eventData.payload?.step
-                                ? {
-                                      ...eventData,
-                                      id:
-                                          eventData.id ??
-                                          `${eventData.typ}-${eventData.payload.step}-${eventData.payload.status}`,
-                                  }
-                                : eventData
                         newState.events = mergeTaskEvents(existing.events as TaskEventRecord[], [
-                            normalizedEvent,
+                            eventData,
                         ])
-                        if (eventData.typ === TASK_EVENT_TYPE.ERROR) {
-                            const errorMessage =
-                                eventData.payload?.message ||
-                                eventData.payload?.payload?.message ||
-                                existing.error ||
-                                "Task failed"
+                        if (typeof eventData.progress === 'number') {
+                            newState.progress = {
+                                message: eventData.message || existing.progress?.message,
+                                percent: eventData.progress,
+                            }
+                        } else if (eventData.message) {
+                            newState.progress = {
+                                ...(existing.progress || {}),
+                                message: eventData.message,
+                            }
+                        }
+                        if (eventData.snapshot !== undefined) {
+                            newState.snapshot = eventData.snapshot
+                        }
+                        if (eventData.type === 'task.result') {
+                            newState = {
+                                ...newState,
+                                status: 'completed',
+                                progress: {
+                                    message: eventData.message || existing.progress?.message,
+                                    percent: 100,
+                                },
+                                snapshot: eventData.snapshot ?? newState.snapshot,
+                                lastUpdated: Date.now(),
+                            }
+                            if (existing.status !== 'completed') {
+                                toast.success(`Task ${tid} completed`)
+                            }
+                        } else if (eventData.type === 'task.failed' || eventData.type === 'task.stopped') {
+                            const errorMessage = eventData.message || existing.error || "Task failed"
                             newState = {
                                 ...newState,
                                 status: 'failed',
@@ -228,6 +251,12 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                             }
                             if (existing.status !== 'failed') {
                                 toast.error(`Task ${tid} failed`, { description: errorMessage })
+                            }
+                        } else {
+                            newState = {
+                                ...newState,
+                                status: existing.status === 'pending' ? 'pending' : 'running',
+                                lastUpdated: Date.now(),
                             }
                         }
                     } else {

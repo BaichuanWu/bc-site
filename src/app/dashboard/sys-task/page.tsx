@@ -4,10 +4,10 @@ import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
     Activity,
-    ActivityIcon, 
-    Loader2Icon, 
+    ActivityIcon,
+    Loader2Icon,
     ChevronRightIcon
 } from 'lucide-react'
 import { CrudLayout, type ItemsRenderProps } from '@/components/common/crud-layout'
@@ -42,7 +42,7 @@ import { TaskProgressBar } from '@/components/common/task-progress-bar'
 const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     const id = task.id
     const name = task.name
-    
+
     // Use standardized names from backend (CamelCase)
     const stateName = task.stateName
     const typName = task.typName
@@ -88,12 +88,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                 </div>
             </CardHeader>
             <CardContent className="pb-4 mt-auto">
-                <TaskProgressBar 
-                    taskId={id} 
-                    initialData={{ 
+                <TaskProgressBar
+                    taskId={id}
+                    initialData={{
                         progress: { percent: task.progress, message: task.message },
                         status: mapServerStateToStatus(task.state)
-                    }} 
+                    }}
                 />
             </CardContent>
         </Card>
@@ -126,15 +126,15 @@ export default function SystemTaskPage() {
 
     const filterItems: SearchFilterItem[] = [
         { key: "name", label: "Task Name", type: "text" },
-        { 
-            key: "typ", 
-            label: "Type", 
+        {
+            key: "typ",
+            label: "Type",
             type: "number",
             options: getOptions('SystemTask', 'TYP_NAME_MAPPING')
         },
-        { 
-            key: "state", 
-            label: "State", 
+        {
+            key: "state",
+            label: "State",
             type: "number",
             options: getOptions('SystemTask', 'STATE_NAME_MAPPING')
         }

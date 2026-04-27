@@ -18,13 +18,17 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useMeta } from "@/hooks/use-meta"
 import { useAsyncAction } from "@/hooks/use-async-action"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { apiClient, fetcher } from "@/lib/api"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
 import { formatJsonText, parseJsonText } from "@/lib/json-utils"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 import { WorkflowEditorShell } from "@/components/workflow/studio/editor-shell"
-import type { AgentRecord, WorkflowPreview } from "@/hooks/use-workflow-studio"
+import type {
+  AgentRecord,
+  WorkflowAgentOption,
+  WorkflowPreview,
+} from "@/hooks/use-workflow-studio"
 import type { JsonObject } from "@/types/json"
 
 type WorkflowOptionsResponse = {
@@ -124,7 +128,7 @@ type WorkflowDetailPageProps =
 
 export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   const navigate = useWorkspaceNavigate()
-  const { updateTabMeta } = useWorkspaceTabs()
+  const { currentPathname, updateTabMeta, closeTab } = useWorkspaceTabs()
   const { getOptions } = useMeta()
   const isCreate = props.mode === "create"
   const workflowId = props.mode === "edit" ? props.workflowId : null
@@ -147,8 +151,8 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       : null,
     fetcher,
   )
-  const { data: defaultAgents = [] } = useSWR<AgentRecord[]>(
-    "/agent/default-agents",
+  const { data: agents = [] } = useSWR<AgentRecord[]>(
+    "/agent/agent",
     async (url: string) => {
       const response = await fetcher<unknown>(url)
       return normalizeCrudListResponse<AgentRecord>(response)
@@ -195,15 +199,28 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
     })
   }, [isCreate, updateTabMeta, workflow])
 
-  const filteredAgents = React.useMemo(() => {
+  const filteredAgents = React.useMemo<WorkflowAgentOption[]>(() => {
+    const availableAgents = agents
+      .filter((agent) => agent.defaultVersion)
+      .map((agent) => ({
+        id: agent.id,
+        agentId: agent.id,
+        defaultVersionId: Number(agent.defaultVersion?.id || 0),
+        name: agent.name,
+        version: String(agent.defaultVersion?.version || ""),
+        agentClass: agent.agentClass,
+        description: agent.description,
+        versionDescription: agent.defaultVersion?.description,
+        configJson: agent.defaultVersion?.configJson,
+      }))
     const keyword = agentSearch.trim().toLowerCase()
-    if (!keyword) return defaultAgents
-    return defaultAgents.filter((agent) =>
+    if (!keyword) return availableAgents
+    return availableAgents.filter((agent) =>
       [agent.name, agent.version, agent.agentClass]
         .filter(Boolean)
         .some((part) => String(part).toLowerCase().includes(keyword)),
     )
-  }, [defaultAgents, agentSearch])
+  }, [agents, agentSearch])
 
   const handlePreview = React.useCallback(async () => {
     await previewAction.run(
@@ -257,16 +274,13 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       {
         successMessage: isCreate ? "Workflow created" : "Workflow updated",
         errorMessage: "Failed to save workflow",
-        onSuccess: async (saved) => {
-          const nextId = Number((saved as WorkflowRecord)?.id || workflowId)
-          if (Number.isFinite(nextId) && nextId > 0) {
-            await mutateWorkflow()
-            window.history.replaceState(null, "", `/dashboard/workflow/${nextId}`)
-          }
+        onSuccess: async () => {
+          await mutateWorkflow()
+          closeTab(currentPathname)
         },
       },
     )
-  }, [form, isCreate, mutateWorkflow, saveAction, workflowId])
+  }, [closeTab, currentPathname, form, isCreate, mutateWorkflow, saveAction, workflowId])
 
   const handleApplyTemplate = React.useCallback(() => {
     if (!selectedTemplate) return
