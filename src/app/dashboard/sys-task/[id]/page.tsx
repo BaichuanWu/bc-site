@@ -39,6 +39,7 @@ import {
 type TaskDetailRecord = {
     id: number
     name: string
+    displayName?: string
     state: number
     stateName: string
     progress: number
@@ -179,7 +180,7 @@ export default function TaskDetailPage() {
 
     useWorkspaceTabTitle(
         `/dashboard/sys-task/${taskIdParam}`,
-        displayTask?.name ? `Task: ${displayTask.name}` : `Task: ${taskIdParam}`,
+        displayTask ? `Task: ${displayTask.displayName || displayTask.name}` : `Task: ${taskIdParam}`,
     )
 
     useEffect(() => {
@@ -230,14 +231,14 @@ export default function TaskDetailPage() {
                         </Button>
                         <div className="flex-1">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-black tracking-tight">{displayTask.name}</h1>
+                                <h1 className="text-2xl font-black tracking-tight">{displayTask.displayName || displayTask.name}</h1>
                                 <Badge variant="outline" className={cn("px-2.5 py-0.5 font-bold uppercase tracking-wider text-[10px]", getStatusColor(displayTask.state))}>
                                     {displayTask.state === TASK_STATE.RUNNING && <Loader2Icon className="mr-1.5 h-3 w-3 animate-spin" />}
                                     {displayTask.stateName}
                                 </Badge>
                             </div>
                             <div className="text-[11px] font-mono text-muted-foreground mt-1 opacity-80">
-                                UUID: {taskIdParam} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
+                                Runner: {displayTask.name} • UUID: {taskIdParam} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
                             </div>
                         </div>
                         <TaskControlButtons
@@ -357,7 +358,7 @@ export default function TaskDetailPage() {
                                             </div>
                                         ) : (
                                             displayEvents.map((event: TaskEventRecord, idx: number) => (
-                                                <div key={event.eventId ?? `${event.type}-${event.sequence ?? idx}-${event.timestamp}`} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div key={event.eventId ?? `${event.type}-${idx}-${event.timestamp}`} className="relative group animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
                                                     <TaskEventViewer event={event} />
                                                 </div>
                                             ))

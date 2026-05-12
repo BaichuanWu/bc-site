@@ -107,6 +107,7 @@ export function WorkflowDisplayNode({
             <span className="text-muted-foreground">Version</span>
             <span className="font-medium">
               {safeData.agentVersionDisplay ||
+                // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
                 (model.agent_id != null ? "runtime default" : "-")}
             </span>
           </div>

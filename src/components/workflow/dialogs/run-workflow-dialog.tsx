@@ -11,7 +11,6 @@ import { useAsyncAction } from "@/hooks/use-async-action"
 import { showTaskStartedToast } from "@/components/task/task-started-toast"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { Loader2 } from "lucide-react"
-import { Input } from "@/components/ui/input"
 
 interface RunWorkflowDialogProps {
   open: boolean
@@ -20,7 +19,6 @@ interface RunWorkflowDialogProps {
   title: string
   description?: string
   initialKwargs?: Record<string, unknown>
-  showSessionId?: boolean
   renderForm?: () => React.ReactNode
 }
 
@@ -28,8 +26,16 @@ type RunTaskResponse = {
   taskId: number | string
 }
 
+const WORKFLOW_TASK_NAME = "workflow_task"
+
 function formatInitialKwargs(initialKwargs?: Record<string, unknown>) {
   return JSON.stringify(initialKwargs || {}, null, 2)
+}
+
+function toKwargs(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {}
 }
 
 export function RunWorkflowDialog({
@@ -39,12 +45,10 @@ export function RunWorkflowDialog({
   title,
   description,
   initialKwargs,
-  showSessionId = false,
   renderForm,
 }: RunWorkflowDialogProps) {
   const navigate = useWorkspaceNavigate()
   const runAction = useAsyncAction()
-  const [sessionId, setSessionId] = React.useState("")
   const [kwargsText, setKwargsText] = React.useState(() =>
     formatInitialKwargs(initialKwargs),
   )
@@ -52,18 +56,18 @@ export function RunWorkflowDialog({
   React.useEffect(() => {
     if (!open) return
     setKwargsText(formatInitialKwargs(initialKwargs))
-    setSessionId("")
   }, [initialKwargs, open])
 
   const handleRun = async () => {
     await runAction.run(
       async () => {
-        const kwargs = parseJsonText(kwargsText, {})
-        const payload: Record<string, unknown> = { kwargs }
-        if (showSessionId && sessionId.trim()) {
-          payload.sessionId = sessionId.trim()
+        const kwargs = toKwargs(parseJsonText(kwargsText, {}))
+        kwargs.workflowName = workflowName
+        const payload: Record<string, unknown> = {
+          displayName: workflowName,
+          kwargs,
         }
-        return (await apiClient.post(`/sys/tasks/run/${workflowName}`, payload)) as RunTaskResponse
+        return (await apiClient.post(`/sys/tasks/run/${WORKFLOW_TASK_NAME}`, payload)) as RunTaskResponse
       },
       {
         errorMessage: "Failed to start workflow",
@@ -87,18 +91,6 @@ export function RunWorkflowDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {showSessionId ? (
-            <div className="grid gap-2">
-              <Label htmlFor="run-session-id">Session ID</Label>
-              <Input
-                id="run-session-id"
-                value={sessionId}
-                onChange={(e) => setSessionId(e.target.value)}
-                placeholder="Optional SSE session id"
-              />
-            </div>
-          ) : null}
-
           {renderForm ? (
             renderForm()
           ) : (

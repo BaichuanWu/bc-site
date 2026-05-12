@@ -8,6 +8,13 @@
 - Do not use backend `snake_case` names in page code, hooks, or UI models.
 - If the backend still stores or computes values in `snake_case`, conversion belongs on the backend boundary, not in frontend pages.
 
+## SDD
+- `bc-site` is an independent GitHub project and must keep its own `AGENT.md`.
+- Frontend SDD lives in `bc-site/sdd/`.
+- Before SDD-driven implementation, read `bc-site/sdd/problems.md` and the linked files under `bc-site/sdd/specs/` or `bc-site/sdd/decisions/`.
+- Keep `problems.md` as an index; put complete specs in `sdd/specs/` and long-lived decisions in `sdd/decisions/`.
+- If a frontend change requires backend contract changes, link to the related `bc-core/sdd/` or workspace cross-repo SDD note.
+
 ## Dashboard Work
 - Read relevant docs under `docs/standards/` before changing dashboard architecture or page layout.
 - Keep list/detail patterns aligned with the existing dashboard system.

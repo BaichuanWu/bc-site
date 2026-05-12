@@ -29,6 +29,7 @@ interface TaskItemProps {
 type SystemTaskListItem = {
     id: number
     name: string
+    displayName?: string
     state: number
     stateName: string
     typName: string
@@ -41,7 +42,7 @@ import { TaskProgressBar } from '@/components/common/task-progress-bar'
 
 const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     const id = task.id
-    const name = task.name
+    const displayName = task.displayName || task.name
 
     // Use standardized names from backend (CamelCase)
     const stateName = task.stateName
@@ -66,7 +67,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                             {typName}
                         </Badge>
                         <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 min-w-0">
-                            <span className="truncate">{name}</span>
+                            <span className="truncate">{displayName}</span>
                             {task.state === TASK_STATE.RUNNING && <ActivityIcon className="h-3 w-3 text-blue-500 animate-pulse shrink-0" />}
                         </CardTitle>
                     </div>

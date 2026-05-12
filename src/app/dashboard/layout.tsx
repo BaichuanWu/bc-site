@@ -11,6 +11,7 @@ import {
     Bot,
     Activity,
     BookOpen,
+    FlaskConical,
     Workflow,
     type LucideIcon,
 } from "lucide-react"
@@ -61,9 +62,17 @@ const NAV_ITEMS: NavItem[] = [
         ]
     },
     {
+        title: "Research",
+        icon: FlaskConical,
+        children: [
+            { title: "Research Runs", href: "/dashboard/research" },
+        ]
+    },
+    {
         title: "Agent Management",
         icon: Bot,
         children: [
+            { title: "Conversation", href: "/dashboard/conversation" },
             { title: "Agents", href: "/dashboard/agent" },
             { title: "LLM Config", href: "/dashboard/agent/llm" },
         ]

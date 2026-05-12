@@ -59,15 +59,12 @@ export function WorkflowNodeInspector({
   onCreateEdge,
 }: WorkflowNodeInspectorProps) {
   const model = getJsonObject(node.data.model) || {}
+  // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
+  const modelAgentId = model.agent_id
   const [isAgentPickerOpen, setIsAgentPickerOpen] = React.useState(false)
   const [agentSearch, setAgentSearch] = React.useState("")
-
-  const selectedAgent = React.useMemo(
-    () =>
-      availableAgents.find((agent) => agent.agentId === Number(model.agent_id)) ||
-      null,
-    [availableAgents, model.agent_id],
-  )
+  const selectedAgent =
+    availableAgents.find((agent) => agent.agentId === Number(modelAgentId)) || null
 
   const agentOptionsByIdentity = React.useMemo(() => {
     const unique = new Map<number, AgentOption>()
@@ -152,7 +149,7 @@ export function WorkflowNodeInspector({
             </div>
             {selectedAgent ? (
               <div className="text-xs text-muted-foreground">
-                Bound by `agent_id={selectedAgent.agentId}`. Default version is resolved at runtime.
+                Bound by agent id {selectedAgent.agentId}. Default version is resolved at runtime.
               </div>
             ) : null}
           </div>
@@ -224,7 +221,7 @@ export function WorkflowNodeInspector({
                           <div className="truncate text-sm font-medium">{candidate.id}</div>
                           <div className="text-xs text-muted-foreground">
                             {String(
-                              getJsonObject(candidate.data.model)?.agent_id || "Unbound",
+                              getWorkflowNodeAgentId(candidate.data.model) || "Unbound",
                             )}
                           </div>
                         </div>
@@ -292,6 +289,7 @@ export function WorkflowNodeInspector({
                           ...current.data,
                           model: {
                             ...current.data.model,
+                            // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
                             agent_id: agent.agentId,
                           },
                         },
@@ -327,4 +325,10 @@ export function WorkflowNodeInspector({
       </Dialog>
     </div>
   )
+}
+
+function getWorkflowNodeAgentId(model: unknown) {
+  const nodeModel = getJsonObject(model)
+  // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
+  return nodeModel?.agent_id
 }

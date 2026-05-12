@@ -41,6 +41,7 @@ export function createWorkflowNodeFromAgent(
       model: {
         key: id,
         type: "agent",
+        // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
         agent_id: agent?.agentId || agent?.id || null,
         input_mapping: {},
         output_mapping: {},

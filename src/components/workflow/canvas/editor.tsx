@@ -139,6 +139,7 @@ function WorkflowCanvasEditorInner({
         if (SPECIAL_NODE_IDS.has(node.id)) return node
         const model = getJsonObject(node.data.model)
         const selectedAgent = availableAgents.find(
+          // api-casing-ignore-next-line: Workflow DSL field is intentionally snake_case.
           (agent) => agent.agentId === Number(model?.agent_id)
         )
         const kind = inferNodeKindFromAgent(selectedAgent?.agentClass, selectedAgent?.name)

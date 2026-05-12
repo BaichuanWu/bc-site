@@ -8,6 +8,7 @@ export default function NewLlmPage() {
   return (
     <Suspense
       fallback={
+        // dashboard-standards-ignore-next-line: Suspense fallback is local to the editor route.
         <div className="p-8 text-center text-muted-foreground">Loading...</div>
       }
     >

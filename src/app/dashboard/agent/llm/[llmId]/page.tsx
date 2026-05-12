@@ -10,12 +10,14 @@ export default function LlmEditPage() {
   const llmId = Number(params.llmId)
 
   if (!Number.isFinite(llmId) || llmId <= 0) {
+    // dashboard-standards-ignore-next-line: Minimal invalid-id fallback before the editor shell can render.
     return <div className="p-8 text-center text-muted-foreground">Invalid LLM id.</div>
   }
 
   return (
     <Suspense
       fallback={
+        // dashboard-standards-ignore-next-line: Suspense fallback is local to the editor route.
         <div className="p-8 text-center text-muted-foreground">Loading...</div>
       }
     >

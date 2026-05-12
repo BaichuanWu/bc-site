@@ -39,14 +39,14 @@ export function WorkspaceHost({ children }: { children: React.ReactNode }) {
   }, [tabs])
 
   return (
-    <div className="min-h-full flex-1">
+    <div className="flex h-full min-h-0 flex-1">
       {tabs.map((tab) => (
         <div
           key={tab.key}
           className={
             tab.key === activeTabKey
-              ? "min-h-full"
-              : "hidden min-h-full"
+              ? "h-full min-h-0 flex-1"
+              : "hidden h-full min-h-0 flex-1"
           }
         >
           {tab.key === currentTabKey

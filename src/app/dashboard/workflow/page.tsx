@@ -193,7 +193,6 @@ export default function WorkflowPage() {
             ? `Execute ${runningWorkflow.name} with JSON kwargs. Active workflows can be launched directly from Workflow Studio.`
             : undefined
         }
-        showSessionId
         initialKwargs={
           ((((runningWorkflow?.definitionJson || {}) as JsonObject).run_defaults as JsonObject | undefined)?.kwargs as Record<string, unknown> | undefined) || {}
         }

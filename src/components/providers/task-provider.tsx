@@ -33,15 +33,6 @@ const getTaskEventMergeKey = (event: TaskEventRecord) => {
         return `event:${event.eventId}`
     }
 
-    if (event.sequence !== null && event.sequence !== undefined) {
-        return [
-            event.taskId,
-            event.type,
-            event.sequence,
-            event.timestamp || "na",
-        ].join(":")
-    }
-
     return [
         event.taskId,
         event.type,
@@ -64,7 +55,7 @@ const mergeTaskEvents = (existingEvents: TaskEventRecord[], incomingEvents: Task
                 new Date(a.timestamp || 0).getTime() -
                 new Date(b.timestamp || 0).getTime()
             if (timeDelta !== 0) return timeDelta
-            return (a.sequence ?? 0) - (b.sequence ?? 0)
+            return (a.eventId ?? 0) - (b.eventId ?? 0)
         }
     )
 }
