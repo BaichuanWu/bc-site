@@ -7,7 +7,7 @@ import { ActionButtons } from "@/components/common/action-buttons"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { type Column } from "@/components/common/data-table"
-import { useCrud } from "@/hooks/use-crud"
+import { useCrudListRefresh } from "@/hooks/use-crud"
 import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
@@ -22,7 +22,7 @@ type AgentRecord = {
 export default function AgentPage() {
   const navigate = useWorkspaceNavigate()
   const deleteAction = useDeleteAction()
-  const { mutate } = useCrud<AgentRecord>("/agent/agent")
+  const refreshAgents = useCrudListRefresh("/agent/agent")
   useWorkspaceTabTitle("/dashboard/agent", "Agents")
 
   const filterItems: SearchFilterItem[] = React.useMemo(
@@ -63,7 +63,7 @@ export default function AgentPage() {
                 successMessage: "Agent deleted successfully",
                 errorMessage: "Failed to delete agent",
                 onSuccess: async () => {
-                  await mutate()
+                  await refreshAgents()
                 },
               })
             }}

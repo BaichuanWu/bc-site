@@ -1,5 +1,5 @@
 import * as React from "react"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { apiClient, fetcher } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -7,6 +7,21 @@ export type SortEntry = { key: string; dir: 'asc' | 'desc' }
 type CrudListResponse<T> = {
     dataSource?: T[]
     total?: number
+}
+
+export function useCrudListRefresh(endpoint: string) {
+    const { mutate } = useSWRConfig()
+
+    return React.useCallback(
+        () =>
+            mutate(
+                (key: unknown) =>
+                    typeof key === "string" && key.startsWith(`${endpoint}?`),
+                undefined,
+                { revalidate: true }
+            ),
+        [endpoint, mutate]
+    )
 }
 
 export function useCrud<T extends { id: string | number }>(
@@ -68,7 +83,7 @@ export function useCrud<T extends { id: string | number }>(
         return params.toString()
     }, [page, pageSize, debouncedSearch, sorts, additionalQueries, searchParamName])
 
-    const swrKey = `${endpoint}?${queryParamsString}`
+    const swrKey = endpoint ? `${endpoint}?${queryParamsString}` : null
 
 
     const { data: resultData, mutate, isLoading, isValidating } = useSWR<CrudListResponse<T>>(
@@ -109,6 +124,7 @@ export function useCrud<T extends { id: string | number }>(
     const handleSave = React.useCallback(async (payload: Partial<T>) => {
         try {
             setIsSaving(true)
+            if (!endpoint) throw new Error("Cannot save without a CRUD endpoint")
             if (editingItem) {
                 await apiClient.put(endpoint, { ...payload, id: editingItem.id })
             } else {
@@ -126,6 +142,7 @@ export function useCrud<T extends { id: string | number }>(
     const handleDelete = React.useCallback(async (id: string | number) => {
         if (!confirm("Are you sure you want to delete this item?")) return
         try {
+            if (!endpoint) throw new Error("Cannot delete without a CRUD endpoint")
             await apiClient.delete(endpoint, { params: { id } })
             mutate()
         } catch {

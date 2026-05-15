@@ -163,6 +163,62 @@ export function DataTable<T extends { id: string | number }>({
             </TableHead>
         ))
 
+    const renderBody = () => (
+        <TableBody>
+            {items.length > 0 ? (
+                items.map((item) => (
+                    <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
+                        {columns.map((col, colIdx) => {
+                            const row = item as Record<string, unknown>
+                            const value = col.render
+                                ? col.render(row[col.key], item, onRefresh)
+                                : row[col.key]
+
+                            const cellContent = col.truncate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="truncate max-w-full cursor-help text-foreground">
+                                            {renderTableValue(value)}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[400px] break-all">
+                                        {renderTableValue(value)}
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : renderTableValue(value)
+
+                            return (
+                                <TableCell
+                                    key={col.key || colIdx}
+                                    className={cn(
+                                        "bg-card transition-colors group-hover:bg-muted/30",
+                                        col.align === 'right' && "text-right",
+                                        col.align === 'center' && "text-center",
+                                        col.fixed === 'left' && "sticky left-0 z-20 border-r",
+                                        col.fixed === 'right' && "sticky right-0 z-20 border-l shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-none",
+                                        col.truncate && "overflow-hidden",
+                                        col.className
+                                    )}
+                                    style={{
+                                        overflow: col.truncate ? 'hidden' : undefined,
+                                    }}
+                                >
+                                    {cellContent}
+                                </TableCell>
+                            )
+                        })}
+                    </TableRow>
+                ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground">
+                        No records found.
+                    </TableCell>
+                </TableRow>
+            )}
+        </TableBody>
+    )
+
     React.useEffect(() => {
         if (!useSplitStickyHeader) return
 
@@ -209,59 +265,7 @@ export function DataTable<T extends { id: string | number }>({
                         <div ref={bodyScrollRef} className="overflow-x-auto overflow-y-visible">
                             <table data-slot="table" className={tableClassName}>
                                 {renderColGroup()}
-                                <TableBody>
-                                    {items.length > 0 ? (
-                                        items.map((item) => (
-                                            <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
-                                                {columns.map((col, colIdx) => {
-                                                    const row = item as Record<string, unknown>
-                                                    const value = col.render
-                                                        ? col.render(row[col.key], item, onRefresh)
-                                                        : row[col.key];
-
-                                                    const cellContent = col.truncate ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <div className="truncate max-w-full cursor-help text-foreground">
-                                                                    {renderTableValue(value)}
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent className="max-w-[400px] break-all">
-                                                                {renderTableValue(value)}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    ) : renderTableValue(value);
-
-                                                    return (
-                                                        <TableCell
-                                                            key={col.key || colIdx}
-                                                            className={cn(
-                                                                "bg-card transition-colors group-hover:bg-muted/30",
-                                                                col.align === 'right' && "text-right",
-                                                                col.align === 'center' && "text-center",
-                                                                col.fixed === 'left' && "sticky left-0 z-20 border-r",
-                                                                col.fixed === 'right' && "sticky right-0 z-20 border-l shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-none",
-                                                                col.truncate && "overflow-hidden",
-                                                                col.className
-                                                            )}
-                                                            style={{
-                                                                overflow: col.truncate ? 'hidden' : undefined,
-                                                            }}
-                                                        >
-                                                            {cellContent}
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground">
-                                                No records found.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
+                                {renderBody()}
                             </table>
                         </div>
                     </>
@@ -273,59 +277,7 @@ export function DataTable<T extends { id: string | number }>({
                                 {renderHeaderCells()}
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
-                            {items.length > 0 ? (
-                                items.map((item) => (
-                                    <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
-                                        {columns.map((col, colIdx) => {
-                                            const row = item as Record<string, unknown>
-                                            const value = col.render
-                                                ? col.render(row[col.key], item, onRefresh)
-                                                : row[col.key];
-
-                                            const cellContent = col.truncate ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div className="truncate max-w-full cursor-help text-foreground">
-                                                            {renderTableValue(value)}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="max-w-[400px] break-all">
-                                                        {renderTableValue(value)}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ) : renderTableValue(value);
-
-                                            return (
-                                                <TableCell
-                                                    key={col.key || colIdx}
-                                                    className={cn(
-                                                        "bg-card transition-colors group-hover:bg-muted/30",
-                                                        col.align === 'right' && "text-right",
-                                                        col.align === 'center' && "text-center",
-                                                        col.fixed === 'left' && "sticky left-0 z-20 border-r",
-                                                        col.fixed === 'right' && "sticky right-0 z-20 border-l shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-none",
-                                                        col.truncate && "overflow-hidden",
-                                                        col.className
-                                                    )}
-                                                    style={{
-                                                        overflow: col.truncate ? 'hidden' : undefined,
-                                                    }}
-                                                >
-                                                    {cellContent}
-                                                </TableCell>
-                                            );
-                                        })}
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-40 text-center text-muted-foreground">
-                                        No records found.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
+                        {renderBody()}
                     </Table>
                 )}
             </div>

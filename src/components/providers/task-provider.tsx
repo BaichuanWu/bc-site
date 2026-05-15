@@ -101,7 +101,6 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
     const updateRemoteSubscription = useCallback(async (taskIds: number[], action: 'subscribe' | 'unsubscribe') => {
         try {
-            console.log(`[TaskProvider] ${action} tasks:`, taskIds)
             await apiClient.post('/sys/tasks/subscription', {
                 sessionId: sessionId,
                 taskIds: taskIds,
@@ -154,12 +153,10 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
 
         const url = `/api/v1/sys/tasks/stream/session/${sessionId}`
-        console.log(`[TaskProvider] Establishing SSE Connection: ${url}`)
         const es = new EventSource(url)
         eventSourceRef.current = es
 
         es.onopen = () => {
-            console.log("[TaskProvider] SSE Connection Established")
             retryCountRef.current = 0
             
             // If there's an active connection, we should probably re-subscribe all active tasks
@@ -169,7 +166,6 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                 .filter(tid => (subscriptionCountRef.current[tid] || 0) > 0)
             
             if (activeTasks.length > 0) {
-                console.log("[TaskProvider] Re-subscribing active tasks after reconnect:", activeTasks)
                 updateRemoteSubscription(activeTasks, 'subscribe')
             }
         }
@@ -292,7 +288,6 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
             const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000)
             retryCountRef.current++
             
-            console.log(`[TaskProvider] Reconnecting in ${delay}ms... (Attempt ${retryCountRef.current})`)
             reconnectTimerRef.current = setTimeout(() => {
                 void connectSse()
             }, delay)

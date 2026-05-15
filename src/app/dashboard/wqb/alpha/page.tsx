@@ -13,6 +13,7 @@ import { apiClient } from "@/lib/api"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { type Column } from "@/components/common/data-table"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
+import { formatDateTime } from "@/lib/date-utils"
 import { Badge } from "@/components/ui/badge"
 import { resolveInitialFilterState, type SearchFilterItem } from "@/components/common/query-filters"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
@@ -301,7 +302,7 @@ export default function AlphaPage() {
                         </TooltipTrigger>
                         <TooltipContent>
                             <p className="text-[10px] font-mono">
-                                Last Updated: {item.pcUpdateTime ? new Date(item.pcUpdateTime).toLocaleString() : 'Never'}
+                                Last Updated: {formatDateTime(item.pcUpdateTime, "Never")}
                             </p>
                         </TooltipContent>
                     </Tooltip>

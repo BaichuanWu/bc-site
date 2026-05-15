@@ -14,9 +14,10 @@ import { CrudLayout, type ItemsRenderProps } from '@/components/common/crud-layo
 import { type SearchFilterItem } from '@/components/common/query-filters'
 
 import { cn } from '@/lib/utils'
+import { formatDateTime } from '@/lib/date-utils'
 import { useMeta } from '@/hooks/use-meta'
 import { TASK_STATE } from '@/lib/constants'
-import { mapServerStateToStatus } from '@/lib/task-utils'
+import { getStatusColor, mapServerStateToStatus } from '@/lib/task-utils'
 import { WorkspaceLink } from '@/components/workspace/workspace-link'
 import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
 
@@ -48,16 +49,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
     const stateName = task.stateName
     const typName = task.typName
 
-    const getStatusColor = (s: number) => {
-        switch (s) {
-            case TASK_STATE.RUNNING: return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-            case TASK_STATE.SUCCESS: return 'bg-green-500/10 text-green-500 border-green-500/20'
-            case TASK_STATE.FAILED:
-            case TASK_STATE.ERROR: return 'bg-red-500/10 text-red-500 border-red-500/20'
-            default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20'
-        }
-    }
-
     return (
         <Card className="mb-4 overflow-hidden border-l-4 transition-all hover:shadow-lg bg-card/50 backdrop-blur-sm group flex flex-col h-full" style={{ borderLeftColor: task.state === TASK_STATE.RUNNING ? 'rgb(59 130 246)' : 'transparent' }}>
             <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0 gap-4">
@@ -71,8 +62,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task }) => {
                             {task.state === TASK_STATE.RUNNING && <ActivityIcon className="h-3 w-3 text-blue-500 animate-pulse shrink-0" />}
                         </CardTitle>
                     </div>
-                    <CardDescription className="text-[10px] font-mono opacity-60 truncate" title={`${id} • ${task.createTime ? new Date(task.createTime).toLocaleString() : ''}`}>
-                        ID: {id} {task.createTime && `• ${new Date(task.createTime).toLocaleString()}`}
+                    <CardDescription className="text-[10px] font-mono opacity-60 truncate" title={`${id} • ${formatDateTime(task.createTime, "")}`}>
+                        ID: {id} {task.createTime && `• ${formatDateTime(task.createTime, "")}`}
                     </CardDescription>
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">

@@ -23,10 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { apiClient } from "@/lib/api"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-}
+import { formatDateTime } from "@/lib/date-utils"
+import { isRecord } from "@/lib/json-utils"
 
 function asList(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.filter(isRecord) : []
@@ -66,7 +64,7 @@ function TraceList({ trace }: { trace?: ResearchTraceItem[] }) {
               <div className="mt-1 text-sm text-muted-foreground">{item.summary}</div>
             ) : null}
             <div className="mt-2 text-xs text-muted-foreground">
-              {item.time ? new Date(item.time).toLocaleString() : ""}
+              {formatDateTime(item.time, "")}
             </div>
             {item.metadata && Object.keys(item.metadata).length > 0 ? (
               <div className="mt-3 rounded-lg bg-muted/30 p-3">
@@ -217,11 +215,11 @@ export default function ResearchRunDetailPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Started</span>
-                <span className="text-right">{run.startedTime ? new Date(run.startedTime).toLocaleString() : "-"}</span>
+                <span className="text-right">{formatDateTime(run.startedTime)}</span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Finished</span>
-                <span className="text-right">{run.finishedTime ? new Date(run.finishedTime).toLocaleString() : "-"}</span>
+                <span className="text-right">{formatDateTime(run.finishedTime)}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Badge variant="outline">{run.counts?.experiments || 0} experiments</Badge>

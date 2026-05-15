@@ -12,10 +12,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import type { ConversationRecord, ModelOption } from "../types"
+import { type ConversationSourceFilter } from "../utils"
+import { ConversationSourcePanel } from "./conversation-source-panel"
 
 type ConversationSettingsProps = {
   conversationId: number | null
+  currentConversation: ConversationRecord | null
   conversations: ConversationRecord[]
+  sourceFilter: ConversationSourceFilter
   title: string
   systemPrompt: string
   llmId: number | null
@@ -31,11 +35,16 @@ type ConversationSettingsProps = {
   onTemperatureChange: (value: string) => void
   onCreateConversation: () => void
   onOpenConversation: (conversation: ConversationRecord) => void
+  onSourceFilterChange: (value: ConversationSourceFilter) => void
+  onOpenTask: (taskId: number) => void
+  onOpenAgent: (agentId: number) => void
 }
 
 export function ConversationSettings({
   conversationId,
+  currentConversation,
   conversations,
+  sourceFilter,
   title,
   systemPrompt,
   llmId,
@@ -51,6 +60,9 @@ export function ConversationSettings({
   onTemperatureChange,
   onCreateConversation,
   onOpenConversation,
+  onSourceFilterChange,
+  onOpenTask,
+  onOpenAgent,
 }: ConversationSettingsProps) {
   return (
     <Card className="flex min-h-0 flex-col overflow-hidden rounded-lg shadow-none">
@@ -124,13 +136,30 @@ export function ConversationSettings({
             Create Conversation
           </Button>
         ) : (
-          <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
-            Conversation #{conversationId}
-          </div>
+          <ConversationSourcePanel
+            conversationId={conversationId}
+            conversation={currentConversation}
+            onOpenTask={onOpenTask}
+            onOpenAgent={onOpenAgent}
+          />
         )}
 
         <div className="space-y-2 border-t pt-4">
-          <Label>Conversations</Label>
+          <Label>Recent Conversations</Label>
+          <Select
+            value={sourceFilter}
+            onValueChange={(value) => onSourceFilterChange(value as ConversationSourceFilter)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              <SelectItem value="workflow">Workflow nodes</SelectItem>
+              <SelectItem value="agent">Agents</SelectItem>
+              <SelectItem value="manual">Manual chats</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="space-y-1 pr-1">
             {conversations.length ? (
               conversations.map((conversation) => (

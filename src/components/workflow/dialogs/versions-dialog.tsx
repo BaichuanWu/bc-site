@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { formatDateTime } from "@/lib/date-utils"
 
 type WorkflowVersionBase = {
   id: number
@@ -74,7 +75,7 @@ export function WorkflowVersionsDialog<T extends WorkflowVersionBase>({
                     </div>
                     <div className="text-sm text-muted-foreground">{record.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      Published: {record.publishedTime ? new Date(record.publishedTime).toLocaleString() : "-"}
+                      Published: {formatDateTime(record.publishedTime)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

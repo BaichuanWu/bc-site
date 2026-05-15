@@ -3,10 +3,11 @@
 import * as React from "react"
 import { Bot } from "lucide-react"
 import { ActionButtons } from "@/components/common/action-buttons"
+import { type Column } from "@/components/common/data-table"
 import { type SearchFilterItem } from "@/components/common/query-filters"
 import { CrudLayout } from "@/components/common/crud-layout"
 import { useDeleteAction } from "@/hooks/use-delete-action"
-import { useCrud } from "@/hooks/use-crud"
+import { useCrudListRefresh } from "@/hooks/use-crud"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
@@ -23,7 +24,7 @@ export default function LlmPage() {
   const navigate = useWorkspaceNavigate()
   useWorkspaceTabTitle("/dashboard/agent/llm", "LLM Config")
   const deleteAction = useDeleteAction()
-  const { mutate } = useCrud<LlmRecord>("/agent/llm")
+  const refreshLlms = useCrudListRefresh("/agent/llm")
 
   const filterItems: SearchFilterItem[] = React.useMemo(() => [
     { key: "nameLike", label: "Config Name", type: "text" },
@@ -31,7 +32,7 @@ export default function LlmPage() {
     { key: "defaultModel", label: "Default Model", type: "text" },
   ], [])
 
-  const columns: import("@/components/common/data-table").Column<LlmRecord>[] = [
+  const columns: Column<LlmRecord>[] = [
     { key: "name", title: "Name", className: "text-sm font-medium" },
     { key: "provider", title: "Provider", className: "text-sm" },
     {
@@ -74,7 +75,7 @@ export default function LlmPage() {
               successMessage: "LLM provider deleted successfully",
               errorMessage: "Failed to delete provider",
               onSuccess: async () => {
-                await mutate()
+                await refreshLlms()
               },
             })
           }}

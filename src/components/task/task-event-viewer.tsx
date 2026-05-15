@@ -3,9 +3,11 @@
 import {
   ActivityIcon,
   ChevronRightIcon,
+  MessageSquareIcon,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Sheet,
   SheetContent,
@@ -15,15 +17,22 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { JsonNode } from "@/components/common/json-node"
-import { DialogueTranscript } from "@/components/task/dialogue-transcript"
 import { TASK_STATE } from "@/lib/constants"
+import { formatDateTime, formatTime } from "@/lib/date-utils"
 import {
   getStatusColor,
   mapServerStateToStatus,
   mapStatusToName,
 } from "@/lib/task-utils"
+import {
+  getTaskEventArtifactData,
+  getTaskEventConversationId,
+  getTaskEventData,
+  isRecord,
+} from "@/lib/task-events"
 import { cn } from "@/lib/utils"
-import { type TaskEventRecord, type WorkflowNodeEventData } from "@/types/task"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
+import { type TaskEventRecord } from "@/types/task"
 
 type TaskEventKindConfig = {
   title?: string
@@ -37,37 +46,13 @@ const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
   },
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-}
-
-function getEventData(event: TaskEventRecord): WorkflowNodeEventData | null {
-  return isRecord(event.data) ? (event.data as WorkflowNodeEventData) : null
-}
-
 function getPayloadKind(event: TaskEventRecord) {
-  const data = getEventData(event)
+  const data = getTaskEventData(event)
   return typeof data?.kind === "string" && data.kind.length > 0 ? data.kind : event.type
 }
 
-function getDisplayMode(event: TaskEventRecord) {
-  const data = getEventData(event)
-  return Array.isArray(data?.messages) && data.messages.length > 0 ? "conversation" : "io"
-}
-
-function getArtifactData(event: TaskEventRecord, isResultEvent: boolean) {
-  if (isResultEvent) return null
-  const data = getEventData(event)
-  if (!isRecord(data)) return null
-  const rest = { ...data }
-  delete rest.input
-  delete rest.output
-  delete rest.messages
-  return rest
-}
-
 function getEventTitle(event: TaskEventRecord) {
-  const data = getEventData(event)
+  const data = getTaskEventData(event)
   if (event.type === "task.result") return "Final Result"
   if (event.type === "task.failed" || event.type === "task.stopped") return "Task Error"
   const config = TASK_EVENT_KIND_CONFIG[getPayloadKind(event)]
@@ -80,7 +65,7 @@ function getEventTitle(event: TaskEventRecord) {
 }
 
 function getEventStatus(event: TaskEventRecord) {
-  const data = getEventData(event)
+  const data = getTaskEventData(event)
   if (event.type === "task.result") return TASK_STATE.SUCCESS
   if (event.type === "task.failed" || event.type === "task.stopped") return TASK_STATE.ERROR
   if (data?.status === "completed") return TASK_STATE.SUCCESS
@@ -136,19 +121,18 @@ type TaskEventViewerProps = {
 }
 
 export function TaskEventViewer({ event }: TaskEventViewerProps) {
-  const eventData = getEventData(event)
+  const navigate = useWorkspaceNavigate()
+  const eventData = getTaskEventData(event)
   const eventStatus = getEventStatus(event)
   const eventTone = getEventStatusTone(eventStatus)
   const eventTitle = getEventTitle(event)
   const isResultEvent = event.type === "task.result"
   const resultData = event.data
   const payloadKind = getPayloadKind(event)
-  const displayMode = getDisplayMode(event)
-  const transcriptMessages = Array.isArray(eventData?.messages) ? eventData.messages : []
-  const shouldShowTranscript = !isResultEvent && displayMode === "conversation"
+  const conversationId = getTaskEventConversationId(event)
   const displayInput = eventData?.input
   const displayOutput = eventData?.output
-  const artifactData = getArtifactData(event, isResultEvent)
+  const artifactData = getTaskEventArtifactData(event, isResultEvent)
 
   return (
     <>
@@ -184,15 +168,18 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                 </Badge>
               </div>
               <span className="text-[9px] font-mono opacity-40">
-                {event.timestamp
-                  ? new Date(event.timestamp).toLocaleTimeString()
-                  : "N/A"}
+                {formatTime(event.timestamp)}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70">
                 {getEventSummary(event)}
               </p>
+              {conversationId ? (
+                <Badge variant="secondary" className="ml-3 h-5 text-[9px] uppercase">
+                  Conversation #{conversationId}
+                </Badge>
+              ) : null}
               <ChevronRightIcon className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
             </div>
           </div>
@@ -223,27 +210,32 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                     )}
                   />
                   {mapStatusToName(mapServerStateToStatus(eventStatus))} •{" "}
-                  {event.timestamp
-                    ? new Date(event.timestamp).toLocaleString()
-                    : "N/A"}
+                  {formatDateTime(event.timestamp, "N/A")}
                 </SheetDescription>
               </div>
+              {conversationId ? (
+                <Button
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={() =>
+                    navigate(
+                      "/dashboard/conversation",
+                      `conversationId=${conversationId}`,
+                      { title: `Conversation #${conversationId}` },
+                    )
+                  }
+                >
+                  <MessageSquareIcon className="mr-2 h-4 w-4" />
+                  Open Conversation
+                </Button>
+              ) : null}
             </div>
           </SheetHeader>
 
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="p-8 max-w-full mx-auto">
-              {shouldShowTranscript ? (
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Transcript
-                  </h4>
-                  <DialogueTranscript messages={transcriptMessages} />
-                </div>
-              ) : null}
-
               {!isResultEvent && displayInput !== undefined ? (
-                <div className={cn("space-y-6", shouldShowTranscript ? "mt-16 pt-16 border-t border-white/5" : "")}>
+                <div className="space-y-6">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
                     Input
                   </h4>

@@ -10,6 +10,7 @@ import type { ResearchRun } from "@/components/research/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatDateTime } from "@/lib/date-utils"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { WorkspaceLink } from "@/components/workspace/workspace-link"
 
@@ -58,7 +59,7 @@ function ResearchRunGrid({ items }: ItemsRenderProps<ResearchRun>) {
             </div>
             <div className="flex items-center justify-between gap-3 border-t pt-3">
               <div className="text-xs text-muted-foreground">
-                {run.startedTime ? new Date(run.startedTime).toLocaleString() : "No start time"}
+                {formatDateTime(run.startedTime, "No start time")}
               </div>
               <WorkspaceLink href={`/dashboard/research/${run.id}`}>
                 <Button variant="ghost" size="sm" className="gap-1">

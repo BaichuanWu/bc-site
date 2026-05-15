@@ -17,8 +17,14 @@ import { TASK_STATE } from "@/lib/constants"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { formatDateTime } from '@/lib/date-utils'
 import { apiClient } from '@/lib/api'
 import { normalizeCrudListResponse } from '@/lib/crud-response'
+import { getJsonSizeKb } from '@/lib/json-utils'
+import {
+    collapseWorkflowNodeEvents,
+    extractRelatedTaskIds,
+} from '@/lib/task-events'
 
 import { JsonNode } from '@/components/common/json-node'
 import { PageShell } from '@/components/common/page-shell'
@@ -49,70 +55,6 @@ type TaskDetailRecord = {
     context?: unknown
     result?: unknown
     errorLog?: string | null
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === "object" && !Array.isArray(value)
-}
-
-function getWorkflowNodeEventKey(event: TaskEventRecord): string | null {
-    if (event.type !== "task.updated" && event.type !== "task.checkpoint") return null
-    if (!isRecord(event.data)) return null
-
-    const nodeKey = event.data.key
-    if (typeof nodeKey !== "string" || nodeKey.length === 0) return null
-
-    const kind = typeof event.data.kind === "string" ? event.data.kind : "node"
-    const status = typeof event.data.status === "string" ? event.data.status : "updated"
-    return `${kind}:${nodeKey}:${status}`
-}
-
-function collapseWorkflowNodeEvents(events: TaskEventRecord[]): TaskEventRecord[] {
-    const collapsed: TaskEventRecord[] = []
-    const workflowNodeIndexes = new Map<string, number>()
-
-    for (const event of events) {
-        const nodeEventKey = getWorkflowNodeEventKey(event)
-
-        if (nodeEventKey) {
-            const existingIndex = workflowNodeIndexes.get(nodeEventKey)
-            if (existingIndex !== undefined) {
-                collapsed[existingIndex] = event
-                continue
-            }
-            workflowNodeIndexes.set(nodeEventKey, collapsed.length)
-        }
-
-        collapsed.push(event)
-    }
-
-    return collapsed
-}
-
-function extractRelatedTaskIds(result: unknown, events: TaskEventRecord[]): number[] {
-    const ids: number[] = []
-    const seen = new Set<number>()
-
-    const pushId = (value: unknown) => {
-        if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) return
-        if (seen.has(value)) return
-        seen.add(value)
-        ids.push(value)
-    }
-
-    if (isRecord(result)) {
-        const taskIds = result.taskIds
-        if (Array.isArray(taskIds)) {
-            taskIds.forEach(pushId)
-        }
-    }
-
-    events.forEach((event) => {
-        const workflowTaskId = event.data?.workflowTaskId
-        pushId(workflowTaskId)
-    })
-
-    return ids
 }
 
 // --- Main Page ---
@@ -238,7 +180,7 @@ export default function TaskDetailPage() {
                                 </Badge>
                             </div>
                             <div className="text-[11px] font-mono text-muted-foreground mt-1 opacity-80">
-                                Runner: {displayTask.name} • UUID: {taskIdParam} • Created: {displayTask.createTime ? new Date(displayTask.createTime).toLocaleString() : 'N/A'}
+                                Runner: {displayTask.name} • UUID: {taskIdParam} • Created: {formatDateTime(displayTask.createTime, "N/A")}
                             </div>
                         </div>
                         <TaskControlButtons
@@ -293,7 +235,7 @@ export default function TaskDetailPage() {
                                                 <DatabaseIcon className="h-3.5 w-3.5" />
                                                 <span className="text-[11px] font-medium">Snapshot Size</span>
                                             </div>
-                                            <span className="text-[11px] font-mono font-bold">{(JSON.stringify(displayTask.snapshot || {}).length / 1024).toFixed(1)} KB</span>
+                                            <span className="text-[11px] font-mono font-bold">{getJsonSizeKb(displayTask.snapshot)} KB</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2 opacity-60">

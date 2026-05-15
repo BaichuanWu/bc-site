@@ -19,3 +19,8 @@ export const TASK_STATE = {
     SUCCESS: 20,
     FAILED: 30,
 } as const;
+
+export const CONVERSATION_SOURCE = {
+    NONE: 0,
+    AGENT: 10,
+} as const;

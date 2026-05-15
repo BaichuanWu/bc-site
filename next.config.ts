@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: "standalone",
   compress: false, // 必须为 false
+  turbopack: {
+    root: process.cwd(),
+  },
   async rewrites() {
     const isProd = process.env.NODE_ENV === "production"
     const backendUrl = isProd ? "http://backend:8000" : "http://localhost:8000"

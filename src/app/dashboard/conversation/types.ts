@@ -13,6 +13,17 @@ export type ConversationMessage = {
   createTime?: string | null
 }
 
+export type ConversationMetaData = {
+  taskId?: number | string | null
+  workflowName?: string | null
+  nodeKey?: string | null
+  agentId?: number | string | null
+  // api-casing-ignore-next-line: Legacy/backend internal key.
+  agent_version_id?: number | string | null
+  agentClass?: string | null
+  [key: string]: unknown
+}
+
 export type MessagesResponse = {
   items?: ConversationMessage[]
 }
@@ -25,6 +36,8 @@ export type ConversationSendResponse = {
 export type ConversationRecord = {
   id: number
   title: string
+  sourceTyp?: number
+  sourceId?: number
   llmConfig?: {
     // api-casing-ignore-next-line: Conversation llmConfig is an opaque provider payload.
     llm_id?: number
@@ -32,6 +45,7 @@ export type ConversationRecord = {
     temperature?: number
   }
   systemPrompt?: string
+  metaData?: ConversationMetaData
   createTime?: string
 }
 
