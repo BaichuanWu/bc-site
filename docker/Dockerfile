@@ -3,11 +3,12 @@
 FROM node:22-alpine AS base
 
 ARG FRONTEND_DIR=bc-site
+ARG PNPM_VERSION=10.17.1
 
 ENV PNPM_HOME="/pnpm" \
     PATH="/pnpm:${PATH}"
 
-RUN corepack enable pnpm
+RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 
 FROM base AS deps
