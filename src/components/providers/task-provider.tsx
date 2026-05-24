@@ -9,7 +9,8 @@ import { type TaskEventRecord, type TaskState } from "@/types/task"
 import { mapServerStateToStatus } from "@/lib/task-utils"
 
 type TaskUpdatePayload = {
-    id?: number
+    id?: number | string
+    taskId?: number | string
     state?: number
     message?: string
     progress?: number
@@ -58,6 +59,16 @@ const mergeTaskEvents = (existingEvents: TaskEventRecord[], incomingEvents: Task
             return (a.eventId ?? 0) - (b.eventId ?? 0)
         }
     )
+}
+
+const getTaskIdFromUpdate = (data: TaskUpdatePayload) => {
+    const rawId = data.id ?? data.taskId ?? data.event?.taskId
+    if (typeof rawId === "number") return rawId
+    if (typeof rawId === "string") {
+        const parsed = Number.parseInt(rawId, 10)
+        return Number.isNaN(parsed) ? undefined : parsed
+    }
+    return undefined
 }
 
 export const useTaskSystem = () => {
@@ -178,7 +189,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         es.addEventListener('task_update', (event: MessageEvent<string>) => {
             try {
                 const data = JSON.parse(event.data) as TaskUpdatePayload
-                const tid = data.id
+                const tid = getTaskIdFromUpdate(data)
                 if (!tid) return
 
                 setTaskStates(prev => {
@@ -242,7 +253,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                         } else {
                             newState = {
                                 ...newState,
-                                status: existing.status === 'pending' ? 'pending' : 'running',
+                                status: 'running',
                                 lastUpdated: Date.now(),
                             }
                         }
@@ -254,8 +265,8 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                                 message: data.message,
                                 percent: data.progress,
                             },
-                            snapshot: data.snapshot || newState.snapshot,
-                            error: data.errorLog || newState.error,
+                            snapshot: data.snapshot ?? newState.snapshot,
+                            error: data.errorLog ?? newState.error,
                             lastUpdated: Date.now()
                         }
                     }

@@ -1,37 +1,21 @@
 "use client"
 
-import {
-  ActivityIcon,
-  ChevronRightIcon,
-  MessageSquareIcon,
-} from "lucide-react"
+import { useMemo, useState } from "react"
+import { ChevronRightIcon } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
 import { JsonNode } from "@/components/common/json-node"
+import { Badge } from "@/components/ui/badge"
 import { TASK_STATE } from "@/lib/constants"
-import { formatDateTime, formatTime } from "@/lib/date-utils"
+import { formatTime } from "@/lib/date-utils"
 import {
   getStatusColor,
   mapServerStateToStatus,
   mapStatusToName,
 } from "@/lib/task-utils"
 import {
-  getTaskEventArtifactData,
-  getTaskEventConversationId,
   getTaskEventData,
-  isRecord,
 } from "@/lib/task-events"
 import { cn } from "@/lib/utils"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { type TaskEventRecord } from "@/types/task"
 
 type TaskEventKindConfig = {
@@ -107,7 +91,7 @@ function getEventStatusTone(eventStatus: number) {
 
 function getEventSummary(event: TaskEventRecord) {
   if (event.message) return event.message
-  if (event.type === "task.result") return "Final workflow output"
+  if (event.type === "task.result") return "Final task output"
   if (event.type === "task.failed" || event.type === "task.stopped") {
     return event.message || "Task execution failed"
   }
@@ -116,23 +100,73 @@ function getEventSummary(event: TaskEventRecord) {
   return "Generic task event payload"
 }
 
+function hasDetailValue(value: unknown) {
+  if (value === null || value === undefined) return false
+  if (typeof value === "string") return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === "object") return Object.keys(value).length > 0
+  return true
+}
+
+const STANDARD_DETAIL_KEYS = new Set([
+  "key",
+  "kind",
+  "status",
+  "agentId",
+  "agentVersionId",
+  "conversationId",
+  "input",
+  "output",
+  "error",
+  "startTime",
+  "endTime",
+  "durationMs",
+])
+
+function omitStandardDetailData(data: Record<string, unknown>) {
+  const entries = Object.entries(data).filter(([key]) => !STANDARD_DETAIL_KEYS.has(key))
+  return Object.fromEntries(entries)
+}
+
+function buildEventDetails(event: TaskEventRecord) {
+  const data = getTaskEventData(event)
+  const details: Array<{ label: string; value: unknown }> = []
+
+  if (data) {
+    details.push(
+      { label: "Input", value: data.input },
+      { label: "Output", value: data.output },
+      { label: "Error", value: data.error },
+    )
+    if (data.durationMs !== null && data.durationMs !== undefined) {
+      details.push({ label: "Duration", value: `${data.durationMs}ms` })
+    }
+    details.push({ label: "Event Data", value: omitStandardDetailData(data) })
+  } else {
+    details.push({ label: "Event Data", value: event.data })
+  }
+
+  details.push({ label: "Snapshot", value: event.snapshot })
+
+  return details.filter((item) => hasDetailValue(item.value))
+}
+
 type TaskEventViewerProps = {
   event: TaskEventRecord
 }
 
 export function TaskEventViewer({ event }: TaskEventViewerProps) {
-  const navigate = useWorkspaceNavigate()
-  const eventData = getTaskEventData(event)
+  const [isExpanded, setIsExpanded] = useState(false)
   const eventStatus = getEventStatus(event)
   const eventTone = getEventStatusTone(eventStatus)
   const eventTitle = getEventTitle(event)
-  const isResultEvent = event.type === "task.result"
-  const resultData = event.data
   const payloadKind = getPayloadKind(event)
-  const conversationId = getTaskEventConversationId(event)
-  const displayInput = eventData?.input
-  const displayOutput = eventData?.output
-  const artifactData = getTaskEventArtifactData(event, isResultEvent)
+  const details = useMemo(() => buildEventDetails(event), [event])
+  const canExpand = details.length > 0
+  const progress =
+    typeof event.progress === "number" && Number.isFinite(event.progress)
+      ? event.progress
+      : null
 
   return (
     <>
@@ -143,144 +177,89 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
         )}
       />
 
-      <Sheet>
-        <SheetTrigger asChild>
-          <div className="p-4 rounded-2xl bg-card/50 hover:bg-card border border-transparent hover:border-border hover:shadow-2xl hover:shadow-primary/5 cursor-pointer transition-all">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-black tracking-tight uppercase">
-                  {eventTitle}
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="text-[8px] h-3.5 font-black uppercase tracking-widest bg-muted/50 text-muted-foreground"
-                >
-                  {payloadKind}
-                </Badge>
-                <Badge
-                  variant="outline"
+      <div
+        className={cn(
+          "rounded-lg border bg-card/50 transition-colors hover:bg-card",
+          canExpand ? "cursor-pointer" : "",
+        )}
+        role={canExpand ? "button" : undefined}
+        tabIndex={canExpand ? 0 : undefined}
+        data-task-event-expandable={canExpand ? "true" : undefined}
+        aria-expanded={canExpand ? isExpanded : undefined}
+        onClick={() => {
+          if (canExpand) setIsExpanded((value) => !value)
+        }}
+        onKeyDown={(eventKey) => {
+          if (!canExpand) return
+          if (eventKey.key === "Enter" || eventKey.key === " ") {
+            eventKey.preventDefault()
+            setIsExpanded((value) => !value)
+          }
+        }}
+      >
+        <div className="flex min-w-0 items-start justify-between gap-3 px-3 py-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {canExpand ? (
+                <ChevronRightIcon
                   className={cn(
-                    "text-[8px] h-3.5 font-black uppercase tracking-widest",
-                    getStatusColor(eventStatus),
+                    "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
+                    isExpanded ? "rotate-90" : "",
                   )}
-                >
-                  {mapStatusToName(mapServerStateToStatus(eventStatus))}
-                </Badge>
-              </div>
-              <span className="text-[9px] font-mono opacity-40">
-                {formatTime(event.timestamp)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70">
-                {getEventSummary(event)}
-              </p>
-              {conversationId ? (
-                <Badge variant="secondary" className="ml-3 h-5 text-[9px] uppercase">
-                  Conversation #{conversationId}
-                </Badge>
+                />
               ) : null}
-              <ChevronRightIcon className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-          </div>
-        </SheetTrigger>
-        <SheetContent
-          side="right"
-          className="sm:max-w-[80vw] w-full flex flex-col p-0 overflow-hidden border-l border-border shadow-2xl bg-background/95 backdrop-blur-xl"
-        >
-          <SheetHeader className="p-8 border-b border-border bg-muted/5">
-            <div className="flex items-center gap-6">
-              <div
+              <span className="truncate text-xs font-bold uppercase tracking-tight">
+                {eventTitle}
+              </span>
+              <Badge
+                variant="secondary"
+                className="h-4 bg-muted/50 px-1.5 text-[8px] font-bold uppercase tracking-widest text-muted-foreground"
+              >
+                {payloadKind}
+              </Badge>
+              <Badge
+                variant="outline"
                 className={cn(
-                  "h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-2xl",
-                  eventTone.panel,
+                  "h-4 px-1.5 text-[8px] font-bold uppercase tracking-widest",
+                  getStatusColor(eventStatus),
                 )}
               >
-                <ActivityIcon className="h-8 w-8" />
-              </div>
-              <div className="space-y-1">
-                <SheetTitle className="text-3xl font-black italic uppercase tracking-tighter">
-                  {eventTitle}
-                </SheetTitle>
-                <SheetDescription className="text-xs font-mono opacity-50 flex items-center gap-2 uppercase tracking-widest">
-                  <span
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full",
-                      eventTone.dot,
-                    )}
-                  />
-                  {mapStatusToName(mapServerStateToStatus(eventStatus))} •{" "}
-                  {formatDateTime(event.timestamp, "N/A")}
-                </SheetDescription>
-              </div>
-              {conversationId ? (
-                <Button
-                  variant="outline"
-                  className="ml-auto"
-                  onClick={() =>
-                    navigate(
-                      "/dashboard/conversation",
-                      `conversationId=${conversationId}`,
-                      { title: `Conversation #${conversationId}` },
-                    )
-                  }
-                >
-                  <MessageSquareIcon className="mr-2 h-4 w-4" />
-                  Open Conversation
-                </Button>
+                {mapStatusToName(mapServerStateToStatus(eventStatus))}
+              </Badge>
+              {progress !== null ? (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {progress}%
+                </span>
               ) : null}
             </div>
-          </SheetHeader>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <div className="p-8 max-w-full mx-auto">
-              {!isResultEvent && displayInput !== undefined ? (
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Input
-                  </h4>
-                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                    <JsonNode data={displayInput} depth={0} />
+            <p className="truncate text-[11px] leading-5 text-muted-foreground">
+              {getEventSummary(event)}
+            </p>
+          </div>
+          <span className="shrink-0 font-mono text-[9px] text-muted-foreground/70">
+            {formatTime(event.timestamp)}
+          </span>
+        </div>
+        {isExpanded ? (
+          <div
+            className="border-t bg-background/35 px-3 py-3"
+            onClick={(clickEvent) => clickEvent.stopPropagation()}
+          >
+            <div className="space-y-3">
+              {details.map((detail) => (
+                <div key={detail.label} className="space-y-1.5">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                    {detail.label}
+                  </div>
+                  <div className="max-h-72 overflow-auto rounded-md border bg-muted/20 p-2 text-[11px]">
+                    <JsonNode data={detail.value} depth={0} />
                   </div>
                 </div>
-              ) : null}
-
-              {!isResultEvent && displayOutput !== undefined && displayOutput !== null ? (
-                <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Output
-                  </h4>
-                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                    <JsonNode data={displayOutput} depth={0} />
-                  </div>
-                </div>
-              ) : null}
-
-              {isResultEvent && resultData ? (
-                <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Final Output
-                  </h4>
-                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                    <JsonNode data={resultData} depth={0} />
-                  </div>
-                </div>
-              ) : null}
-
-              {isRecord(artifactData) && Object.keys(artifactData).length > 0 ? (
-                <div className="mt-16 pt-16 border-t border-white/5 space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-30 text-center">
-                    Event Payload
-                  </h4>
-                  <div className="bg-muted/10 p-6 rounded-3xl border border-border shadow-2xl">
-                    <JsonNode data={artifactData} depth={0} />
-                  </div>
-                </div>
-              ) : null}
+              ))}
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        ) : null}
+      </div>
     </>
   )
 }

@@ -30,6 +30,8 @@ export const useTask = (taskId?: number, initialData?: TaskInitialData) => {
                     status: initialData.status,
                     progress: initialData.progress,
                     error: initialData.error,
+                    snapshot: initialData.snapshot,
+                    events: initialData.events,
                 })
                 seededRef.current = dataKey
             }

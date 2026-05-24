@@ -68,6 +68,7 @@ export function isDashboardPath(pathname: string) {
 export function getWorkspaceTitleFallback(pathname: string) {
   if (pathname === "/dashboard") return "Overview"
   if (pathname === "/dashboard/conversation") return "Conversation"
+  if (/^\/dashboard\/conversation\/[^/]+$/.test(pathname)) return "Conversation"
   if (pathname === "/dashboard/agent") return "Agents"
   if (pathname === "/dashboard/agent/new") return "New Agent"
   if (/^\/dashboard\/agent\/[^/]+$/.test(pathname)) return "Agent"
@@ -80,6 +81,7 @@ export function getWorkspaceTitleFallback(pathname: string) {
   if (pathname === "/dashboard/sys-task") return "System Tasks"
   if (/^\/dashboard\/sys-task\/[^/]+$/.test(pathname)) return "Task"
   if (pathname === "/dashboard/wqb/alpha") return "Alpha"
+  if (pathname === "/dashboard/wqb/osmosis") return "Osmosis"
   if (pathname === "/dashboard/wqb/alpha/analysis") {
     return "Alpha Analysis"
   }

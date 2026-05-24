@@ -70,7 +70,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     state: 1
                 })
                 return await apiClient.post(`/sys/tasks/run/alpha_simulate`, {
-                    kwargs: { alpha_ids: [alpha.id] }
+                    kwargs: { alphaIds: [alpha.id] }
                 })
             },
             {
@@ -101,12 +101,12 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                 <DropdownMenuContent align="end" className="w-[200px]">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-                    <DropdownMenuItem onClick={() => handleAction("Simulate", "alpha_simulate", { alpha_ids: [alpha.id] })}>
+                    <DropdownMenuItem onClick={() => handleAction("Simulate", "alpha_simulate", { alphaIds: [alpha.id] })}>
                         <Play className="mr-2 h-4 w-4" /> Simulate
                     </DropdownMenuItem>
 
                     {isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Batch Neutralizations", "simulate_neutralizations_task", { alpha_id: alpha.id })}>
+                        <DropdownMenuItem onClick={() => handleAction("Batch Neutralizations", "simulate_neutralizations_task", { alphaId: alpha.id })}>
                             <Zap className="mr-2 h-4 w-4" /> All Neutralizations
                         </DropdownMenuItem>
                     )}
@@ -137,7 +137,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     )}
 
                     {!isSubmitted && isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Submit", "submit_alpha_task", { alpha_id: alpha.id })}>
+                        <DropdownMenuItem onClick={() => handleAction("Submit", "submit_alpha_task", { alphaId: alpha.id })}>
                             <Send className="mr-2 h-4 w-4" /> Submit to WQB
                         </DropdownMenuItem>
                     )}

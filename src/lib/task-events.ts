@@ -1,33 +1,10 @@
-import type { TaskEventRecord, WorkflowNodeEventData } from "@/types/task"
+import type { TaskEventData, TaskEventRecord } from "@/types/task"
 import { isRecord } from "@/lib/json-utils"
 
 export { isRecord }
 
-export function getTaskEventData(event: TaskEventRecord): WorkflowNodeEventData | null {
-  return isRecord(event.data) ? (event.data as WorkflowNodeEventData) : null
-}
-
-export function getTaskEventConversationId(event: TaskEventRecord): number | null {
-  const data = getTaskEventData(event)
-  const rawId = data?.conversationId ?? data?.conversation_id
-  return typeof rawId === "number" && Number.isInteger(rawId) && rawId > 0
-    ? rawId
-    : null
-}
-
-export function getTaskEventArtifactData(
-  event: TaskEventRecord,
-  isResultEvent: boolean,
-): Record<string, unknown> | null {
-  if (isResultEvent) return null
-  const data = getTaskEventData(event)
-  if (!isRecord(data)) return null
-  const rest: Record<string, unknown> = { ...data }
-  delete rest.input
-  delete rest.output
-  delete rest.conversation_id
-  delete rest.conversationId
-  return rest
+export function getTaskEventData(event: TaskEventRecord): TaskEventData | null {
+  return isRecord(event.data) ? (event.data as TaskEventData) : null
 }
 
 function getWorkflowNodeEventKey(event: TaskEventRecord): string | null {

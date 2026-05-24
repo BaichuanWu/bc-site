@@ -1,75 +1,132 @@
 "use client"
 
-import { PlusIcon } from "lucide-react"
+import * as React from "react"
+import { MessageSquareIcon, MoveUpRightIcon } from "lucide-react"
 
-import { PageShell } from "@/components/common/page-shell"
+import { CrudLayout } from "@/components/common/crud-layout"
+import { type Column } from "@/components/common/data-table"
+import { type SearchFilterItem } from "@/components/common/query-filters"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { formatDateTime } from "@/lib/date-utils"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
-import { ConversationSettings } from "./_components/conversation-settings"
-import { ConversationThread } from "./_components/conversation-thread"
-import { useConversationController } from "./use-conversation-controller"
+import { resolveConversationSourceAdapter } from "./source-adapters"
+import type { ConversationRecord } from "./types"
+
+function getModelLabel(conversation: ConversationRecord) {
+  const config = conversation.llmConfig || {}
+  return typeof config.model === "string" && config.model ? config.model : "-"
+}
 
 export default function ConversationPage() {
+  const navigate = useWorkspaceNavigate()
   useWorkspaceTabTitle("/dashboard/conversation", "Conversation")
-  const conversation = useConversationController()
+
+  const filterItems: SearchFilterItem[] = React.useMemo(
+    () => [
+      { key: "title", label: "Title", type: "text" },
+      { key: "sourceTyp", label: "Source Type", type: "number" },
+      { key: "sourceId", label: "Source ID", type: "number" },
+    ],
+    [],
+  )
+
+  const columns: Column<ConversationRecord>[] = [
+    {
+      key: "title",
+      title: "Conversation",
+      render: (value, item) => (
+        <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <MessageSquareIcon className="h-4 w-4 shrink-0 text-primary" />
+            <span className="truncate font-medium">
+              {String(value || `Conversation #${item.id}`)}
+            </span>
+          </div>
+          <div className="font-mono text-xs text-muted-foreground">#{item.id}</div>
+        </div>
+      ),
+    },
+    {
+      key: "sourceTyp",
+      title: "Source",
+      render: (_value, item) => {
+        const source = resolveConversationSourceAdapter(item).resolve({
+          conversation: item,
+          messages: [],
+          lastResultMessage: null,
+        })
+        return (
+          <div className="space-y-1">
+            <Badge variant="secondary">{source.label}</Badge>
+            <div className="font-mono text-xs text-muted-foreground">
+              typ={item.sourceTyp ?? 0}
+              {item.sourceId ? ` id=${item.sourceId}` : ""}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: "llmConfig",
+      title: "Model",
+      render: (_value, item) => (
+        <span className="text-sm text-muted-foreground">{getModelLabel(item)}</span>
+      ),
+    },
+    {
+      key: "metaData",
+      title: "Metadata",
+      render: (value) => {
+        const count =
+          value && typeof value === "object" && !Array.isArray(value)
+            ? Object.keys(value as Record<string, unknown>).length
+            : 0
+        return <span className="text-xs text-muted-foreground">{count} fields</span>
+      },
+    },
+    {
+      key: "createTime",
+      title: "Created",
+      render: (value) => (
+        <span className="text-xs text-muted-foreground">
+          {formatDateTime(typeof value === "string" ? value : null, "-")}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "Actions",
+      width: 112,
+      render: (_value, item) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            navigate(`/dashboard/conversation/${item.id}`, undefined, {
+              title: `Conversation: ${item.title || `#${item.id}`}`,
+            })
+          }
+        >
+          <MoveUpRightIcon className="mr-1 h-3.5 w-3.5" />
+          Open
+        </Button>
+      ),
+    },
+  ]
 
   return (
-    <PageShell className="h-full overflow-hidden" contentClassName="flex h-full min-h-0 flex-col gap-4 space-y-0 overflow-hidden">
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Conversation</h1>
-          <p className="text-sm text-muted-foreground">Pure LLM chat, independent from agents and workflows.</p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={conversation.startNewConversation}
-        >
-          <PlusIcon className="mr-2 h-4 w-4" />
-          New
-        </Button>
-      </div>
-
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[320px_minmax(0,1fr)]">
-        <ConversationSettings
-          conversationId={conversation.conversationId}
-          currentConversation={conversation.currentConversation}
-          conversations={conversation.conversations}
-          sourceFilter={conversation.sourceFilter}
-          title={conversation.title}
-          systemPrompt={conversation.systemPrompt}
-          llmId={conversation.llmId}
-          modelName={conversation.modelName}
-          temperature={conversation.temperature}
-          modelOptions={conversation.modelOptions}
-          isCreating={conversation.isCreating}
-          isLoadingModels={conversation.isLoadingModels}
-          onTitleChange={conversation.setTitle}
-          onSystemPromptChange={conversation.setSystemPrompt}
-          onLlmChange={conversation.setLlmId}
-          onModelChange={conversation.setModelName}
-          onTemperatureChange={conversation.setTemperature}
-          onCreateConversation={() => {
-            void conversation.createConversation()
-          }}
-          onOpenConversation={conversation.openConversationFromList}
-          onSourceFilterChange={conversation.setSourceFilter}
-          onOpenTask={conversation.openTask}
-          onOpenAgent={conversation.openAgent}
-        />
-
-        <ConversationThread
-          messages={conversation.messages}
-          input={conversation.input}
-          canSend={conversation.canSend}
-          isSending={conversation.isSending}
-          inputEnabled={conversation.inputEnabled}
-          onInputChange={conversation.setInput}
-          onSend={() => {
-            void conversation.sendMessage()
-          }}
-        />
-      </div>
-    </PageShell>
+    <CrudLayout<ConversationRecord>
+      icon={MessageSquareIcon}
+      title="Conversation"
+      endpoint="/agent/conversation"
+      filterItems={filterItems}
+      storageKey="conversation-filters"
+      columns={columns}
+      defaultPageSize={20}
+    />
   )
 }

@@ -4,61 +4,30 @@ import * as React from "react"
 import useSWR from "swr"
 import { GitBranchPlus } from "lucide-react"
 
-import {
-  AgentConfigEditor,
-  type AgentConfigSpec,
-} from "@/components/agent/config/editor"
+import type { AgentConfigSpec } from "@/components/agent/config/editor"
+import { AgentIdentitySection } from "@/components/agent/identity-section"
+import { AgentVersionEditor } from "@/components/agent/version-editor"
+import { AgentVersionsSection } from "@/components/agent/versions-section"
 import { DetailPageLayout } from "@/components/common/detail-page-layout"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { apiClient, fetcher } from "@/lib/api"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
-
-type AgentRecord = {
-  id: number
-  name: string
-  agentClass: string
-  description?: string
-}
-
-type AgentVersionRecord = {
-  id: number
-  agentId: number
-  version: string
-  description?: string
-  configJson?: Record<string, unknown>
-  isDefault: number
-}
-
-type AgentOptionsResponse = {
-  agentClasses?: string[]
-  configSpecs?: Record<string, AgentConfigSpec>
-}
-
-type AgentFormState = {
-  name: string
-  agentClass: string
-  description: string
-}
-
-type VersionFormState = {
-  version: string
-  description: string
-  isDefault: boolean
-  configJson: Record<string, unknown>
-}
-
-const EMPTY_AGENT_FORM: AgentFormState = {
-  name: "",
-  agentClass: "DefaultAgentNode",
-  description: "",
-}
+import {
+  EMPTY_AGENT_FORM,
+  agentFormToCreatePayload,
+  agentFormToUpdatePayload,
+  agentRecordToForm,
+  defaultVersionForm,
+  versionFormToSavePayload,
+  versionRecordToForm,
+  type AgentFormState,
+  type AgentOptionsResponse,
+  type AgentRecord,
+  type AgentVersionRecord,
+  type VersionFormState,
+} from "@/lib/agent"
 
 type AgentDetailPageProps =
   | {
@@ -90,7 +59,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       return normalizeCrudListResponse<AgentRecord>(response)[0] || null
     },
   )
-  const { data: agentOptions } = useSWR<AgentOptionsResponse>(
+  const { data: agentOptions } = useSWR<AgentOptionsResponse<AgentConfigSpec>>(
     "/agent/options",
     fetcher,
   )
@@ -115,12 +84,9 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   const [editingVersion, setEditingVersion] =
     React.useState<AgentVersionRecord | null>(null)
   const [isVersionEditorOpen, setIsVersionEditorOpen] = React.useState(false)
-  const [versionForm, setVersionForm] = React.useState<VersionFormState>({
-    version: "1.0.0",
-    description: "",
-    isDefault: true,
-    configJson: {},
-  })
+  const [versionForm, setVersionForm] = React.useState<VersionFormState>(
+    defaultVersionForm(),
+  )
 
   React.useEffect(() => {
     if (isCreate) {
@@ -132,11 +98,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
       return
     }
     if (!agent) return
-    setAgentForm({
-      name: agent.name || "",
-      agentClass: agent.agentClass || "DefaultAgentNode",
-      description: agent.description || "",
-    })
+    setAgentForm(agentRecordToForm(agent))
     updateTabMeta(`/dashboard/agent/${agent.id}`, {
       title: `Agent: ${agent.name || `#${agent.id}`}`,
     })
@@ -145,23 +107,19 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
   React.useEffect(() => {
     if (!isVersionEditorOpen || !agent) return
     if (editingVersion) {
-      setVersionForm({
-        version: editingVersion.version || "1.0.0",
-        description: editingVersion.description || "",
-        isDefault: Boolean(editingVersion.isDefault),
-        configJson:
-          editingVersion.configJson ||
-          (currentVersionSpec?.defaults as Record<string, unknown>) ||
-          {},
-      })
+      setVersionForm(
+        versionRecordToForm(
+          editingVersion,
+          currentVersionSpec?.defaults as Record<string, unknown> | undefined,
+        ),
+      )
       return
     }
-    setVersionForm({
-      version: "1.0.0",
-      description: "",
-      isDefault: true,
-      configJson: (currentVersionSpec?.defaults as Record<string, unknown>) || {},
-    })
+    setVersionForm(
+      defaultVersionForm(
+        currentVersionSpec?.defaults as Record<string, unknown> | undefined,
+      ),
+    )
   }, [agent, currentVersionSpec?.defaults, editingVersion, isVersionEditorOpen])
 
   React.useEffect(() => {
@@ -181,19 +139,16 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     await saveAction.run(
       async () => {
         if (isCreate) {
-          return (await apiClient.post("/agent/agent", {
-            name: agentForm.name,
-            agentClass: agentForm.agentClass,
-            description: agentForm.description,
-          })) as AgentRecord
+          return (await apiClient.post(
+            "/agent/agent",
+            agentFormToCreatePayload(agentForm),
+          )) as AgentRecord
         }
         if (!agent) throw new Error("Agent not found")
-        return (await apiClient.put("/agent/agent", {
-          id: agent.id,
-          name: agent.name,
-          agentClass: agent.agentClass,
-          description: agentForm.description,
-        })) as AgentRecord
+        return (await apiClient.put(
+          "/agent/agent",
+          agentFormToUpdatePayload(agent, agentForm),
+        )) as AgentRecord
       },
       {
         successMessage: isCreate ? "Agent created" : "Agent updated",
@@ -210,14 +165,14 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     if (!agent) return
     await versionSaveAction.run(
       async () =>
-        (await apiClient.post("/agent/version/save", {
-          agentId: agent.id,
-          version: versionForm.version,
-          description: versionForm.description,
-          configJson: versionForm.configJson,
-          isDefault: versionForm.isDefault ? 1 : 0,
-          id: editingVersion?.id,
-        })) as AgentVersionRecord,
+        (await apiClient.post(
+          "/agent/version/save",
+          versionFormToSavePayload({
+            agent,
+            form: versionForm,
+            editingVersion,
+          }),
+        )) as AgentVersionRecord,
       {
         successMessage: editingVersion ? "Agent version updated" : "Agent version created",
         errorMessage: "Failed to save agent version",
@@ -295,174 +250,36 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
         ) : null
       }
     >
-      <section className="space-y-4 rounded-2xl border bg-background p-5">
-        <div className="text-sm font-semibold">Agent Identity</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={agentForm.name}
-              onChange={(e) =>
-                setAgentForm((prev) => ({ ...prev, name: e.target.value }))
-              }
-              disabled={!isCreate}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="agentClass">Implementation Class</Label>
-            <Input
-              id="agentClass"
-              value={agentForm.agentClass}
-              onChange={(e) =>
-                setAgentForm((prev) => ({ ...prev, agentClass: e.target.value }))
-              }
-              disabled={!isCreate}
-              list="agent-class-options"
-            />
-            <datalist id="agent-class-options">
-              {agentClassOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </div>
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={agentForm.description}
-              onChange={(e) =>
-                setAgentForm((prev) => ({ ...prev, description: e.target.value }))
-              }
-              className="min-h-24"
-            />
-          </div>
-        </div>
-      </section>
+      <AgentIdentitySection
+        form={agentForm}
+        agentClassOptions={agentClassOptions}
+        isCreate={isCreate}
+        onChange={setAgentForm}
+      />
 
       {!isCreate && agent ? (
-        <section className="space-y-4 rounded-2xl border bg-background p-5">
-          <div className="space-y-1">
-            <div className="text-sm font-semibold">Versions</div>
-            <div className="text-xs text-muted-foreground">
-              Prompt and config are managed per version.
-            </div>
-          </div>
-
-          {versions.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No versions yet for this agent.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {versions.map((version) => (
-                <div key={version.id} className="rounded-2xl border p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">v{version.version}</span>
-                        <Badge variant={version.isDefault ? "default" : "secondary"}>
-                          {version.isDefault ? "Default" : "Non-default"}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {version.description || "No version description"}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingVersion(version)
-                        setIsVersionEditorOpen(true)
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <AgentVersionsSection
+          versions={versions}
+          onEdit={(version) => {
+            setEditingVersion(version)
+            setIsVersionEditorOpen(true)
+          }}
+        />
       ) : null}
 
       {!isCreate && isVersionEditorOpen && agent ? (
-        <section className="space-y-6 rounded-2xl border border-primary/20 bg-background p-5">
-          <div className="space-y-1">
-            <div className="text-sm font-semibold">
-              {editingVersion ? "Edit Agent Version" : "Create Agent Version"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {agent.name} · {agent.agentClass}
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="grid gap-2">
-              <Label htmlFor="version">Version</Label>
-              <Input
-                id="version"
-                value={versionForm.version}
-                onChange={(e) =>
-                  setVersionForm((prev) => ({ ...prev, version: e.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="versionStatus">Default</Label>
-              <div className="flex h-10 items-center rounded-md border px-3">
-                <Checkbox
-                  checked={versionForm.isDefault}
-                  onCheckedChange={(checked: boolean | "indeterminate") =>
-                    setVersionForm((prev) => ({
-                      ...prev,
-                      isDefault: Boolean(checked),
-                    }))
-                  }
-                />
-                <span className="ml-3 text-sm">
-                  {versionForm.isDefault ? "Default version" : "Non-default version"}
-                </span>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="versionDescription">Description</Label>
-              <Textarea
-                id="versionDescription"
-                value={versionForm.description}
-                onChange={(e) =>
-                  setVersionForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                className="min-h-24"
-              />
-            </div>
-          </div>
-
-          <AgentConfigEditor
-            spec={currentVersionSpec}
-            value={versionForm.configJson}
-            onChange={(next) =>
-              setVersionForm((prev) => ({ ...prev, configJson: next }))
-            }
-          />
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsVersionEditorOpen(false)
-                setEditingVersion(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSaveVersion}>Save Version</Button>
-          </div>
-        </section>
+        <AgentVersionEditor
+          agent={agent}
+          editingVersion={editingVersion}
+          form={versionForm}
+          spec={currentVersionSpec}
+          onChange={setVersionForm}
+          onCancel={() => {
+            setIsVersionEditorOpen(false)
+            setEditingVersion(null)
+          }}
+          onSave={handleSaveVersion}
+        />
       ) : null}
     </DetailPageLayout>
   )

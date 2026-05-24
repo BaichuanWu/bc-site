@@ -14,13 +14,6 @@ export type ConversationMessage = {
 }
 
 export type ConversationMetaData = {
-  taskId?: number | string | null
-  workflowName?: string | null
-  nodeKey?: string | null
-  agentId?: number | string | null
-  // api-casing-ignore-next-line: Legacy/backend internal key.
-  agent_version_id?: number | string | null
-  agentClass?: string | null
   [key: string]: unknown
 }
 
@@ -66,4 +59,49 @@ export type LlmModelsResponse = {
 export type ModelOption = {
   id: number
   modelName: string
+}
+
+export type ConversationSourceActionBase = {
+  id: string
+  label: string
+  description?: string
+  disabled?: boolean
+}
+
+export type ConversationRerunAction = ConversationSourceActionBase & {
+  kind: "rerun"
+  run: () => void | Promise<void>
+}
+
+export type ConversationOpenSourceAction = ConversationSourceActionBase & {
+  kind: "openSource"
+  href?: string
+  run?: () => void | Promise<void>
+}
+
+export type ConversationInspectSourceAction = ConversationSourceActionBase & {
+  kind: "inspectSource"
+  run: () => void | Promise<void>
+}
+
+export type ConversationSourceAction =
+  | ConversationRerunAction
+  | ConversationOpenSourceAction
+  | ConversationInspectSourceAction
+
+export type ConversationSourceAdapterContext = {
+  conversation: ConversationRecord
+  messages: ConversationMessage[]
+  lastResultMessage: ConversationMessage | null
+}
+
+export type ConversationSourceAdapterResult = {
+  label: string
+  summary?: string
+  actions: ConversationSourceAction[]
+}
+
+export type ConversationSourceAdapter = {
+  sourceTyp: number | "default"
+  resolve: (context: ConversationSourceAdapterContext) => ConversationSourceAdapterResult
 }

@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
                 title: "WQB",
                 children: [
                     { title: "Alpha", href: "/dashboard/wqb/alpha" },
+                    { title: "Osmosis", href: "/dashboard/wqb/osmosis" },
                 ]
             }
         ]

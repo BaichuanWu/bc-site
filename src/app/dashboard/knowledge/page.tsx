@@ -2,199 +2,39 @@
 
 import * as React from "react"
 import useSWR from "swr"
-import { BookOpen, Sparkles } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { toast } from "sonner"
 
 import { apiClient } from "@/lib/api"
-import { formatJsonText, parseJsonText } from "@/lib/json-utils"
 import { useCrud } from "@/hooks/use-crud"
 import { useDeleteAction } from "@/hooks/use-delete-action"
 import { useMeta } from "@/hooks/use-meta"
 import { CrudLayout } from "@/components/common/crud-layout"
-import { ActionButtons } from "@/components/common/action-buttons"
 import { ListPageShell } from "@/components/common/list-page-shell"
-import { MarkdownEditor } from "@/components/common/markdown-editor"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { type Column } from "@/components/common/data-table"
 import { type SearchFilterItem } from "@/components/common/query-filters"
+import { buildKnowledgeDocumentColumns, buildKnowledgeRawColumns } from "@/components/knowledge/columns"
+import { KnowledgeDocumentDialog } from "@/components/knowledge/document-dialog"
+import { KnowledgePromoteDialog } from "@/components/knowledge/promote-dialog"
+import { KnowledgeRawDialog } from "@/components/knowledge/raw-dialog"
 import {
-    knowledgeDocumentTemplates,
-    knowledgeRawTemplates,
-} from "@/lib/markdown-templates"
+    EMPTY_DOCUMENT_FORM,
+    EMPTY_PROMOTE_FORM,
+    EMPTY_RAW_FORM,
+    buildKnowledgeDocKey,
+    documentFormToPayload,
+    documentRecordToForm,
+    promoteFormFromRaw,
+    rawFormToPayload,
+    rawRecordToForm,
+    type DocumentFormState,
+    type KnowledgeDocumentRecord,
+    type KnowledgeOptionsResponse,
+    type KnowledgeRawRecord,
+    type PromoteFormState,
+    type RawFormState,
+} from "@/lib/knowledge"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
-
-type KnowledgeOptionsResponse = {
-    defaults?: {
-        domain?: number
-        sourceType?: number
-        contentType?: number
-        rawStatus?: number
-        documentStatus?: number
-        confidence?: string
-    }
-}
-
-type KnowledgeRawRecord = {
-    id: number
-    title: string
-    domain: number
-    sourceType: number
-    contentType: number
-    status: number
-    namespaceHint?: string
-    tags?: string[]
-    scope?: Record<string, unknown>
-    summary?: string
-    content?: string
-    sourceRef?: string
-    relatedObjectType?: string
-    relatedObjectId?: number
-    reviewedTime?: string
-    updateTime?: string
-}
-
-type KnowledgeDocumentRecord = {
-    id: number
-    title: string
-    domain: number
-    namespace: string
-    docType: string
-    docKey: string
-    version: string
-    status: number
-    tags?: string[]
-    scope?: Record<string, unknown>
-    summary?: string
-    content?: string
-    confidence?: string
-    publishedTime?: string
-    updateTime?: string
-}
-
-type RawFormState = {
-    title: string
-    domain: string
-    sourceType: string
-    contentType: string
-    status: string
-    namespaceHint: string
-    tags: string
-    scope: string
-    summary: string
-    content: string
-    sourceRef: string
-    relatedObjectType: string
-    relatedObjectId: string
-}
-
-type DocumentFormState = {
-    title: string
-    domain: string
-    namespace: string
-    docType: string
-    docKey: string
-    version: string
-    status: string
-    tags: string
-    scope: string
-    summary: string
-    content: string
-    confidence: string
-}
-
-type PromoteFormState = {
-    title: string
-    namespace: string
-    docType: string
-    docKey: string
-    version: string
-    status: string
-    confidence: string
-}
-
-const EMPTY_RAW_FORM: RawFormState = {
-    title: "",
-    domain: "0",
-    sourceType: "0",
-    contentType: "0",
-    status: "0",
-    namespaceHint: "",
-    tags: "[]",
-    scope: "{}",
-    summary: "",
-    content: "",
-    sourceRef: "",
-    relatedObjectType: "",
-    relatedObjectId: "",
-}
-
-const EMPTY_DOCUMENT_FORM: DocumentFormState = {
-    title: "",
-    domain: "0",
-    namespace: "general",
-    docType: "note",
-    docKey: "",
-    version: "1.0.0",
-    status: "0",
-    tags: "[]",
-    scope: "{}",
-    summary: "",
-    content: "",
-    confidence: "medium",
-}
-
-const EMPTY_PROMOTE_FORM: PromoteFormState = {
-    title: "",
-    namespace: "general",
-    docType: "note",
-    docKey: "",
-    version: "1.0.0",
-    status: "0",
-    confidence: "medium",
-}
-
-function buildDocKey(namespace: string, title: string) {
-    const slug = title
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "")
-    return `${namespace || "general"}:${slug || "knowledge-doc"}`
-}
-
-function preventDialogCloseWhileFullscreen(event: Event) {
-    if (typeof document === "undefined") return
-    if (document.documentElement.dataset.mdEditorFullscreen === "true") {
-        event.preventDefault()
-    }
-}
-
-function preventDialogEscapeWhileFullscreen(event: KeyboardEvent) {
-    if (typeof document === "undefined") return
-    if (document.documentElement.dataset.mdEditorFullscreen === "true") {
-        event.preventDefault()
-    }
-}
 
 export default function KnowledgePage() {
     const deleteAction = useDeleteAction()
@@ -240,22 +80,7 @@ export default function KnowledgePage() {
     React.useEffect(() => {
         if (!rawCrud.isDialogOpen) return
         if (rawCrud.editingItem) {
-            const item = rawCrud.editingItem
-            setRawForm({
-                title: item.title || "",
-                domain: String(item.domain ?? 0),
-                sourceType: String(item.sourceType ?? 0),
-                contentType: String(item.contentType ?? 0),
-                status: String(item.status ?? 0),
-                namespaceHint: item.namespaceHint || "",
-                tags: formatJsonText(item.tags ?? [], "[]"),
-                scope: formatJsonText(item.scope ?? {}, "{}"),
-                summary: item.summary || "",
-                content: item.content || "",
-                sourceRef: item.sourceRef || "",
-                relatedObjectType: item.relatedObjectType || "",
-                relatedObjectId: item.relatedObjectId ? String(item.relatedObjectId) : "",
-            })
+            setRawForm(rawRecordToForm(rawCrud.editingItem))
             return
         }
         setRawForm((prev) => ({
@@ -270,21 +95,7 @@ export default function KnowledgePage() {
     React.useEffect(() => {
         if (!documentCrud.isDialogOpen) return
         if (documentCrud.editingItem) {
-            const item = documentCrud.editingItem
-            setDocumentForm({
-                title: item.title || "",
-                domain: String(item.domain ?? 0),
-                namespace: item.namespace || "general",
-                docType: item.docType || "note",
-                docKey: item.docKey || "",
-                version: item.version || "1.0.0",
-                status: String(item.status ?? 0),
-                tags: formatJsonText(item.tags ?? [], "[]"),
-                scope: formatJsonText(item.scope ?? {}, "{}"),
-                summary: item.summary || "",
-                content: item.content || "",
-                confidence: item.confidence || "medium",
-            })
+            setDocumentForm(documentRecordToForm(documentCrud.editingItem))
             return
         }
         setDocumentForm((prev) => ({
@@ -357,198 +168,53 @@ export default function KnowledgePage() {
         [domainOptions, documentStatusOptions]
     )
 
-    const rawColumns: Column<KnowledgeRawRecord>[] = React.useMemo(
-        () => [
-            { key: "id", title: "ID", width: 70 },
-            {
-                key: "title",
-                title: "Title",
-                width: 280,
-                render: (value, item) => (
-                    <div className="space-y-1">
-                        <div className="font-medium">{String(value || "-")}</div>
-                        {item.summary ? (
-                            <div className="text-xs text-muted-foreground line-clamp-2">{item.summary}</div>
-                        ) : null}
-                    </div>
-                ),
-            },
-            {
-                key: "domain",
-                title: "Domain",
-                width: 120,
-                render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "DOMAIN_NAME_MAPPING", value)}</Badge>,
-            },
-            {
-                key: "sourceType",
-                title: "Source",
-                width: 120,
-                render: (value) => <Badge variant="secondary">{getLabel("KnowledgeRaw", "SOURCE_NAME_MAPPING", value)}</Badge>,
-            },
-            {
-                key: "contentType",
-                title: "Content",
-                width: 120,
-                render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "CONTENT_NAME_MAPPING", value)}</Badge>,
-            },
-            { key: "namespaceHint", title: "Namespace Hint", width: 160 },
-            {
-                key: "status",
-                title: "Status",
-                width: 120,
-                render: (value) => <Badge>{getLabel("KnowledgeRaw", "STATUS_NAME_MAPPING", value)}</Badge>,
-            },
-            {
-                key: "actions",
-                title: "Actions",
-                width: 140,
-                fixed: "right",
-                render: (_, item) => (
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                const title = item.title || ""
-                                const namespace = item.namespaceHint || "general"
-                                setPromotingRaw(item)
-                                setPromoteForm({
-                                    title,
-                                    namespace,
-                                    docType: "note",
-                                    docKey: buildDocKey(namespace, title),
-                                    version: "1.0.0",
-                                    status: String(options?.defaults?.documentStatus ?? 0),
-                                    confidence: options?.defaults?.confidence ?? "medium",
-                                })
-                                setPromoteOpen(true)
-                            }}
-                        >
-                            <Sparkles className="mr-1 h-4 w-4" />
-                            Promote
-                        </Button>
-                        <ActionButtons
-                            onEdit={() => rawCrud.handleOpenDialog(item)}
-                            onConfirmDelete={async () => {
-                                await deleteAction.remove("/knowledge/raw", item.id, {
-                                    successMessage: "Raw knowledge deleted successfully",
-                                    errorMessage: "Failed to delete raw knowledge",
-                                    onSuccess: async () => {
-                                        await rawCrud.mutate()
-                                    },
-                                })
-                            }}
-                            description={
-                                <>
-                                    Are you sure you want to delete raw knowledge <strong>{item.title}</strong>?
-                                </>
-                            }
-                        />
-                    </div>
-                ),
-            },
-        ],
-        [deleteAction, getLabel, options, rawCrud]
+    const rawColumns = React.useMemo(
+        () =>
+            buildKnowledgeRawColumns({
+                getLabel,
+                onPromote: (item) => {
+                    setPromotingRaw(item)
+                    setPromoteForm(promoteFormFromRaw(item, options?.defaults))
+                    setPromoteOpen(true)
+                },
+                onEdit: rawCrud.handleOpenDialog,
+                onDelete: async (item) => {
+                    await deleteAction.remove("/knowledge/raw", item.id, {
+                        successMessage: "Raw knowledge deleted successfully",
+                        errorMessage: "Failed to delete raw knowledge",
+                        onSuccess: async () => {
+                            await rawCrud.mutate()
+                        },
+                    })
+                },
+            }),
+        [deleteAction, getLabel, options?.defaults, rawCrud],
     )
 
-    const documentColumns: Column<KnowledgeDocumentRecord>[] = React.useMemo(
-        () => [
-            { key: "id", title: "ID", width: 70 },
-            {
-                key: "title",
-                title: "Title",
-                width: 280,
-                render: (value, item) => (
-                    <div className="space-y-1">
-                        <div className="font-medium">{String(value || "-")}</div>
-                        <div className="text-xs text-muted-foreground">
-                            {item.namespace} / {item.docType}
-                        </div>
-                    </div>
-                ),
-            },
-            {
-                key: "domain",
-                title: "Domain",
-                width: 120,
-                render: (value) => <Badge variant="outline">{getLabel("KnowledgeDocument", "DOMAIN_NAME_MAPPING", value)}</Badge>,
-            },
-            { key: "docKey", title: "Doc Key", width: 220, truncate: true, className: "font-mono text-xs" },
-            { key: "version", title: "Version", width: 100 },
-            {
-                key: "status",
-                title: "Status",
-                width: 120,
-                render: (value) => <Badge>{getLabel("KnowledgeDocument", "STATUS_NAME_MAPPING", value)}</Badge>,
-            },
-            {
-                key: "confidence",
-                title: "Confidence",
-                width: 120,
-                render: (value) => <Badge variant="secondary">{String(value || "medium")}</Badge>,
-            },
-            {
-                key: "actions",
-                title: "Actions",
-                width: 100,
-                fixed: "right",
-                render: (_, item) => (
-                    <ActionButtons
-                        onEdit={() => documentCrud.handleOpenDialog(item)}
-                        onConfirmDelete={async () => {
-                            await deleteAction.remove("/knowledge/document", item.id, {
-                                successMessage: "Knowledge document deleted successfully",
-                                errorMessage: "Failed to delete knowledge document",
-                                onSuccess: async () => {
-                                    await documentCrud.mutate()
-                                },
-                            })
-                        }}
-                        description={
-                            <>
-                                Are you sure you want to delete knowledge document <strong>{item.title}</strong>?
-                            </>
-                        }
-                    />
-                ),
-            },
-        ],
-        [deleteAction, documentCrud, getLabel]
+    const documentColumns = React.useMemo(
+        () =>
+            buildKnowledgeDocumentColumns({
+                getLabel,
+                onEdit: documentCrud.handleOpenDialog,
+                onDelete: async (item) => {
+                    await deleteAction.remove("/knowledge/document", item.id, {
+                        successMessage: "Knowledge document deleted successfully",
+                        errorMessage: "Failed to delete knowledge document",
+                        onSuccess: async () => {
+                            await documentCrud.mutate()
+                        },
+                    })
+                },
+            }),
+        [deleteAction, documentCrud, getLabel],
     )
 
     const saveRaw = async () => {
-        await rawCrud.handleSave({
-            title: rawForm.title,
-            domain: Number(rawForm.domain || 0),
-            sourceType: Number(rawForm.sourceType || 0),
-            contentType: Number(rawForm.contentType || 0),
-            status: Number(rawForm.status || 0),
-            namespaceHint: rawForm.namespaceHint || "",
-            tags: parseJsonText(rawForm.tags, [] as string[]),
-            scope: parseJsonText(rawForm.scope, {} as Record<string, unknown>),
-            summary: rawForm.summary || "",
-            content: rawForm.content || "",
-            sourceRef: rawForm.sourceRef || "",
-            relatedObjectType: rawForm.relatedObjectType || "",
-            relatedObjectId: rawForm.relatedObjectId ? Number(rawForm.relatedObjectId) : undefined,
-        } as Partial<KnowledgeRawRecord>)
+        await rawCrud.handleSave(rawFormToPayload(rawForm))
     }
 
     const saveDocument = async () => {
-        await documentCrud.handleSave({
-            title: documentForm.title,
-            domain: Number(documentForm.domain || 0),
-            namespace: documentForm.namespace,
-            docType: documentForm.docType,
-            docKey: documentForm.docKey || buildDocKey(documentForm.namespace, documentForm.title),
-            version: documentForm.version,
-            status: Number(documentForm.status || 0),
-            tags: parseJsonText(documentForm.tags, [] as string[]),
-            scope: parseJsonText(documentForm.scope, {} as Record<string, unknown>),
-            summary: documentForm.summary || "",
-            content: documentForm.content || "",
-            confidence: documentForm.confidence,
-        } as Partial<KnowledgeDocumentRecord>)
+        await documentCrud.handleSave(documentFormToPayload(documentForm))
     }
 
     const handlePromote = async () => {
@@ -559,7 +225,7 @@ export default function KnowledgePage() {
                 title: promoteForm.title || undefined,
                 namespace: promoteForm.namespace,
                 docType: promoteForm.docType,
-                docKey: promoteForm.docKey || buildDocKey(promoteForm.namespace, promoteForm.title || promotingRaw.title),
+                docKey: promoteForm.docKey || buildKnowledgeDocKey(promoteForm.namespace, promoteForm.title || promotingRaw.title),
                 version: promoteForm.version,
                 status: Number(promoteForm.status || 0),
                 confidence: promoteForm.confidence,
@@ -599,109 +265,20 @@ export default function KnowledgePage() {
                         addButtonLabel="New Raw Note"
                         onAdd={() => rawCrud.handleOpenDialog()}
                     >
-                        <Dialog modal={false} open={rawCrud.isDialogOpen} onOpenChange={(open) => !open && rawCrud.handleCloseDialog()}>
-                            <DialogContent
-                                className="sm:max-w-[1100px] max-h-[90vh] flex flex-col p-0"
-                                onInteractOutside={preventDialogCloseWhileFullscreen}
-                                onPointerDownOutside={preventDialogCloseWhileFullscreen}
-                                onEscapeKeyDown={preventDialogEscapeWhileFullscreen}
-                            >
-                                <DialogHeader className="px-6 py-4 border-b">
-                                    <DialogTitle>{rawCrud.editingItem ? "Edit Raw Knowledge" : "Create Raw Knowledge"}</DialogTitle>
-                                    <DialogDescription>
-                                        Keep this layer lightweight. We can always curate and publish it later.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Title</Label>
-                                            <Input value={rawForm.title} onChange={(e) => setRawForm((prev) => ({ ...prev, title: e.target.value }))} />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Namespace Hint</Label>
-                                            <Input value={rawForm.namespaceHint} onChange={(e) => setRawForm((prev) => ({ ...prev, namespaceHint: e.target.value }))} placeholder="econ_intuition" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-4 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Domain</Label>
-                                            <Select value={rawForm.domain} onValueChange={(value) => setRawForm((prev) => ({ ...prev, domain: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{domainOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Source Type</Label>
-                                            <Select value={rawForm.sourceType} onValueChange={(value) => setRawForm((prev) => ({ ...prev, sourceType: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{sourceTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Content Type</Label>
-                                            <Select value={rawForm.contentType} onValueChange={(value) => setRawForm((prev) => ({ ...prev, contentType: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{contentTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Status</Label>
-                                            <Select value={rawForm.status} onValueChange={(value) => setRawForm((prev) => ({ ...prev, status: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{rawStatusOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Tags JSON</Label>
-                                            <Textarea value={rawForm.tags} onChange={(e) => setRawForm((prev) => ({ ...prev, tags: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Scope JSON</Label>
-                                            <Textarea value={rawForm.scope} onChange={(e) => setRawForm((prev) => ({ ...prev, scope: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Source Ref</Label>
-                                            <Input value={rawForm.sourceRef} onChange={(e) => setRawForm((prev) => ({ ...prev, sourceRef: e.target.value }))} placeholder="book / url / task / alpha / note" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Related Object Type</Label>
-                                            <Input value={rawForm.relatedObjectType} onChange={(e) => setRawForm((prev) => ({ ...prev, relatedObjectType: e.target.value }))} placeholder="task / alpha / article / experiment" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Related Object ID</Label>
-                                            <Input value={rawForm.relatedObjectId} onChange={(e) => setRawForm((prev) => ({ ...prev, relatedObjectId: e.target.value }))} />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label>Summary</Label>
-                                        <Textarea value={rawForm.summary} onChange={(e) => setRawForm((prev) => ({ ...prev, summary: e.target.value }))} className="min-h-[110px]" />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label>Content</Label>
-                                        <MarkdownEditor
-                                            value={rawForm.content}
-                                            onChange={(value) => setRawForm((prev) => ({ ...prev, content: value }))}
-                                            className="h-[360px]"
-                                            templates={knowledgeRawTemplates}
-                                        />
-                                    </div>
-                                </div>
-                                <DialogFooter className="px-6 py-4 border-t">
-                                    <Button variant="outline" onClick={rawCrud.handleCloseDialog}>Cancel</Button>
-                                    <Button onClick={saveRaw} disabled={rawCrud.isSaving}>{rawCrud.isSaving ? "Saving..." : "Save Raw Knowledge"}</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <KnowledgeRawDialog
+                            open={rawCrud.isDialogOpen}
+                            isEditing={!!rawCrud.editingItem}
+                            isSaving={rawCrud.isSaving}
+                            form={rawForm}
+                            domainOptions={domainOptions}
+                            sourceTypeOptions={sourceTypeOptions}
+                            contentTypeOptions={contentTypeOptions}
+                            statusOptions={rawStatusOptions}
+                            onOpenChange={(open) => !open && rawCrud.handleCloseDialog()}
+                            onFormChange={setRawForm}
+                            onCancel={rawCrud.handleCloseDialog}
+                            onSave={saveRaw}
+                        />
                     </CrudLayout>
                 </TabsContent>
 
@@ -716,173 +293,34 @@ export default function KnowledgePage() {
                         addButtonLabel="New Knowledge Document"
                         onAdd={() => documentCrud.handleOpenDialog()}
                     >
-                        <Dialog modal={false} open={documentCrud.isDialogOpen} onOpenChange={(open) => !open && documentCrud.handleCloseDialog()}>
-                            <DialogContent
-                                className="sm:max-w-[1100px] max-h-[90vh] flex flex-col p-0"
-                                onInteractOutside={preventDialogCloseWhileFullscreen}
-                                onPointerDownOutside={preventDialogCloseWhileFullscreen}
-                                onEscapeKeyDown={preventDialogEscapeWhileFullscreen}
-                            >
-                                <DialogHeader className="px-6 py-4 border-b">
-                                    <DialogTitle>{documentCrud.editingItem ? "Edit Knowledge Document" : "Create Knowledge Document"}</DialogTitle>
-                                    <DialogDescription>
-                                        This is the durable layer that later powers retrieval, synthesis, and long-term memory.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Title</Label>
-                                            <Input
-                                                value={documentForm.title}
-                                                onChange={(e) =>
-                                                    setDocumentForm((prev) => ({
-                                                        ...prev,
-                                                        title: e.target.value,
-                                                        docKey: prev.docKey || buildDocKey(prev.namespace, e.target.value),
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Namespace</Label>
-                                            <Input
-                                                value={documentForm.namespace}
-                                                onChange={(e) =>
-                                                    setDocumentForm((prev) => ({
-                                                        ...prev,
-                                                        namespace: e.target.value,
-                                                        docKey: buildDocKey(e.target.value, prev.title),
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-5 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Domain</Label>
-                                            <Select value={documentForm.domain} onValueChange={(value) => setDocumentForm((prev) => ({ ...prev, domain: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{domainOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Doc Type</Label>
-                                            <Input value={documentForm.docType} onChange={(e) => setDocumentForm((prev) => ({ ...prev, docType: e.target.value }))} />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Version</Label>
-                                            <Input value={documentForm.version} onChange={(e) => setDocumentForm((prev) => ({ ...prev, version: e.target.value }))} />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Status</Label>
-                                            <Select value={documentForm.status} onValueChange={(value) => setDocumentForm((prev) => ({ ...prev, status: value }))}>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>{documentStatusOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Confidence</Label>
-                                            <Input value={documentForm.confidence} onChange={(e) => setDocumentForm((prev) => ({ ...prev, confidence: e.target.value }))} />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label>Doc Key</Label>
-                                        <Input value={documentForm.docKey} onChange={(e) => setDocumentForm((prev) => ({ ...prev, docKey: e.target.value }))} className="font-mono text-xs" />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="grid gap-2">
-                                            <Label>Tags JSON</Label>
-                                            <Textarea value={documentForm.tags} onChange={(e) => setDocumentForm((prev) => ({ ...prev, tags: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label>Scope JSON</Label>
-                                            <Textarea value={documentForm.scope} onChange={(e) => setDocumentForm((prev) => ({ ...prev, scope: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label>Summary</Label>
-                                        <Textarea value={documentForm.summary} onChange={(e) => setDocumentForm((prev) => ({ ...prev, summary: e.target.value }))} className="min-h-[110px]" />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label>Content</Label>
-                                        <MarkdownEditor
-                                            value={documentForm.content}
-                                            onChange={(value) => setDocumentForm((prev) => ({ ...prev, content: value }))}
-                                            className="h-[360px]"
-                                            templates={knowledgeDocumentTemplates}
-                                        />
-                                    </div>
-                                </div>
-                                <DialogFooter className="px-6 py-4 border-t">
-                                    <Button variant="outline" onClick={documentCrud.handleCloseDialog}>Cancel</Button>
-                                    <Button onClick={saveDocument} disabled={documentCrud.isSaving}>{documentCrud.isSaving ? "Saving..." : "Save Knowledge Document"}</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        <KnowledgeDocumentDialog
+                            open={documentCrud.isDialogOpen}
+                            isEditing={!!documentCrud.editingItem}
+                            isSaving={documentCrud.isSaving}
+                            form={documentForm}
+                            domainOptions={domainOptions}
+                            statusOptions={documentStatusOptions}
+                            onOpenChange={(open) => !open && documentCrud.handleCloseDialog()}
+                            onFormChange={setDocumentForm}
+                            onCancel={documentCrud.handleCloseDialog}
+                            onSave={saveDocument}
+                        />
                     </CrudLayout>
                 </TabsContent>
             </Tabs>
 
-            <Dialog open={promoteOpen} onOpenChange={(open) => {
-                setPromoteOpen(open)
-                if (!open) setPromotingRaw(null)
-            }}>
-                <DialogContent className="sm:max-w-[560px]">
-                    <DialogHeader>
-                        <DialogTitle>Promote Raw Knowledge</DialogTitle>
-                        <DialogDescription>
-                            Turn a raw note into a durable knowledge document without losing its provenance.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-2">
-                        <div className="grid gap-2">
-                            <Label>Title</Label>
-                            <Input value={promoteForm.title} onChange={(e) => setPromoteForm((prev) => ({ ...prev, title: e.target.value }))} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Namespace</Label>
-                                <Input value={promoteForm.namespace} onChange={(e) => setPromoteForm((prev) => ({ ...prev, namespace: e.target.value }))} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Doc Type</Label>
-                                <Input value={promoteForm.docType} onChange={(e) => setPromoteForm((prev) => ({ ...prev, docType: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Doc Key</Label>
-                            <Input value={promoteForm.docKey} onChange={(e) => setPromoteForm((prev) => ({ ...prev, docKey: e.target.value }))} className="font-mono text-xs" />
-                        </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Version</Label>
-                                <Input value={promoteForm.version} onChange={(e) => setPromoteForm((prev) => ({ ...prev, version: e.target.value }))} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <Select value={promoteForm.status} onValueChange={(value) => setPromoteForm((prev) => ({ ...prev, status: value }))}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>{documentStatusOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Confidence</Label>
-                                <Input value={promoteForm.confidence} onChange={(e) => setPromoteForm((prev) => ({ ...prev, confidence: e.target.value }))} />
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setPromoteOpen(false)}>Cancel</Button>
-                        <Button onClick={handlePromote} disabled={isPromoting}>{isPromoting ? "Promoting..." : "Promote to Document"}</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <KnowledgePromoteDialog
+                open={promoteOpen}
+                isPromoting={isPromoting}
+                form={promoteForm}
+                statusOptions={documentStatusOptions}
+                onOpenChange={(open) => {
+                    setPromoteOpen(open)
+                    if (!open) setPromotingRaw(null)
+                }}
+                onFormChange={setPromoteForm}
+                onPromote={handlePromote}
+            />
         </ListPageShell>
     )
 }

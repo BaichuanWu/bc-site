@@ -21,101 +21,23 @@ import { useAsyncAction } from "@/hooks/use-async-action"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { apiClient, fetcher } from "@/lib/api"
 import { normalizeCrudListResponse } from "@/lib/crud-response"
-import { formatJsonText, parseJsonText } from "@/lib/json-utils"
+import { parseJsonText } from "@/lib/json-utils"
+import {
+  EMPTY_WORKFLOW_FORM,
+  applyWorkflowTemplateToForm,
+  buildWorkflowAgentOptions,
+  extractTaskKwargsTextFromDefinitionJson,
+  mergeTaskKwargsIntoDefinition,
+  workflowRecordToForm,
+  type AgentRecord,
+  type WorkflowAgentOption,
+  type WorkflowFormState,
+  type WorkflowOptionsResponse,
+  type WorkflowPreview,
+  type WorkflowRecord,
+} from "@/lib/workflow-studio"
 import { useWorkspaceTabs } from "@/components/workspace/workspace-tabs-provider"
 import { WorkflowEditorShell } from "@/components/workflow/studio/editor-shell"
-import type {
-  AgentRecord,
-  WorkflowAgentOption,
-  WorkflowPreview,
-} from "@/hooks/use-workflow-studio"
-import type { JsonObject } from "@/types/json"
-
-type WorkflowOptionsResponse = {
-  defaults?: {
-    domain?: number
-    status?: number
-  }
-  templates?: Record<string, Record<string, unknown>>
-}
-
-type WorkflowRecord = {
-  id: number
-  name: string
-  version: string
-  title: string
-  description?: string
-  domain: number
-  status: number
-  definitionJson?: Record<string, unknown>
-  uiSchemaJson?: Record<string, unknown>
-  publishedTime?: string
-}
-
-type WorkflowFormState = {
-  name: string
-  version: string
-  title: string
-  description: string
-  domain: string
-  status: string
-  definitionJson: string
-  uiSchemaJson: string
-  taskKwargsJson: string
-}
-
-const EMPTY_FORM: WorkflowFormState = {
-  name: "",
-  version: "1.0.0",
-  title: "",
-  description: "",
-  domain: "0",
-  status: "0",
-  definitionJson: "{}",
-  uiSchemaJson: "{}",
-  taskKwargsJson: "{}",
-}
-
-function extractTaskKwargsTextFromDefinitionJson(
-  definitionJsonText: string,
-  fallback: string,
-) {
-  try {
-    const parsed = JSON.parse(definitionJsonText) as JsonObject
-    const runDefaults =
-      parsed.run_defaults && typeof parsed.run_defaults === "object"
-        ? (parsed.run_defaults as JsonObject)
-        : undefined
-    const kwargs =
-      runDefaults?.kwargs && typeof runDefaults.kwargs === "object"
-        ? (runDefaults.kwargs as Record<string, unknown>)
-        : {}
-    return formatJsonText(kwargs, fallback)
-  } catch {
-    return fallback
-  }
-}
-
-function mergeTaskKwargsIntoDefinition(
-  definitionJsonText: string,
-  taskKwargsJson: string,
-): Record<string, unknown> {
-  const definitionJson = parseJsonText<Record<string, unknown>>(definitionJsonText, {})
-  const runDefaults =
-    definitionJson.run_defaults &&
-    typeof definitionJson.run_defaults === "object" &&
-    !Array.isArray(definitionJson.run_defaults)
-      ? { ...(definitionJson.run_defaults as Record<string, unknown>) }
-      : {}
-
-  return {
-    ...definitionJson,
-    run_defaults: {
-      ...runDefaults,
-      kwargs: parseJsonText<Record<string, unknown>>(taskKwargsJson, {}),
-    },
-  }
-}
 
 type WorkflowDetailPageProps =
   | {
@@ -138,7 +60,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   const publishAction = useAsyncAction()
   const [selectedTemplate, setSelectedTemplate] = React.useState("")
   const [preview, setPreview] = React.useState<WorkflowPreview | null>(null)
-  const [form, setForm] = React.useState<WorkflowFormState>(EMPTY_FORM)
+  const [form, setForm] = React.useState<WorkflowFormState>(EMPTY_WORKFLOW_FORM)
   const [agentSearch, setAgentSearch] = React.useState("")
 
   const { data: options } = useSWR<WorkflowOptionsResponse>(
@@ -180,46 +102,14 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
       return
     }
     if (!workflow) return
-    setForm({
-      name: workflow.name || "",
-      version: workflow.version || "1.0.0",
-      title: workflow.title || "",
-      description: workflow.description || "",
-      domain: String(workflow.domain ?? 0),
-      status: String(workflow.status ?? 0),
-      definitionJson: formatJsonText(workflow.definitionJson ?? {}, "{}"),
-      uiSchemaJson: formatJsonText(workflow.uiSchemaJson ?? {}, "{}"),
-      taskKwargsJson: extractTaskKwargsTextFromDefinitionJson(
-        formatJsonText(workflow.definitionJson ?? {}, "{}"),
-        "{}",
-      ),
-    })
+    setForm(workflowRecordToForm(workflow))
     updateTabMeta(`/dashboard/workflow/${workflow.id}`, {
       title: `Workflow: ${workflow.name || `#${workflow.id}`}`,
     })
   }, [isCreate, updateTabMeta, workflow])
 
   const filteredAgents = React.useMemo<WorkflowAgentOption[]>(() => {
-    const availableAgents = agents
-      .filter((agent) => agent.defaultVersion)
-      .map((agent) => ({
-        id: agent.id,
-        agentId: agent.id,
-        defaultVersionId: Number(agent.defaultVersion?.id || 0),
-        name: agent.name,
-        version: String(agent.defaultVersion?.version || ""),
-        agentClass: agent.agentClass,
-        description: agent.description,
-        versionDescription: agent.defaultVersion?.description,
-        configJson: agent.defaultVersion?.configJson,
-      }))
-    const keyword = agentSearch.trim().toLowerCase()
-    if (!keyword) return availableAgents
-    return availableAgents.filter((agent) =>
-      [agent.name, agent.version, agent.agentClass]
-        .filter(Boolean)
-        .some((part) => String(part).toLowerCase().includes(keyword)),
-    )
+    return buildWorkflowAgentOptions(agents, agentSearch)
   }, [agents, agentSearch])
 
   const handlePreview = React.useCallback(async () => {
@@ -286,19 +176,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
     if (!selectedTemplate) return
     const template = options?.templates?.[selectedTemplate]
     if (!template) return
-    setForm((prev) => ({
-      ...prev,
-      name: prev.name || selectedTemplate,
-      title: prev.title || selectedTemplate.replace(/_/g, " "),
-      definitionJson: JSON.stringify(template, null, 2),
-      taskKwargsJson: formatJsonText(
-        ((template.run_defaults as JsonObject | undefined)?.kwargs as Record<
-          string,
-          unknown
-        >) || {},
-        "{}",
-      ),
-    }))
+    setForm((prev) => applyWorkflowTemplateToForm(prev, selectedTemplate, template))
   }, [options?.templates, selectedTemplate])
 
   const handlePublish = React.useCallback(async () => {

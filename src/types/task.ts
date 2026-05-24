@@ -7,26 +7,19 @@ export interface TaskProgress {
     [key: string]: unknown
 }
 
-export type WorkflowNodeEventData = {
-    key: string
-    // api-casing-ignore-next-line: Task workflow event payload mirrors workflow DSL node fields.
-    agent_id?: number | null
-    // api-casing-ignore-next-line: Task workflow event payload mirrors workflow runtime fields.
-    agent_version_id?: number | null
-    // api-casing-ignore-next-line: Task workflow event payload mirrors backend runtime fields.
-    conversation_id?: number | null
+export type TaskEventData = {
+    key?: string | null
+    agentId?: number | null
+    agentVersionId?: number | null
     conversationId?: number | null
     kind?: string | null
     status?: string | null
     input?: unknown
     output?: unknown
     error?: string | null
-    // api-casing-ignore-next-line: Task event payload comes from backend runtime timestamps.
-    start_time?: string | null
-    // api-casing-ignore-next-line: Task event payload comes from backend runtime timestamps.
-    end_time?: string | null
-    // api-casing-ignore-next-line: Task event payload comes from backend runtime metrics.
-    duration_ms?: number | null
+    startTime?: string | null
+    endTime?: string | null
+    durationMs?: number | null
     [key: string]: unknown
 }
 
