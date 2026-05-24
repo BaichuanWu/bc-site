@@ -13,7 +13,17 @@ RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 FROM base AS deps
 
-RUN apk add --no-cache libc6-compat
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+        if apk add --no-cache libc6-compat; then \
+            break; \
+        fi; \
+        if [ "$attempt" -eq 3 ]; then \
+            exit 1; \
+        fi; \
+        echo "apk install failed on attempt ${attempt}, retrying..." >&2; \
+        sleep 5; \
+    done
 
 WORKDIR /workspace/bc-site
 
