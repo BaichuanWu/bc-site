@@ -24,6 +24,8 @@ import { getJsonSizeKb } from '@/lib/json-utils'
 import {
     collapseWorkflowNodeEvents,
     extractRelatedTaskIds,
+    getProgressPercentFromMessage,
+    getTaskEventProgressPercent,
 } from '@/lib/task-events'
 
 import { JsonNode } from '@/components/common/json-node'
@@ -84,10 +86,14 @@ export default function TaskDetailPage() {
         const t = taskRes as unknown as TaskDetailRecord
         const evs = normalizeCrudListResponse<TaskEventRecord>(eventsRes)
         const lastEvent = evs[evs.length - 1]
+        const lastEventProgress = lastEvent
+            ? getTaskEventProgressPercent(lastEvent)
+            : undefined
+        const taskMessageProgress = getProgressPercentFromMessage(t.message)
         setTask(t)
         setInitialState(parseInt(taskIdParam), {
             status: mapServerStateToStatus(t.state),
-            progress: { percent: t.progress, message: lastEvent?.message ?? t.message },
+            progress: { percent: lastEventProgress ?? taskMessageProgress ?? t.progress, message: lastEvent?.message ?? t.message },
             snapshot: t.snapshot,
             events: evs,
             error: t.errorLog || null,

@@ -5,6 +5,7 @@ import { useTask, type TaskInitialData } from "@/hooks/use-task"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react"
+import { getProgressPercentFromMessage } from "@/lib/task-events"
 
 interface TaskProgressBarProps {
     taskId: number
@@ -23,8 +24,9 @@ export const TaskProgressBar = ({
 }: TaskProgressBarProps) => {
     const { progress, status, error } = useTask(taskId, initialData)
 
-    const percent = status === 'completed' ? 100 : (progress?.percent || 0)
     const message = progress?.message || (status === 'pending' ? 'Waiting...' : '')
+    const percentFromMessage = getProgressPercentFromMessage(message)
+    const percent = status === 'completed' ? 100 : (percentFromMessage ?? progress?.percent ?? 0)
 
     return (
         <div className={cn("space-y-2 w-full", className)}>

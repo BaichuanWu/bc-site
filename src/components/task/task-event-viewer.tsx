@@ -14,6 +14,7 @@ import {
 } from "@/lib/task-utils"
 import {
   getTaskEventData,
+  getTaskEventProgressPercent,
 } from "@/lib/task-events"
 import { cn } from "@/lib/utils"
 import { type TaskEventRecord } from "@/types/task"
@@ -163,10 +164,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
   const payloadKind = getPayloadKind(event)
   const details = useMemo(() => buildEventDetails(event), [event])
   const canExpand = details.length > 0
-  const progress =
-    typeof event.progress === "number" && Number.isFinite(event.progress)
-      ? event.progress
-      : null
+  const progress = getTaskEventProgressPercent(event) ?? null
 
   return (
     <>

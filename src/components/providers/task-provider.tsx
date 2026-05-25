@@ -7,6 +7,7 @@ import { getJsonObject } from "@/types/json"
 
 import { type TaskEventRecord, type TaskState } from "@/types/task"
 import { mapServerStateToStatus } from "@/lib/task-utils"
+import { getProgressPercentFromMessage, getTaskEventProgressPercent } from "@/lib/task-events"
 
 type TaskUpdatePayload = {
     id?: number | string
@@ -211,10 +212,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                         newState.events = mergeTaskEvents(existing.events as TaskEventRecord[], [
                             eventData,
                         ])
-                        if (typeof eventData.progress === 'number') {
+                        const eventProgress = getTaskEventProgressPercent(eventData)
+                        if (typeof eventProgress === 'number') {
                             newState.progress = {
                                 message: eventData.message || existing.progress?.message,
-                                percent: eventData.progress,
+                                percent: eventProgress,
                             }
                         } else if (eventData.message) {
                             newState.progress = {
@@ -258,12 +260,13 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
                             }
                         }
                     } else {
+                        const updateProgress = getProgressPercentFromMessage(data.message)
                         newState = {
                             ...newState,
                             status: mapServerStateToStatus(data.state ?? 0),
                             progress: {
                                 message: data.message,
-                                percent: data.progress,
+                                percent: updateProgress ?? data.progress,
                             },
                             snapshot: data.snapshot ?? newState.snapshot,
                             error: data.errorLog ?? newState.error,

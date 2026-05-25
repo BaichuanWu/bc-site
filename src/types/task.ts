@@ -39,6 +39,8 @@ export interface TaskEventRecord {
     timestamp: string
     message?: string | null
     progress?: number | null
+    current?: number | null
+    total?: number | null
     snapshot?: unknown
     data?: Record<string, unknown> | null
 }
