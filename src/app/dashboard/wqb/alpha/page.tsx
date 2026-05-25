@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LineChart, RefreshCcw } from "lucide-react"
+import { Calculator, LineChart, RefreshCcw } from "lucide-react"
 import {
     Tooltip,
     TooltipContent,
@@ -162,6 +162,20 @@ export default function AlphaPage() {
             {
                 fallbackSuccessMessage: "PC update task started",
                 errorMessage: "Failed to start PC update",
+                onTaskCompleted: refreshAlphaList,
+            }
+        )
+    }
+
+    const handleBatchCalcPnl = async () => {
+        await runTask(
+            () => apiClient.post(
+                "/sys/tasks/run/calc_pnl_score_by_query",
+                { kwargs: { query: currentFilters } }
+            ),
+            {
+                fallbackSuccessMessage: "PnL score task started",
+                errorMessage: "Failed to start PnL score calculation",
                 onTaskCompleted: refreshAlphaList,
             }
         )
@@ -337,9 +351,14 @@ export default function AlphaPage() {
             endpoint="/quants/wqb/alpha"
             idKey="wqbAlphaId"
             headerActions={
-                <Button variant="outline" onClick={handleBatchUpdatePc} disabled={!hasActiveQuery}>
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Update PC by Query
-                </Button>
+                <>
+                    <Button variant="outline" onClick={handleBatchCalcPnl} disabled={!hasActiveQuery}>
+                        <Calculator className="mr-2 h-4 w-4" /> Calc PnL by Query
+                    </Button>
+                    <Button variant="outline" onClick={handleBatchUpdatePc} disabled={!hasActiveQuery}>
+                        <RefreshCcw className="mr-2 h-4 w-4" /> Update PC by Query
+                    </Button>
+                </>
             }
             filterItems={filterItems}
             storageKey="alpha-page-filters"
