@@ -5,6 +5,7 @@ import { ExternalLinkIcon, RotateCcwIcon, SearchIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { WorkspaceLink } from "@/components/workspace/workspace-link"
 
 import type { ConversationSourceAction, ConversationSourceAdapterResult } from "../types"
 
@@ -44,25 +45,48 @@ export function ConversationSourceSummary({
 
         {source.actions.length > 0 ? (
           <div className="space-y-2">
-            {source.actions.map((action) => (
-              <Button
-                key={action.id}
-                type="button"
-                variant={action.kind === "rerun" ? "default" : "outline"}
-                className="w-full justify-start"
-                disabled={action.disabled}
-                onClick={() => {
-                  if ("run" in action && action.run) void action.run()
-                }}
-              >
-                <ActionIcon kind={action.kind} />
-                {action.label}
-              </Button>
-            ))}
+            {source.actions.map((action) => {
+              const content = (
+                <>
+                  <ActionIcon kind={action.kind} />
+                  {action.label}
+                </>
+              )
+              const buttonClassName = "w-full justify-start"
+              if (action.kind === "openSource" && action.href && !action.disabled) {
+                return (
+                  <Button key={action.id} asChild variant="outline" className={buttonClassName}>
+                    <WorkspaceLink
+                      href={action.href}
+                      titleOverride={action.label}
+                      onClick={() => {
+                        if (action.run) void action.run()
+                      }}
+                    >
+                      {content}
+                    </WorkspaceLink>
+                  </Button>
+                )
+              }
+
+              return (
+                <Button
+                  key={action.id}
+                  type="button"
+                  variant={action.kind === "rerun" ? "default" : "outline"}
+                  className={buttonClassName}
+                  disabled={action.disabled}
+                  onClick={() => {
+                    if ("run" in action && action.run) void action.run()
+                  }}
+                >
+                  {content}
+                </Button>
+              )
+            })}
           </div>
         ) : null}
       </CardContent>
     </Card>
   )
 }
-

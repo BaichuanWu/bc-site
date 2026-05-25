@@ -5,7 +5,7 @@ import { useTask, type TaskInitialData } from "@/hooks/use-task"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react"
-import { getProgressPercentFromMessage } from "@/lib/task-events"
+import { getProgressPercentFromMessage } from "@/lib/task-progress"
 
 interface TaskProgressBarProps {
     taskId: number

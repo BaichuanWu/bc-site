@@ -7,22 +7,6 @@ export interface TaskProgress {
     [key: string]: unknown
 }
 
-export type TaskEventData = {
-    key?: string | null
-    agentId?: number | null
-    agentVersionId?: number | null
-    conversationId?: number | null
-    kind?: string | null
-    status?: string | null
-    input?: unknown
-    output?: unknown
-    error?: string | null
-    startTime?: string | null
-    endTime?: string | null
-    durationMs?: number | null
-    [key: string]: unknown
-}
-
 export type TaskEventType =
     | 'task.started'
     | 'task.updated'

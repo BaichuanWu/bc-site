@@ -21,12 +21,8 @@ import { formatDateTime } from '@/lib/date-utils'
 import { apiClient } from '@/lib/api'
 import { normalizeCrudListResponse } from '@/lib/crud-response'
 import { getJsonSizeKb } from '@/lib/json-utils'
-import {
-    collapseWorkflowNodeEvents,
-    extractRelatedTaskIds,
-    getProgressPercentFromMessage,
-    getTaskEventProgressPercent,
-} from '@/lib/task-events'
+import { getProgressPercentFromMessage, getTaskEventProgressPercent } from '@/lib/task-progress'
+import { extractRelatedTaskIds } from '@/lib/task-events'
 
 import { JsonNode } from '@/components/common/json-node'
 import { PageShell } from '@/components/common/page-shell'
@@ -117,13 +113,10 @@ export default function TaskDetailPage() {
         }
     }, [task, status, progress, snapshot, error])
 
-    const displayEvents = useMemo(
-        () => collapseWorkflowNodeEvents(events as TaskEventRecord[]),
-        [events],
-    )
-    const relatedWorkflowTaskIds = useMemo(
-        () => extractRelatedTaskIds(displayTask?.result, displayEvents),
-        [displayTask?.result, displayEvents],
+    const displayEvents = useMemo(() => events as TaskEventRecord[], [events])
+    const relatedTaskIds = useMemo(
+        () => extractRelatedTaskIds(displayTask?.result),
+        [displayTask?.result],
     )
 
     useWorkspaceTabTitle(
@@ -265,13 +258,13 @@ export default function TaskDetailPage() {
                                 </CardContent>
                             </Card>
 
-                            {relatedWorkflowTaskIds.length > 0 ? (
+                            {relatedTaskIds.length > 0 ? (
                                 <Card className="border-none shadow-sm bg-muted/5 overflow-hidden border border-white/5">
                                     <CardHeader className="pb-2">
-                                        <CardTitle className="text-[10px] font-black uppercase tracking-tighter opacity-40">Spawned Workflow Tasks</CardTitle>
+                                        <CardTitle className="text-[10px] font-black uppercase tracking-tighter opacity-40">Spawned Tasks</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-2">
-                                        {relatedWorkflowTaskIds.map((relatedTaskId) => (
+                                        {relatedTaskIds.map((relatedTaskId) => (
                                             <Button
                                                 key={relatedTaskId}
                                                 variant="outline"

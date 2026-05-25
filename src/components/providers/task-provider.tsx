@@ -7,7 +7,7 @@ import { getJsonObject } from "@/types/json"
 
 import { type TaskEventRecord, type TaskState } from "@/types/task"
 import { mapServerStateToStatus } from "@/lib/task-utils"
-import { getProgressPercentFromMessage, getTaskEventProgressPercent } from "@/lib/task-events"
+import { getProgressPercentFromMessage, getTaskEventProgressPercent } from "@/lib/task-progress"
 
 type TaskUpdatePayload = {
     id?: number | string

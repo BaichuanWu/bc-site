@@ -7,8 +7,26 @@ import type {
   ConversationSourceAdapterResult,
 } from "./types"
 
+const AGENT_SOURCE_TYP = 10
+
+function getRecordValue(record: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined
+}
+
+function readString(record: Record<string, unknown>, key: string) {
+  const value = getRecordValue(record, key)
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+function readPositiveNumber(record: Record<string, unknown>, key: string) {
+  const value = getRecordValue(record, key)
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value
+  return null
+}
+
 function getSourceTypeLabel(sourceTyp?: number) {
   if (!sourceTyp) return "Manual"
+  if (sourceTyp === AGENT_SOURCE_TYP) return "Agent"
   return `Source ${sourceTyp}`
 }
 
@@ -35,14 +53,56 @@ const defaultConversationSourceAdapter: ConversationSourceAdapter = {
   }),
 }
 
-const conversationSourceAdapters = new Map<number, ConversationSourceAdapter>()
+const agentConversationSourceAdapter: ConversationSourceAdapter = {
+  sourceTyp: AGENT_SOURCE_TYP,
+  resolve: ({ conversation }): ConversationSourceAdapterResult => {
+    const metadata = conversation.metaData || {}
+    const taskId = readPositiveNumber(metadata, "taskId")
+    const workflowName = readString(metadata, "workflowName")
+    const nodeKey = readString(metadata, "nodeKey")
+    const agentClass = readString(metadata, "agentClass")
+    const agentVersionId = readPositiveNumber(metadata, "agentVersionId")
+    const agentId = conversation.sourceId && conversation.sourceId > 0 ? conversation.sourceId : null
 
-export function registerConversationSourceAdapter(adapter: ConversationSourceAdapter) {
-  if (adapter.sourceTyp === "default") return
-  conversationSourceAdapters.set(adapter.sourceTyp, adapter)
+    const summaryParts = [
+      agentClass,
+      workflowName && nodeKey ? `${workflowName} / ${nodeKey}` : workflowName || nodeKey,
+      agentVersionId ? `version #${agentVersionId}` : null,
+    ].filter(Boolean)
+
+    return {
+      label: "Agent",
+      summary: summaryParts.length > 0 ? summaryParts.join(" · ") : getSourceSummary(conversation),
+      actions: [
+        ...(agentId
+          ? [
+              {
+                id: "open-agent",
+                kind: "openSource" as const,
+                label: "Open agent",
+                href: `/dashboard/agent/${agentId}`,
+              },
+            ]
+          : []),
+        ...(taskId
+          ? [
+              {
+                id: "open-task",
+                kind: "openSource" as const,
+                label: "Open workflow task",
+                href: `/dashboard/sys-task/${taskId}`,
+              },
+            ]
+          : []),
+      ],
+    }
+  },
 }
+
+const conversationSourceAdapters = new Map<number, ConversationSourceAdapter>([
+  [AGENT_SOURCE_TYP, agentConversationSourceAdapter],
+])
 
 export function resolveConversationSourceAdapter(conversation: ConversationRecord) {
   return conversationSourceAdapters.get(Number(conversation.sourceTyp || 0)) || defaultConversationSourceAdapter
 }
-

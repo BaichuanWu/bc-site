@@ -7,15 +7,12 @@ import { JsonNode } from "@/components/common/json-node"
 import { Badge } from "@/components/ui/badge"
 import { TASK_STATE } from "@/lib/constants"
 import { formatTime } from "@/lib/date-utils"
+import { getTaskEventProgressPercent } from "@/lib/task-progress"
 import {
   getStatusColor,
   mapServerStateToStatus,
   mapStatusToName,
 } from "@/lib/task-utils"
-import {
-  getTaskEventData,
-  getTaskEventProgressPercent,
-} from "@/lib/task-events"
 import { cn } from "@/lib/utils"
 import { type TaskEventRecord } from "@/types/task"
 
@@ -32,17 +29,15 @@ const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
 }
 
 function getPayloadKind(event: TaskEventRecord) {
-  const data = getTaskEventData(event)
-  return typeof data?.kind === "string" && data.kind.length > 0 ? data.kind : event.type
+  const kind = event.data?.kind
+  return typeof kind === "string" && kind.length > 0 ? kind : event.type
 }
 
 function getEventTitle(event: TaskEventRecord) {
-  const data = getTaskEventData(event)
   if (event.type === "task.result") return "Final Result"
   if (event.type === "task.failed" || event.type === "task.stopped") return "Task Error"
   const config = TASK_EVENT_KIND_CONFIG[getPayloadKind(event)]
   if (config?.title) return config.title
-  if (typeof data?.key === "string" && data.key.length > 0) return data.key
   if (event.type === "task.started") return "Task Started"
   if (event.type === "task.updated") return "Task Update"
   if (event.type === "task.checkpoint") return "Checkpoint"
@@ -50,11 +45,8 @@ function getEventTitle(event: TaskEventRecord) {
 }
 
 function getEventStatus(event: TaskEventRecord) {
-  const data = getTaskEventData(event)
   if (event.type === "task.result") return TASK_STATE.SUCCESS
   if (event.type === "task.failed" || event.type === "task.stopped") return TASK_STATE.ERROR
-  if (data?.status === "completed") return TASK_STATE.SUCCESS
-  if (data?.status === "failed") return TASK_STATE.ERROR
   return TASK_STATE.RUNNING
 }
 
@@ -109,44 +101,10 @@ function hasDetailValue(value: unknown) {
   return true
 }
 
-const STANDARD_DETAIL_KEYS = new Set([
-  "key",
-  "kind",
-  "status",
-  "agentId",
-  "agentVersionId",
-  "conversationId",
-  "input",
-  "output",
-  "error",
-  "startTime",
-  "endTime",
-  "durationMs",
-])
-
-function omitStandardDetailData(data: Record<string, unknown>) {
-  const entries = Object.entries(data).filter(([key]) => !STANDARD_DETAIL_KEYS.has(key))
-  return Object.fromEntries(entries)
-}
-
 function buildEventDetails(event: TaskEventRecord) {
-  const data = getTaskEventData(event)
   const details: Array<{ label: string; value: unknown }> = []
 
-  if (data) {
-    details.push(
-      { label: "Input", value: data.input },
-      { label: "Output", value: data.output },
-      { label: "Error", value: data.error },
-    )
-    if (data.durationMs !== null && data.durationMs !== undefined) {
-      details.push({ label: "Duration", value: `${data.durationMs}ms` })
-    }
-    details.push({ label: "Event Data", value: omitStandardDetailData(data) })
-  } else {
-    details.push({ label: "Event Data", value: event.data })
-  }
-
+  details.push({ label: "Event Data", value: event.data })
   details.push({ label: "Snapshot", value: event.snapshot })
 
   return details.filter((item) => hasDetailValue(item.value))
