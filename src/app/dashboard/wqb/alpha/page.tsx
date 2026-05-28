@@ -26,6 +26,7 @@ type Alpha = {
     wqbAlphaId: string
     wqbUrl?: string
     expression: string
+    description?: string
     sharpe: number
     fitness: number
     margin: number
@@ -68,6 +69,7 @@ const getStateName = (state: number) => {
         case 8: return "Failed"
         case 10: return "Simulated"
         case 20: return "Submitted"
+        case 40: return "Active"
         default: return `Unknown (${state})`
     }
 }
@@ -263,6 +265,13 @@ export default function AlphaPage() {
             width: 300,
             truncate: true,
             className: "font-mono text-[10px] sm:text-xs",
+        },
+        {
+            key: "description",
+            title: "Description",
+            width: 280,
+            truncate: true,
+            className: "text-xs text-muted-foreground",
         },
         { key: "region", title: "Region", width: 80, align: 'center', className: "font-bold text-blue-500/80" },
         { key: "universe", title: "Universe", width: 100, truncate: true },

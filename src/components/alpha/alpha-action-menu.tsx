@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, Play, Send, Edit, Search, TreePine, Zap } from "lucide-react"
+import { FileText, MoreHorizontal, Play, Send, Edit, Search, TreePine, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +28,7 @@ type Alpha = {
     id: string | number
     wqbAlphaId: string
     expression: string
+    description?: string
     state: number
     parentId?: string | number
     ancestorId?: string | number
@@ -50,13 +51,17 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
         action: string,
         taskName: string,
         kwargs: Record<string, unknown>,
+        options?: {
+            onTaskCompleted?: () => void | Promise<void>
+        },
     ) => {
         await runTask(
             () => apiClient.post(`/sys/tasks/run/${taskName}`, { kwargs }),
             {
                 fallbackSuccessMessage: `${action} task created`,
                 errorMessage: `Failed to ${action.toLowerCase()}`,
-                onSuccess
+                onSuccess,
+                onTaskCompleted: options?.onTaskCompleted
             }
         )
     }
@@ -119,6 +124,23 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
 
                     {isSimulated && (
                         <DropdownMenuItem
+                            onClick={() => handleAction(
+                                "Generate Description",
+                                "generate_alpha_description_task",
+                                { alphaId: alpha.id },
+                                {
+                                    onTaskCompleted: async () => {
+                                        await onSuccess?.()
+                                    },
+                                },
+                            )}
+                        >
+                            <FileText className="mr-2 h-4 w-4" /> Generate Description
+                        </DropdownMenuItem>
+                    )}
+
+                    {isSimulated && (
+                        <DropdownMenuItem
                             onClick={async () => {
                                 await runTask(
                                     () => apiClient.post("/sys/tasks/run/update_alpha_pc_task", { kwargs: { query: { id: alpha.id } } }),
@@ -137,7 +159,18 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     )}
 
                     {!isSubmitted && isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Submit", "submit_alpha_task", { alphaId: alpha.id })}>
+                        <DropdownMenuItem
+                            onClick={() => handleAction(
+                                "Submit",
+                                "submit_alpha_task",
+                                { alphaId: alpha.id },
+                                {
+                                    onTaskCompleted: async () => {
+                                        await onSuccess?.()
+                                    },
+                                },
+                            )}
+                        >
                             <Send className="mr-2 h-4 w-4" /> Submit to WQB
                         </DropdownMenuItem>
                     )}
