@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { apiClient } from "@/lib/api"
 import { parseJsonText } from "@/lib/json-utils"
-import { useAsyncAction } from "@/hooks/use-async-action"
-import { showTaskStartedToast } from "@/components/task/task-started-toast"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
+import { useTaskAction } from "@/hooks/use-task-action"
 import { Loader2 } from "lucide-react"
 
 interface RunWorkflowDialogProps {
@@ -20,10 +17,6 @@ interface RunWorkflowDialogProps {
   description?: string
   initialKwargs?: Record<string, unknown>
   renderForm?: () => React.ReactNode
-}
-
-type RunTaskResponse = {
-  taskId: number | string
 }
 
 const WORKFLOW_TASK_NAME = "workflow_task"
@@ -47,8 +40,7 @@ export function RunWorkflowDialog({
   initialKwargs,
   renderForm,
 }: RunWorkflowDialogProps) {
-  const navigate = useWorkspaceNavigate()
-  const runAction = useAsyncAction()
+  const { runNamedTask, isLoading } = useTaskAction()
   const [kwargsText, setKwargsText] = React.useState(() =>
     formatInitialKwargs(initialKwargs),
   )
@@ -59,22 +51,18 @@ export function RunWorkflowDialog({
   }, [initialKwargs, open])
 
   const handleRun = async () => {
-    await runAction.run(
-      async () => {
-        const kwargs = toKwargs(parseJsonText(kwargsText, {}))
-        kwargs.workflowName = workflowName
-        const payload: Record<string, unknown> = {
-          displayName: workflowName,
-          kwargs,
-        }
-        return (await apiClient.post(`/sys/tasks/run/${WORKFLOW_TASK_NAME}`, payload)) as RunTaskResponse
+    const kwargs = toKwargs(parseJsonText(kwargsText, {}))
+    kwargs.workflowName = workflowName
+
+    await runNamedTask(
+      WORKFLOW_TASK_NAME,
+      {
+        displayName: workflowName,
+        kwargs,
       },
       {
         errorMessage: "Failed to start workflow",
-        onSuccess: async (res) => {
-          showTaskStartedToast(res.taskId, () =>
-            navigate(`/dashboard/sys-task/${res.taskId}`),
-          )
+        onSuccess: async () => {
           onOpenChange(false)
         },
       }
@@ -107,8 +95,8 @@ export function RunWorkflowDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleRun} disabled={runAction.isLoading}>
-            {runAction.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleRun} disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Execute Task
           </Button>
         </DialogFooter>

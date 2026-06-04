@@ -7,9 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { apiClient } from "@/lib/api"
 import { TokenChip } from "./token-chip"
-import { toast } from "sonner"
-import { showTaskStartedToast } from "@/components/task/task-started-toast"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
+import { useTaskAction } from "@/hooks/use-task-action"
 
 const FORM_FIELDS = [
     { name: 'instrumentType', label: 'Instrument Type' },
@@ -62,8 +60,7 @@ export function TaskDialog({
 }) {
     const [bindings, setBindings] = React.useState<Record<string, string[]>>({})
     const [formData, setFormData] = React.useState<Record<string, string>>({})
-    const [isSubmitting, setIsSubmitting] = React.useState(false)
-    const navigate = useWorkspaceNavigate()
+    const { runTask, isLoading } = useTaskAction()
 
     React.useEffect(() => {
         if (open) {
@@ -83,28 +80,22 @@ export function TaskDialog({
     }
 
     const handleCreateTask = async () => {
-        try {
-            setIsSubmitting(true)
-            const payload = {
-                ...formData,
-                fieldData: bindings,
-                templateId: template?.id,
-            }
-            const res = await apiClient.post(`/quants/wqb/alpha-task`, payload)
-            const taskId = res.data?.taskId
-            
-            if (taskId) {
-                showTaskStartedToast(taskId, () => navigate(`/sys-task/${taskId}`))
-            } else {
-                toast.success("Task parameters saved and testing started!")
-            }
-            onOpenChange(false)
-        } catch (e) {
-            toast.error("Failed to submit task")
-            console.error(e)
-        } finally {
-            setIsSubmitting(false)
+        const payload = {
+            ...formData,
+            fieldData: bindings,
+            templateId: template?.id,
         }
+
+        await runTask(
+            () => apiClient.post(`/quants/wqb/alpha-task`, payload),
+            {
+                fallbackSuccessMessage: "Task parameters saved and testing started!",
+                errorMessage: "Failed to submit task",
+                onSuccess: () => {
+                    onOpenChange(false)
+                },
+            }
+        )
     }
 
     return (
@@ -140,8 +131,8 @@ export function TaskDialog({
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleCreateTask} disabled={isSubmitting}>
-                        {isSubmitting ? "Saving..." : "Save & Test Bindings"}
+                    <Button onClick={handleCreateTask} disabled={isLoading}>
+                        {isLoading ? "Saving..." : "Save & Test Bindings"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

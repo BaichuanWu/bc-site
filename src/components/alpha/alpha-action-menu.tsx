@@ -45,7 +45,7 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
     const navigate = useWorkspaceNavigate()
     const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
     const [editedExpression, setEditedExpression] = React.useState(alpha.expression)
-    const { runTask, isLoading } = useTaskAction()
+    const { runTask, runNamedTask, isLoading } = useTaskAction()
 
     const handleAction = async (
         action: string,
@@ -55,13 +55,15 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
             onTaskCompleted?: () => void | Promise<void>
         },
     ) => {
-        await runTask(
-            () => apiClient.post(`/sys/tasks/run/${taskName}`, { kwargs }),
+        const handleTaskCompleted = options?.onTaskCompleted ?? onSuccess
+
+        await runNamedTask(
+            taskName,
+            { kwargs },
             {
                 fallbackSuccessMessage: `${action} task created`,
                 errorMessage: `Failed to ${action.toLowerCase()}`,
-                onSuccess,
-                onTaskCompleted: options?.onTaskCompleted
+                onTaskCompleted: handleTaskCompleted
             }
         )
     }
@@ -84,7 +86,8 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                 onSuccess: () => {
                     setIsEditDialogOpen(false)
                     onSuccess?.()
-                }
+                },
+                onTaskCompleted: onSuccess,
             }
         )
     }
@@ -128,11 +131,6 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                                 "Generate Description",
                                 "generate_alpha_description_task",
                                 { alphaId: alpha.id },
-                                {
-                                    onTaskCompleted: async () => {
-                                        await onSuccess?.()
-                                    },
-                                },
                             )}
                         >
                             <FileText className="mr-2 h-4 w-4" /> Generate Description
@@ -142,8 +140,9 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     {isSimulated && (
                         <DropdownMenuItem
                             onClick={async () => {
-                                await runTask(
-                                    () => apiClient.post("/sys/tasks/run/update_alpha_pc_task", { kwargs: { query: { id: alpha.id } } }),
+                                await runNamedTask(
+                                    "update_alpha_pc_task",
+                                    { kwargs: { query: { id: alpha.id } } },
                                     {
                                         fallbackSuccessMessage: "Query PC task created",
                                         errorMessage: "Failed to query pc",

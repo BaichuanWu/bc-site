@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Zap, Rocket, BarChart3, Sparkles, RefreshCcw } from "lucide-react"
 
@@ -9,8 +8,7 @@ import { PageShell } from "@/components/common/page-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { fetcher } from "@/lib/api"
-import { showTaskStartedToast } from "@/components/task/task-started-toast"
-import { useTaskSystem } from "@/components/providers/task-provider"
+import { useTaskAction } from "@/hooks/use-task-action"
 
 type OverviewStats = {
     todaySubmitted: {
@@ -28,28 +26,28 @@ type OverviewStats = {
 }
 
 export default function DashboardOverviewPage() {
-    const router = useRouter()
-    const { runTask } = useTaskSystem()
+    const { runNamedTask } = useTaskAction()
     const { data: stats, isLoading, mutate } = useSWR<OverviewStats>("/quants/wqb/overview-stats", fetcher)
     const [isRefreshing, setIsRefreshing] = React.useState(false)
 
     const handleRefresh = async () => {
         try {
             setIsRefreshing(true)
-            const taskId = await runTask("fetch_wqb_alpha_task", {
+            await runNamedTask("fetch_wqb_alpha_task", {
                 args: [],
                 kwargs: {}
+            }, {
+                fallbackSuccessMessage: "WQB data refresh started",
+                errorMessage: "Failed to refresh WQB data",
+                onTaskCompleted: async () => {
+                    await mutate()
+                },
+                onTaskSettled: () => {
+                    setIsRefreshing(false)
+                },
             })
-            
-            if (taskId !== undefined) {
-                showTaskStartedToast(taskId, () => router.push(`/dashboard/sys-task/${taskId}`))
-            }
-
-            // Refresh counts after a short delay
-            setTimeout(() => mutate(), 2000)
         } catch (error) {
             console.error(error)
-        } finally {
             setIsRefreshing(false)
         }
     }

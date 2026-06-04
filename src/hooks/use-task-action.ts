@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { showTaskStartedToast } from "@/components/task/task-started-toast"
 import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useAsyncAction } from "@/hooks/use-async-action"
+import { apiClient } from "@/lib/api"
 import { getJsonObject } from "@/types/json"
 import { toast } from "sonner"
 import { useTaskSystem } from "@/components/providers/task-provider"
@@ -15,6 +16,12 @@ type TaskActionOptions<T> = {
     onTaskFailed?: (taskState: TaskState, taskId: number) => void | Promise<void>
     onTaskSettled?: (taskState: TaskState, taskId: number) => void | Promise<void>
     onSuccess?: (res: T) => void | Promise<void>
+}
+
+type TaskRunPayload = {
+    args?: unknown[]
+    kwargs?: Record<string, unknown>
+    displayName?: string
 }
 
 export function useTaskAction() {
@@ -87,5 +94,16 @@ export function useTaskAction() {
         })
     }, [run, navigate, subscribeToTaskCompletion])
 
-    return { runTask, isLoading }
+    const runNamedTask = useCallback((
+        taskName: string,
+        payload: TaskRunPayload = {},
+        options?: TaskActionOptions<unknown>,
+    ) => {
+        return runTask(
+            () => apiClient.post(`/sys/tasks/run/${taskName}`, payload),
+            options,
+        )
+    }, [runTask])
+
+    return { runTask, runNamedTask, isLoading }
 }

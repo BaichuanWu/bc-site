@@ -39,6 +39,7 @@ type Alpha = {
     pcUpdateTime?: string
     failCount: number
     warnCount: number
+    isChecksInfo?: string[]
     trendScore: number
     intergrityScore: number
     region: string
@@ -93,7 +94,7 @@ export default function AlphaPage() {
         resolveInitialFilterState("alpha-page-filters")
     )
     useWorkspaceTabTitle("/dashboard/wqb/alpha", "WQB Alphas")
-    const { runTask } = useTaskAction()
+    const { runNamedTask } = useTaskAction()
     const { mutate } = useSWRConfig()
     const hasActiveQuery = React.useMemo(
         () => Object.keys(currentFilters).length > 0,
@@ -152,15 +153,17 @@ export default function AlphaPage() {
     }, [patchAlphaInCachedLists])
 
     const handleBatchSimulate = async () => {
-        await runTask(
-            () => apiClient.post("/sys/tasks/run/simulate_batch_task", { kwargs: { query: currentFilters } }),
+        await runNamedTask(
+            "simulate_batch_task",
+            { kwargs: { query: currentFilters } },
             { fallbackSuccessMessage: "Batch simulation started", errorMessage: "Failed to start batch simulation" }
         )
     }
 
     const handleBatchUpdatePc = async () => {
-        await runTask(
-            () => apiClient.post("/sys/tasks/run/update_alpha_pc_task", { kwargs: { query: currentFilters } }),
+        await runNamedTask(
+            "update_alpha_pc_task",
+            { kwargs: { query: currentFilters } },
             {
                 fallbackSuccessMessage: "PC update task started",
                 errorMessage: "Failed to start PC update",
@@ -170,11 +173,9 @@ export default function AlphaPage() {
     }
 
     const handleBatchCalcPnl = async () => {
-        await runTask(
-            () => apiClient.post(
-                "/sys/tasks/run/calc_pnl_score_by_query",
-                { kwargs: { query: currentFilters } }
-            ),
+        await runNamedTask(
+            "calc_pnl_score_by_query",
+            { kwargs: { query: currentFilters } },
             {
                 fallbackSuccessMessage: "PnL score task started",
                 errorMessage: "Failed to start PnL score calculation",
@@ -283,6 +284,30 @@ export default function AlphaPage() {
         { key: "operatorCount", title: "Ops", width: 84, align: 'right', sortable: true },
         { key: "failCount", title: "Fails", width: 84, align: 'right', sortable: true },
         { key: "warnCount", title: "Warns", width: 84, align: 'right', sortable: true },
+        {
+            key: "isChecksInfo",
+            title: "Checks",
+            width: 320,
+            className: "align-top",
+            render: (val) => {
+                const checks = Array.isArray(val) ? val.filter((item): item is string => typeof item === "string" && item.length > 0) : []
+                if (checks.length === 0) return <span className="text-muted-foreground">-</span>
+
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {checks.map((check, index) => (
+                            <Badge
+                                key={`${check}-${index}`}
+                                variant="outline"
+                                className="whitespace-normal break-all px-1.5 py-0 text-[10px] font-mono leading-4"
+                            >
+                                {check}
+                            </Badge>
+                        ))}
+                    </div>
+                )
+            },
+        },
         { key: "trendScore", title: "Trend", width: 84, align: 'right', sortable: true },
         { key: "intergrityScore", title: "Integrity", width: 92, align: 'right', sortable: true },
         { key: "sc", title: "SC", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
@@ -307,8 +332,9 @@ export default function AlphaPage() {
                                     className="h-6 w-6 opacity-0 group-hover/pc:opacity-100 transition-opacity"
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        await runTask(
-                                            () => apiClient.post(`/sys/tasks/run/update_alpha_pc_task`, { kwargs: { query: { id: item.id } } }),
+                                        await runNamedTask(
+                                            "update_alpha_pc_task",
+                                            { kwargs: { query: { id: item.id } } },
                                             {
                                                 fallbackSuccessMessage: "PC update task started",
                                                 errorMessage: "Failed to start PC update",
@@ -349,9 +375,9 @@ export default function AlphaPage() {
             title: "Actions",
             width: 80,
             fixed: 'right',
-            render: (_, item, onRefresh) => <AlphaActionMenu alpha={item} onSuccess={onRefresh} />
+            render: (_, item) => <AlphaActionMenu alpha={item} onSuccess={() => refreshAlphaRow(item.id)} />
         }
-    ], [refreshAlphaRow, runTask])
+    ], [refreshAlphaRow, runNamedTask])
 
     return (
         <CrudLayout<Alpha>
