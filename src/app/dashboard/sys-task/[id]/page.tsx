@@ -33,6 +33,7 @@ import { TaskProgressBar } from '@/components/common/task-progress-bar'
 import { type TaskEventRecord, type TaskStatus } from '@/types/task'
 import { useWorkspaceNavigate } from '@/hooks/use-workspace-navigate'
 import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
+import { PipelineDashboard } from '@/components/task/pipeline-dashboard'
 import { 
     mapStatusToServerState, 
     mapStatusToName, 
@@ -204,6 +205,15 @@ export default function TaskDetailPage() {
                             </CardContent>
                         </Card>
                     ) : null}
+
+                    {displayTask.name === 'alpha_factory_auto' && (
+                        <div className="mb-8">
+                            <PipelineDashboard
+                                events={displayEvents}
+                                status={mapServerStateToStatus(displayTask.state)}
+                            />
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left: Progress & Metadata */}
