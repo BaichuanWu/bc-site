@@ -210,6 +210,7 @@ export default function AlphaPage() {
         { key: "fitness", label: "Fitness Score", type: "number" },
         { key: "margin", label: "Margin Filter", type: "number" },
         { key: "wqbAlphaId", label: "WQB ID", type: "text" },
+        { key: "id", label: "ID", type: "number" },
         {
             key: "region",
             label: "Region",
