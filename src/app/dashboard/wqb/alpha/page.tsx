@@ -245,6 +245,15 @@ export default function AlphaPage() {
                 { label: "FAST", value: "FAST" },
             ]
         },
+        {
+            key: "settings.language",
+            label: "Language",
+            type: "text",
+            options: [
+                { label: "PYTHON", value: "PYTHON" },
+                { label: "FASTEXPR", value: "FASTEXPR" },
+            ]
+        },
     ], [])
 
     const columns: Column<Alpha>[] = React.useMemo(() => [
