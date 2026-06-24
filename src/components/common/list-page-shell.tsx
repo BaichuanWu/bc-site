@@ -27,13 +27,13 @@ export function ListPageActions({ actions }: { actions?: React.ReactNode }) {
   if (actionNodes.length === 0) return null
 
   if (actionNodes.length <= 2) {
-    return <div className="flex items-center gap-2">{actionNodes}</div>
+    return <div className="flex shrink-0 items-center gap-2">{actionNodes}</div>
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-2">
+        <Button variant="outline" size="sm" className="h-9 shrink-0 gap-2">
           Actions
           <MoreHorizontal className="h-4 w-4" />
         </Button>
@@ -54,14 +54,16 @@ export function ListPageShell({
 }: ListPageShellProps) {
   return (
     <PageShell className={className} contentClassName="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border bg-muted/40">
             <Icon className="h-5 w-5 text-primary" />
           </div>
           <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
         </div>
-        <ListPageActions actions={actions} />
+        <div className="shrink-0">
+          <ListPageActions actions={actions} />
+        </div>
       </div>
       {children}
     </PageShell>

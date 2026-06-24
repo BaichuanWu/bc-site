@@ -221,7 +221,7 @@ export function MarkdownEditor({
       className={cn(
         "flex flex-col gap-2",
         isFullscreen
-          ? "fixed inset-0 z-[120] bg-background p-4 md:p-6 pointer-events-none"
+          ? "fixed inset-0 z-[260] bg-background p-4 md:p-6 pointer-events-none"
           : className
       )}
     >
@@ -229,7 +229,7 @@ export function MarkdownEditor({
         <>
           <div
             className={cn(
-              "relative z-[140] flex items-center justify-between gap-3 rounded-2xl border bg-background/95 px-3 py-2 shadow-sm backdrop-blur pointer-events-auto shrink-0"
+              "relative z-[270] flex items-center justify-between gap-3 rounded-2xl border bg-background/95 px-3 py-2 shadow-sm backdrop-blur pointer-events-auto shrink-0"
             )}
           >
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
@@ -242,7 +242,7 @@ export function MarkdownEditor({
                     <SelectTrigger className="h-8 w-[220px] bg-background">
                       <SelectValue placeholder="Choose a writing template" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[280]">
                       {templates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.label}

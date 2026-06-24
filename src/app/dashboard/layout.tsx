@@ -221,9 +221,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                     </header>
 
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                         <WorkspaceTabBar />
-                        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden animate-in fade-in duration-500">
+                        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto animate-in fade-in duration-500">
                             <WorkspaceHost>{children}</WorkspaceHost>
                         </main>
                     </div>

@@ -41,6 +41,18 @@ function renderTableValue(value: unknown): React.ReactNode {
     return JSON.stringify(value)
 }
 
+function toCssLength(width: string | number | undefined): string | null {
+    if (typeof width === "number") return `${width}px`
+    if (typeof width === "string" && width.length > 0) return width
+    return null
+}
+
+function sumCssLengths(widths: string[]): string {
+    if (widths.length === 0) return "0px"
+    if (widths.length === 1) return widths[0]
+    return `calc(${widths.join(" + ")})`
+}
+
 export type DataTableProps<T> = {
     items: T[]
     columns: Column<T>[]
@@ -67,6 +79,32 @@ export function DataTable<T extends { id: string | number }>({
     const useSplitStickyHeader = hasExplicitWidths || hasFixedColumns
     const bodyScrollRef = React.useRef<HTMLDivElement | null>(null)
     const headerScrollRef = React.useRef<HTMLDivElement | null>(null)
+
+    const fixedOffsets = React.useMemo(() => {
+        const left: Array<string | undefined> = []
+        const right: Array<string | undefined> = []
+        const leftWidths: string[] = []
+        const rightWidths: string[] = []
+
+        columns.forEach((col, idx) => {
+            if (col.fixed !== "left") return
+
+            left[idx] = sumCssLengths(leftWidths)
+            const width = toCssLength(col.width)
+            if (width) leftWidths.push(width)
+        })
+
+        for (let idx = columns.length - 1; idx >= 0; idx -= 1) {
+            const col = columns[idx]
+            if (col.fixed !== "right") continue
+
+            right[idx] = sumCssLengths(rightWidths)
+            const width = toCssLength(col.width)
+            if (width) rightWidths.push(width)
+        }
+
+        return { left, right }
+    }, [columns])
 
     const tableClassName = cn(
         "w-full caption-bottom text-sm border-separate border-spacing-0",
@@ -103,13 +141,15 @@ export function DataTable<T extends { id: string | number }>({
                         "sticky top-[var(--table-sticky-top)]",
                     col.align === "right" && "text-right",
                     col.align === "center" && "text-center",
-                    col.fixed === "left" && "left-0 z-40 border-r",
-                    col.fixed === "right" && "right-0 z-40 border-l",
+                    col.fixed === "left" && "z-40 border-r bg-card shadow-[4px_0_10px_-8px_rgba(0,0,0,0.35)]",
+                    col.fixed === "right" && "z-40 border-l bg-card shadow-[-4px_0_10px_-8px_rgba(0,0,0,0.35)]",
                     col.sortable && "cursor-pointer hover:bg-muted/70 select-none",
                     col.className
                 )}
                 style={{
                     backgroundColor: "var(--card)",
+                    left: col.fixed === "left" ? fixedOffsets.left[idx] : undefined,
+                    right: col.fixed === "right" ? fixedOffsets.right[idx] : undefined,
                     overflow: col.truncate ? "hidden" : undefined,
                     position: useSplitStickyHeader
                         ? col.fixed
@@ -191,15 +231,17 @@ export function DataTable<T extends { id: string | number }>({
                                 <TableCell
                                     key={col.key || colIdx}
                                     className={cn(
-                                        "bg-card transition-colors group-hover:bg-muted/30",
+                                        col.fixed ? "bg-card transition-colors group-hover:bg-muted" : "bg-card transition-colors group-hover:bg-muted/30",
                                         col.align === 'right' && "text-right",
                                         col.align === 'center' && "text-center",
-                                        col.fixed === 'left' && "sticky left-0 z-20 border-r",
-                                        col.fixed === 'right' && "sticky right-0 z-20 border-l shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-none",
+                                        col.fixed === 'left' && "sticky z-20 border-r shadow-[4px_0_10px_-8px_rgba(0,0,0,0.35)]",
+                                        col.fixed === 'right' && "sticky z-20 border-l shadow-[-4px_0_10px_-8px_rgba(0,0,0,0.35)]",
                                         col.truncate && "overflow-hidden",
                                         col.className
                                     )}
                                     style={{
+                                        left: col.fixed === "left" ? fixedOffsets.left[colIdx] : undefined,
+                                        right: col.fixed === "right" ? fixedOffsets.right[colIdx] : undefined,
                                         overflow: col.truncate ? 'hidden' : undefined,
                                     }}
                                 >
@@ -242,15 +284,15 @@ export function DataTable<T extends { id: string | number }>({
     return (
         <TooltipProvider>
             <div
-                className="rounded-md border relative shadow-sm"
+                className="relative min-w-0 w-full max-w-full rounded-md border shadow-sm"
                 style={{ '--table-sticky-top': `${stickyTop}px` } as React.CSSProperties}
             >
                 {useSplitStickyHeader ? (
                     <>
-                        <div className="sticky top-[var(--table-sticky-top)] z-30 border-b bg-card">
+                        <div className="sticky top-[var(--table-sticky-top)] z-30 min-w-0 max-w-full border-b bg-card">
                             <div
                                 ref={headerScrollRef}
-                                className="overflow-hidden"
+                                className="min-w-0 max-w-full overflow-hidden"
                             >
                                 <table data-slot="table" className={tableClassName}>
                                     {renderColGroup()}
@@ -262,7 +304,7 @@ export function DataTable<T extends { id: string | number }>({
                                 </table>
                             </div>
                         </div>
-                        <div ref={bodyScrollRef} className="overflow-x-auto overflow-y-visible">
+                        <div ref={bodyScrollRef} className="min-w-0 max-w-full overflow-x-auto overflow-y-visible">
                             <table data-slot="table" className={tableClassName}>
                                 {renderColGroup()}
                                 {renderBody()}

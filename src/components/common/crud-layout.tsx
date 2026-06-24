@@ -167,14 +167,16 @@ export function CrudLayout<T extends { id: string | number }>({
     const showSectionHeader = embedded || !icon
 
     const content = (
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
             {showSectionHeader ? (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
                         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
                     </div>
-                    <ListPageActions actions={pageActions} />
+                    <div className="shrink-0">
+                        <ListPageActions actions={pageActions} />
+                    </div>
                 </div>
             ) : null}
 
@@ -189,7 +191,7 @@ export function CrudLayout<T extends { id: string | number }>({
 
 
             {/* Content Section */}
-            <div className="relative min-h-[200px]">
+            <div className="relative min-h-[200px] min-w-0">
                 {isValidating && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                         <div className="bg-white/80 backdrop-blur-sm border shadow-sm rounded-full px-3 py-1 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-300">
@@ -199,7 +201,7 @@ export function CrudLayout<T extends { id: string | number }>({
                     </div>
                 )}
 
-                <div className={isLoading ? "opacity-50 transition-opacity duration-300 pointer-events-none" : "transition-opacity duration-300"}>
+                <div className={isLoading ? "min-w-0 opacity-50 transition-opacity duration-300 pointer-events-none" : "min-w-0 transition-opacity duration-300"}>
                     <ResolvedItemsRender 
                         items={items} 
                         columns={columns} 

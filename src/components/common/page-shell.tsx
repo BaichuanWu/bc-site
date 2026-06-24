@@ -18,8 +18,8 @@ export function PageShell({
   contentClassName,
 }: PageShellProps) {
   return (
-    <div className={cn("p-6", className)}>
-      <div className={cn("space-y-6", contentClassName)}>{children}</div>
+    <div className={cn("min-w-0 w-full max-w-full p-6", className)}>
+      <div className={cn("min-w-0 w-full max-w-full space-y-6", contentClassName)}>{children}</div>
     </div>
   )
 }
