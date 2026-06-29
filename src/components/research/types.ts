@@ -6,7 +6,6 @@ export type ResearchCounts = {
   iterationCandidates?: number
   childResults?: number
   experiments?: number
-  knowledgeRows?: number
 }
 
 export type ResearchRun = {
@@ -61,20 +60,13 @@ export type ResearchExperiment = {
 }
 
 export type ResearchKnowledge = {
-  id: number
-  ref: string
-  versionRef?: string
-  experimentId: number
-  status: number
-  statusName: string
+  knowledgeRef?: string
+  typ?: string
   content: string
   confidence: number
   sourceRefs?: string[]
-  typ?: string
-  knowledgeRef?: string
   applyScope?: string[]
   metadata?: Record<string, unknown>
-  publishedTime?: string
 }
 
 export type ResearchTraceItem = {

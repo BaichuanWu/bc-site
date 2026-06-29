@@ -223,7 +223,7 @@ export default function ResearchRunDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Badge variant="outline">{run.counts?.experiments || 0} experiments</Badge>
-                <Badge variant="outline">{run.counts?.knowledgeRows || run.counts?.knowledge || 0} knowledge</Badge>
+                <Badge variant="outline">{run.counts?.knowledge || 0} knowledge</Badge>
                 <Badge variant="outline">{run.counts?.proposals || 0} proposals</Badge>
                 <Badge variant="secondary">{run.counts?.iterationCandidates || 0} candidates</Badge>
               </div>
