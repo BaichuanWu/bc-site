@@ -2,10 +2,8 @@ import { formatJsonText, parseJsonText } from "@/lib/json-utils"
 
 export type KnowledgeOptionsResponse = {
     defaults?: {
-        domain?: number
-        sourceType?: number
-        contentType?: number
-        rawStatus?: number
+        sourceTyp?: number
+        sourceInputStatus?: number
         documentStatus?: number
         confidence?: string
     }
@@ -14,75 +12,64 @@ export type KnowledgeOptionsResponse = {
 export type KnowledgeRawRecord = {
     id: number
     title: string
-    domain: number
-    sourceType: number
-    contentType: number
-    status: number
-    namespaceHint?: string
-    tags?: string[]
-    scope?: Record<string, unknown>
     summary?: string
     content?: string
-    sourceRef?: string
-    relatedObjectType?: string
-    relatedObjectId?: number
+    sourceTyp: number
+    status: number
+    sourceRefs?: string[]
+    namespaceSuggestions?: string[]
+    metadataJson?: Record<string, unknown>
+    submittedTime?: string
     reviewedTime?: string
     updateTime?: string
 }
 
 export type KnowledgeDocumentRecord = {
     id: number
-    title: string
-    domain: number
-    namespace: string
-    docType: string
     docKey: string
     version: string
-    status: number
-    tags?: string[]
-    scope?: Record<string, unknown>
+    title: string
     summary?: string
     content?: string
+    docTyp: string
     confidence?: string
+    status: number
+    sourceInputIds?: number[]
+    candidateIds?: number[]
+    metadataJson?: Record<string, unknown>
     publishedTime?: string
+    archivedTime?: string
     updateTime?: string
 }
 
 export type RawFormState = {
     title: string
-    domain: string
-    sourceType: string
-    contentType: string
+    sourceTyp: string
     status: string
-    namespaceHint: string
-    tags: string
-    scope: string
     summary: string
     content: string
-    sourceRef: string
-    relatedObjectType: string
-    relatedObjectId: string
+    sourceRefs: string
+    namespaceSuggestions: string
+    metadataJson: string
 }
 
 export type DocumentFormState = {
     title: string
-    domain: string
     namespace: string
-    docType: string
+    docTyp: string
     docKey: string
     version: string
     status: string
-    tags: string
-    scope: string
     summary: string
     content: string
     confidence: string
+    metadataJson: string
 }
 
 export type PromoteFormState = {
     title: string
     namespace: string
-    docType: string
+    docTyp: string
     docKey: string
     version: string
     status: string
@@ -91,39 +78,32 @@ export type PromoteFormState = {
 
 export const EMPTY_RAW_FORM: RawFormState = {
     title: "",
-    domain: "0",
-    sourceType: "0",
-    contentType: "0",
+    sourceTyp: "0",
     status: "0",
-    namespaceHint: "",
-    tags: "[]",
-    scope: "{}",
     summary: "",
     content: "",
-    sourceRef: "",
-    relatedObjectType: "",
-    relatedObjectId: "",
+    sourceRefs: "[]",
+    namespaceSuggestions: "[]",
+    metadataJson: "{}",
 }
 
 export const EMPTY_DOCUMENT_FORM: DocumentFormState = {
     title: "",
-    domain: "0",
     namespace: "general",
-    docType: "note",
+    docTyp: "note",
     docKey: "",
     version: "1.0.0",
     status: "0",
-    tags: "[]",
-    scope: "{}",
     summary: "",
     content: "",
     confidence: "medium",
+    metadataJson: "{}",
 }
 
 export const EMPTY_PROMOTE_FORM: PromoteFormState = {
     title: "",
     namespace: "general",
-    docType: "note",
+    docTyp: "note",
     docKey: "",
     version: "1.0.0",
     status: "0",
@@ -142,37 +122,34 @@ export function buildKnowledgeDocKey(namespace: string, title: string) {
 export function rawRecordToForm(item: KnowledgeRawRecord): RawFormState {
     return {
         title: item.title || "",
-        domain: String(item.domain ?? 0),
-        sourceType: String(item.sourceType ?? 0),
-        contentType: String(item.contentType ?? 0),
+        sourceTyp: String(item.sourceTyp ?? 0),
         status: String(item.status ?? 0),
-        namespaceHint: item.namespaceHint || "",
-        tags: formatJsonText(item.tags ?? [], "[]"),
-        scope: formatJsonText(item.scope ?? {}, "{}"),
         summary: item.summary || "",
         content: item.content || "",
-        sourceRef: item.sourceRef || "",
-        relatedObjectType: item.relatedObjectType || "",
-        relatedObjectId: item.relatedObjectId ? String(item.relatedObjectId) : "",
+        sourceRefs: formatJsonText(item.sourceRefs ?? [], "[]"),
+        namespaceSuggestions: formatJsonText(item.namespaceSuggestions ?? [], "[]"),
+        metadataJson: formatJsonText(item.metadataJson ?? {}, "{}"),
     }
 }
 
 export function documentRecordToForm(
     item: KnowledgeDocumentRecord,
 ): DocumentFormState {
+    const metadata = item.metadataJson ?? {}
+    const namespaceKeys = Array.isArray(metadata.acceptedNamespaceKeys)
+        ? metadata.acceptedNamespaceKeys
+        : []
     return {
         title: item.title || "",
-        domain: String(item.domain ?? 0),
-        namespace: item.namespace || "general",
-        docType: item.docType || "note",
+        namespace: String(namespaceKeys[0] || "general"),
+        docTyp: item.docTyp || "note",
         docKey: item.docKey || "",
         version: item.version || "1.0.0",
         status: String(item.status ?? 0),
-        tags: formatJsonText(item.tags ?? [], "[]"),
-        scope: formatJsonText(item.scope ?? {}, "{}"),
         summary: item.summary || "",
         content: item.content || "",
         confidence: item.confidence || "medium",
+        metadataJson: formatJsonText(item.metadataJson ?? {}, "{}"),
     }
 }
 
@@ -181,41 +158,36 @@ export function rawFormToPayload(
 ): Partial<KnowledgeRawRecord> {
     return {
         title: rawForm.title,
-        domain: Number(rawForm.domain || 0),
-        sourceType: Number(rawForm.sourceType || 0),
-        contentType: Number(rawForm.contentType || 0),
+        sourceTyp: Number(rawForm.sourceTyp || 0),
         status: Number(rawForm.status || 0),
-        namespaceHint: rawForm.namespaceHint || "",
-        tags: parseJsonText(rawForm.tags, [] as string[]),
-        scope: parseJsonText(rawForm.scope, {} as Record<string, unknown>),
         summary: rawForm.summary || "",
         content: rawForm.content || "",
-        sourceRef: rawForm.sourceRef || "",
-        relatedObjectType: rawForm.relatedObjectType || "",
-        relatedObjectId: rawForm.relatedObjectId
-            ? Number(rawForm.relatedObjectId)
-            : undefined,
+        sourceRefs: parseJsonText(rawForm.sourceRefs, [] as string[]),
+        namespaceSuggestions: parseJsonText(rawForm.namespaceSuggestions, [] as string[]),
+        metadataJson: parseJsonText(rawForm.metadataJson, {} as Record<string, unknown>),
     }
 }
 
 export function documentFormToPayload(
     documentForm: DocumentFormState,
 ): Partial<KnowledgeDocumentRecord> {
+    const metadataJson = parseJsonText(
+        documentForm.metadataJson,
+        {} as Record<string, unknown>,
+    )
+    metadataJson.acceptedNamespaceKeys = [documentForm.namespace]
     return {
         title: documentForm.title,
-        domain: Number(documentForm.domain || 0),
-        namespace: documentForm.namespace,
-        docType: documentForm.docType,
+        docTyp: documentForm.docTyp,
         docKey:
             documentForm.docKey ||
             buildKnowledgeDocKey(documentForm.namespace, documentForm.title),
         version: documentForm.version,
         status: Number(documentForm.status || 0),
-        tags: parseJsonText(documentForm.tags, [] as string[]),
-        scope: parseJsonText(documentForm.scope, {} as Record<string, unknown>),
         summary: documentForm.summary || "",
         content: documentForm.content || "",
         confidence: documentForm.confidence,
+        metadataJson,
     }
 }
 
@@ -224,11 +196,11 @@ export function promoteFormFromRaw(
     defaults?: KnowledgeOptionsResponse["defaults"],
 ): PromoteFormState {
     const title = item.title || ""
-    const namespace = item.namespaceHint || "general"
+    const namespace = item.namespaceSuggestions?.[0] || "general"
     return {
         title,
         namespace,
-        docType: "note",
+        docTyp: "note",
         docKey: buildKnowledgeDocKey(namespace, title),
         version: "1.0.0",
         status: String(defaults?.documentStatus ?? 0),

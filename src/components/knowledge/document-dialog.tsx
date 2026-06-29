@@ -36,7 +36,6 @@ export function KnowledgeDocumentDialog({
     isEditing,
     isSaving,
     form,
-    domainOptions,
     statusOptions,
     onOpenChange,
     onFormChange,
@@ -47,7 +46,6 @@ export function KnowledgeDocumentDialog({
     isEditing: boolean
     isSaving: boolean
     form: DocumentFormState
-    domainOptions: Option[]
     statusOptions: Option[]
     onOpenChange: (open: boolean) => void
     onFormChange: (updater: (prev: DocumentFormState) => DocumentFormState) => void
@@ -93,17 +91,10 @@ export function KnowledgeDocumentDialog({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-5 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Domain</Label>
-                            <Select value={form.domain} onValueChange={(value) => onFormChange((prev) => ({ ...prev, domain: value }))}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>{domainOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
+                    <div className="grid grid-cols-4 gap-4">
                         <div className="grid gap-2">
                             <Label>Doc Type</Label>
-                            <Input value={form.docType} onChange={(e) => onFormChange((prev) => ({ ...prev, docType: e.target.value }))} />
+                            <Input value={form.docTyp} onChange={(e) => onFormChange((prev) => ({ ...prev, docTyp: e.target.value }))} />
                         </div>
                         <div className="grid gap-2">
                             <Label>Version</Label>
@@ -127,15 +118,9 @@ export function KnowledgeDocumentDialog({
                         <Input value={form.docKey} onChange={(e) => onFormChange((prev) => ({ ...prev, docKey: e.target.value }))} className="font-mono text-xs" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Tags JSON</Label>
-                            <Textarea value={form.tags} onChange={(e) => onFormChange((prev) => ({ ...prev, tags: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Scope JSON</Label>
-                            <Textarea value={form.scope} onChange={(e) => onFormChange((prev) => ({ ...prev, scope: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                        </div>
+                    <div className="grid gap-2">
+                        <Label>Metadata JSON</Label>
+                        <Textarea value={form.metadataJson} onChange={(e) => onFormChange((prev) => ({ ...prev, metadataJson: e.target.value }))} className="min-h-[110px] font-mono text-xs" />
                     </div>
 
                     <div className="grid gap-2">

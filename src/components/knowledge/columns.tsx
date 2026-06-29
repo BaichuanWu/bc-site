@@ -36,33 +36,32 @@ export function buildKnowledgeRawColumns({
                     {item.summary ? (
                         <div className="text-xs text-muted-foreground line-clamp-2">{item.summary}</div>
                     ) : null}
+                    {item.content ? (
+                        <div className="text-xs text-muted-foreground line-clamp-2">{item.content}</div>
+                    ) : null}
                 </div>
             ),
         },
         {
-            key: "domain",
-            title: "Domain",
-            width: 120,
-            render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "DOMAIN_NAME_MAPPING", value)}</Badge>,
-        },
-        {
-            key: "sourceType",
+            key: "sourceTyp",
             title: "Source",
             width: 120,
-            render: (value) => <Badge variant="secondary">{getLabel("KnowledgeRaw", "SOURCE_NAME_MAPPING", value)}</Badge>,
+            render: (value) => <Badge variant="secondary">{getLabel("KnowledgeSourceInput", "SOURCE_TYP_NAME_MAPPING", value)}</Badge>,
         },
         {
-            key: "contentType",
-            title: "Content",
-            width: 120,
-            render: (value) => <Badge variant="outline">{getLabel("KnowledgeRaw", "CONTENT_NAME_MAPPING", value)}</Badge>,
+            key: "namespaceSuggestions",
+            title: "Namespaces",
+            width: 220,
+            render: (value) => {
+                const namespaces = Array.isArray(value) ? value : []
+                return <span className="font-mono text-xs">{namespaces.join(", ") || "-"}</span>
+            },
         },
-        { key: "namespaceHint", title: "Namespace Hint", width: 160 },
         {
             key: "status",
             title: "Status",
             width: 120,
-            render: (value) => <Badge>{getLabel("KnowledgeRaw", "STATUS_NAME_MAPPING", value)}</Badge>,
+            render: (value) => <Badge>{getLabel("KnowledgeSourceInput", "STATUS_NAME_MAPPING", value)}</Badge>,
         },
         {
             key: "actions",
@@ -109,18 +108,16 @@ export function buildKnowledgeDocumentColumns({
                 <div className="space-y-1">
                     <div className="font-medium">{String(value || "-")}</div>
                     <div className="text-xs text-muted-foreground">
-                        {item.namespace} / {item.docType}
+                        {documentNamespaces(item).join(", ") || "general"} / {item.docTyp}
                     </div>
+                    {item.summary || item.content ? (
+                        <div className="text-xs text-muted-foreground line-clamp-2">{item.summary || item.content}</div>
+                    ) : null}
                 </div>
             ),
         },
-        {
-            key: "domain",
-            title: "Domain",
-            width: 120,
-            render: (value) => <Badge variant="outline">{getLabel("KnowledgeDocument", "DOMAIN_NAME_MAPPING", value)}</Badge>,
-        },
         { key: "docKey", title: "Doc Key", width: 220, truncate: true, className: "font-mono text-xs" },
+        { key: "docTyp", title: "Type", width: 130 },
         { key: "version", title: "Version", width: 100 },
         {
             key: "status",
@@ -152,4 +149,10 @@ export function buildKnowledgeDocumentColumns({
             ),
         },
     ]
+}
+
+function documentNamespaces(item: KnowledgeDocumentRecord): string[] {
+    const metadata = item.metadataJson || {}
+    const value = metadata.acceptedNamespaceKeys
+    return Array.isArray(value) ? value.map(String) : []
 }

@@ -33,9 +33,7 @@ export function KnowledgeRawDialog({
     isEditing,
     isSaving,
     form,
-    domainOptions,
     sourceTypeOptions,
-    contentTypeOptions,
     statusOptions,
     onOpenChange,
     onFormChange,
@@ -46,9 +44,7 @@ export function KnowledgeRawDialog({
     isEditing: boolean
     isSaving: boolean
     form: RawFormState
-    domainOptions: Option[]
     sourceTypeOptions: Option[]
-    contentTypeOptions: Option[]
     statusOptions: Option[]
     onOpenChange: (open: boolean) => void
     onFormChange: (updater: (prev: RawFormState) => RawFormState) => void
@@ -71,31 +67,17 @@ export function KnowledgeRawDialog({
                             <Input value={form.title} onChange={(e) => onFormChange((prev) => ({ ...prev, title: e.target.value }))} />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Namespace Hint</Label>
-                            <Input value={form.namespaceHint} onChange={(e) => onFormChange((prev) => ({ ...prev, namespaceHint: e.target.value }))} placeholder="econ_intuition" />
+                            <Label>Namespace Suggestions JSON</Label>
+                            <Input value={form.namespaceSuggestions} onChange={(e) => onFormChange((prev) => ({ ...prev, namespaceSuggestions: e.target.value }))} placeholder='["quants.alpha.template.two_field"]' />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Domain</Label>
-                            <Select value={form.domain} onValueChange={(value) => onFormChange((prev) => ({ ...prev, domain: value }))}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>{domainOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label>Source Type</Label>
-                            <Select value={form.sourceType} onValueChange={(value) => onFormChange((prev) => ({ ...prev, sourceType: value }))}>
+                            <Select value={form.sourceTyp} onValueChange={(value) => onFormChange((prev) => ({ ...prev, sourceTyp: value }))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>{sourceTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Content Type</Label>
-                            <Select value={form.contentType} onValueChange={(value) => onFormChange((prev) => ({ ...prev, contentType: value }))}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>{contentTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-2">
@@ -109,27 +91,12 @@ export function KnowledgeRawDialog({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                            <Label>Tags JSON</Label>
-                            <Textarea value={form.tags} onChange={(e) => onFormChange((prev) => ({ ...prev, tags: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
+                            <Label>Source Refs JSON</Label>
+                            <Textarea value={form.sourceRefs} onChange={(e) => onFormChange((prev) => ({ ...prev, sourceRefs: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Scope JSON</Label>
-                            <Textarea value={form.scope} onChange={(e) => onFormChange((prev) => ({ ...prev, scope: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Source Ref</Label>
-                            <Input value={form.sourceRef} onChange={(e) => onFormChange((prev) => ({ ...prev, sourceRef: e.target.value }))} placeholder="book / url / task / alpha / note" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Related Object Type</Label>
-                            <Input value={form.relatedObjectType} onChange={(e) => onFormChange((prev) => ({ ...prev, relatedObjectType: e.target.value }))} placeholder="task / alpha / article / experiment" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Related Object ID</Label>
-                            <Input value={form.relatedObjectId} onChange={(e) => onFormChange((prev) => ({ ...prev, relatedObjectId: e.target.value }))} />
+                            <Label>Metadata JSON</Label>
+                            <Textarea value={form.metadataJson} onChange={(e) => onFormChange((prev) => ({ ...prev, metadataJson: e.target.value }))} className="min-h-[90px] font-mono text-xs" />
                         </div>
                     </div>
 

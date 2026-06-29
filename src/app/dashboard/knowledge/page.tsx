@@ -59,14 +59,11 @@ export default function KnowledgePage() {
         if (!defaults) return
         setRawForm((prev) => ({
             ...prev,
-            domain: String(defaults.domain ?? 0),
-            sourceType: String(defaults.sourceType ?? 0),
-            contentType: String(defaults.contentType ?? 0),
-            status: String(defaults.rawStatus ?? 0),
+            sourceTyp: String(defaults.sourceTyp ?? 0),
+            status: String(defaults.sourceInputStatus ?? 0),
         }))
         setDocumentForm((prev) => ({
             ...prev,
-            domain: String(defaults.domain ?? 0),
             status: String(defaults.documentStatus ?? 0),
             confidence: defaults.confidence ?? "medium",
         }))
@@ -85,9 +82,7 @@ export default function KnowledgePage() {
         }
         setRawForm((prev) => ({
             ...EMPTY_RAW_FORM,
-            domain: prev.domain,
-            sourceType: prev.sourceType,
-            contentType: prev.contentType,
+            sourceTyp: prev.sourceTyp,
             status: prev.status,
         }))
     }, [rawCrud.isDialogOpen, rawCrud.editingItem])
@@ -100,25 +95,16 @@ export default function KnowledgePage() {
         }
         setDocumentForm((prev) => ({
             ...EMPTY_DOCUMENT_FORM,
-            domain: prev.domain,
             status: prev.status,
             confidence: prev.confidence,
         }))
     }, [documentCrud.isDialogOpen, documentCrud.editingItem])
 
-    const rawStatusOptions = getOptions("KnowledgeRaw", "STATUS_NAME_MAPPING").map((option) => ({
+    const rawStatusOptions = getOptions("KnowledgeSourceInput", "STATUS_NAME_MAPPING").map((option) => ({
         label: String(option.label),
         value: String(option.value),
     }))
-    const domainOptions = getOptions("KnowledgeRaw", "DOMAIN_NAME_MAPPING").map((option) => ({
-        label: String(option.label),
-        value: String(option.value),
-    }))
-    const sourceTypeOptions = getOptions("KnowledgeRaw", "SOURCE_NAME_MAPPING").map((option) => ({
-        label: String(option.label),
-        value: String(option.value),
-    }))
-    const contentTypeOptions = getOptions("KnowledgeRaw", "CONTENT_NAME_MAPPING").map((option) => ({
+    const sourceTypeOptions = getOptions("KnowledgeSourceInput", "SOURCE_TYP_NAME_MAPPING").map((option) => ({
         label: String(option.label),
         value: String(option.value),
     }))
@@ -130,13 +116,6 @@ export default function KnowledgePage() {
     const rawFilterItems: SearchFilterItem[] = React.useMemo(
         () => [
             { key: "title", label: "Title", type: "text" },
-            { key: "namespaceHint", label: "Namespace", type: "text" },
-            {
-                key: "domain",
-                label: "Domain",
-                type: "number",
-                options: domainOptions.map(({ label, value }) => ({ label, value: Number(value) })),
-            },
             {
                 key: "status",
                 label: "Status",
@@ -144,20 +123,13 @@ export default function KnowledgePage() {
                 options: rawStatusOptions.map(({ label, value }) => ({ label, value: Number(value) })),
             },
         ],
-        [domainOptions, rawStatusOptions]
+        [rawStatusOptions]
     )
 
     const documentFilterItems: SearchFilterItem[] = React.useMemo(
         () => [
             { key: "title", label: "Title", type: "text" },
-            { key: "namespace", label: "Namespace", type: "text" },
-            { key: "docType", label: "Doc Type", type: "text" },
-            {
-                key: "domain",
-                label: "Domain",
-                type: "number",
-                options: domainOptions.map(({ label, value }) => ({ label, value: Number(value) })),
-            },
+            { key: "docTyp", label: "Doc Type", type: "text" },
             {
                 key: "status",
                 label: "Status",
@@ -165,7 +137,7 @@ export default function KnowledgePage() {
                 options: documentStatusOptions.map(({ label, value }) => ({ label, value: Number(value) })),
             },
         ],
-        [domainOptions, documentStatusOptions]
+        [documentStatusOptions]
     )
 
     const rawColumns = React.useMemo(
@@ -224,7 +196,7 @@ export default function KnowledgePage() {
             await apiClient.post(`/knowledge/raw/${promotingRaw.id}/promote`, {
                 title: promoteForm.title || undefined,
                 namespace: promoteForm.namespace,
-                docType: promoteForm.docType,
+                docTyp: promoteForm.docTyp,
                 docKey: promoteForm.docKey || buildKnowledgeDocKey(promoteForm.namespace, promoteForm.title || promotingRaw.title),
                 version: promoteForm.version,
                 status: Number(promoteForm.status || 0),
@@ -270,9 +242,7 @@ export default function KnowledgePage() {
                             isEditing={!!rawCrud.editingItem}
                             isSaving={rawCrud.isSaving}
                             form={rawForm}
-                            domainOptions={domainOptions}
                             sourceTypeOptions={sourceTypeOptions}
-                            contentTypeOptions={contentTypeOptions}
                             statusOptions={rawStatusOptions}
                             onOpenChange={(open) => !open && rawCrud.handleCloseDialog()}
                             onFormChange={setRawForm}
@@ -298,7 +268,6 @@ export default function KnowledgePage() {
                             isEditing={!!documentCrud.editingItem}
                             isSaving={documentCrud.isSaving}
                             form={documentForm}
-                            domainOptions={domainOptions}
                             statusOptions={documentStatusOptions}
                             onOpenChange={(open) => !open && documentCrud.handleCloseDialog()}
                             onFormChange={setDocumentForm}

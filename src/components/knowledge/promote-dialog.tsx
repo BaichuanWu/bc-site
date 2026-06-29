@@ -63,7 +63,7 @@ export function KnowledgePromoteDialog({
                         </div>
                         <div className="grid gap-2">
                             <Label>Doc Type</Label>
-                            <Input value={form.docType} onChange={(e) => onFormChange((prev) => ({ ...prev, docType: e.target.value }))} />
+                            <Input value={form.docTyp} onChange={(e) => onFormChange((prev) => ({ ...prev, docTyp: e.target.value }))} />
                         </div>
                     </div>
                     <div className="grid gap-2">
