@@ -13,7 +13,12 @@ import { CrudLayout } from "@/components/common/crud-layout"
 import { ListPageShell } from "@/components/common/list-page-shell"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { type SearchFilterItem } from "@/components/common/query-filters"
-import { buildKnowledgeDocumentColumns, buildKnowledgeRawColumns } from "@/components/knowledge/columns"
+import {
+    buildKnowledgeCandidateColumns,
+    buildKnowledgeChunkColumns,
+    buildKnowledgeDocumentColumns,
+    buildKnowledgeRawColumns,
+} from "@/components/knowledge/columns"
 import { KnowledgeDocumentDialog } from "@/components/knowledge/document-dialog"
 import { KnowledgePromoteDialog } from "@/components/knowledge/promote-dialog"
 import { KnowledgeRawDialog } from "@/components/knowledge/raw-dialog"
@@ -28,6 +33,8 @@ import {
     rawFormToPayload,
     rawRecordToForm,
     type DocumentFormState,
+    type KnowledgeCandidateRecord,
+    type KnowledgeChunkRecord,
     type KnowledgeDocumentRecord,
     type KnowledgeOptionsResponse,
     type KnowledgeRawRecord,
@@ -46,6 +53,8 @@ export default function KnowledgePage() {
 
     const rawCrud = useCrud<KnowledgeRawRecord>("/knowledge/raw")
     const documentCrud = useCrud<KnowledgeDocumentRecord>("/knowledge/document")
+    const candidateCrud = useCrud<KnowledgeCandidateRecord>("/knowledge/candidate")
+    const chunkCrud = useCrud<KnowledgeChunkRecord>("/knowledge/chunk")
 
     const [rawForm, setRawForm] = React.useState<RawFormState>(EMPTY_RAW_FORM)
     const [documentForm, setDocumentForm] = React.useState<DocumentFormState>(EMPTY_DOCUMENT_FORM)
@@ -112,6 +121,14 @@ export default function KnowledgePage() {
         label: String(option.label),
         value: String(option.value),
     }))
+    const candidateStatusOptions = getOptions("KnowledgeCandidate", "STATUS_NAME_MAPPING").map((option) => ({
+        label: String(option.label),
+        value: String(option.value),
+    }))
+    const chunkStatusOptions = getOptions("KnowledgeChunk", "STATUS_NAME_MAPPING").map((option) => ({
+        label: String(option.label),
+        value: String(option.value),
+    }))
 
     const rawFilterItems: SearchFilterItem[] = React.useMemo(
         () => [
@@ -138,6 +155,31 @@ export default function KnowledgePage() {
             },
         ],
         [documentStatusOptions]
+    )
+    const candidateFilterItems: SearchFilterItem[] = React.useMemo(
+        () => [
+            { key: "title", label: "Title", type: "text" },
+            { key: "docTyp", label: "Doc Type", type: "text" },
+            {
+                key: "status",
+                label: "Status",
+                type: "number",
+                options: candidateStatusOptions.map(({ label, value }) => ({ label, value: Number(value) })),
+            },
+        ],
+        [candidateStatusOptions]
+    )
+    const chunkFilterItems: SearchFilterItem[] = React.useMemo(
+        () => [
+            { key: "documentId", label: "Document ID", type: "number" },
+            {
+                key: "status",
+                label: "Status",
+                type: "number",
+                options: chunkStatusOptions.map(({ label, value }) => ({ label, value: Number(value) })),
+            },
+        ],
+        [chunkStatusOptions]
     )
 
     const rawColumns = React.useMemo(
@@ -180,6 +222,14 @@ export default function KnowledgePage() {
             }),
         [deleteAction, documentCrud, getLabel],
     )
+    const candidateColumns = React.useMemo(
+        () => buildKnowledgeCandidateColumns({ getLabel }),
+        [getLabel],
+    )
+    const chunkColumns = React.useMemo(
+        () => buildKnowledgeChunkColumns({ getLabel }),
+        [getLabel],
+    )
 
     const saveRaw = async () => {
         await rawCrud.handleSave(rawFormToPayload(rawForm))
@@ -207,6 +257,8 @@ export default function KnowledgePage() {
             setPromotingRaw(null)
             rawCrud.mutate()
             documentCrud.mutate()
+            candidateCrud.mutate()
+            chunkCrud.mutate()
         } catch (error: unknown) {
             const message =
                 error instanceof Error
@@ -223,7 +275,9 @@ export default function KnowledgePage() {
             <Tabs defaultValue="raw" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="raw">Raw Inbox</TabsTrigger>
+                    <TabsTrigger value="candidates">Candidates</TabsTrigger>
                     <TabsTrigger value="documents">Knowledge Library</TabsTrigger>
+                    <TabsTrigger value="chunks">Chunks</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="raw" className="space-y-4">
@@ -275,6 +329,28 @@ export default function KnowledgePage() {
                             onSave={saveDocument}
                         />
                     </CrudLayout>
+                </TabsContent>
+
+                <TabsContent value="candidates" className="space-y-4">
+                    <CrudLayout<KnowledgeCandidateRecord>
+                        embedded
+                        title="Candidate Review Trail"
+                        endpoint="/knowledge/candidate"
+                        columns={candidateColumns}
+                        filterItems={candidateFilterItems}
+                        storageKey="knowledge-candidate-filters"
+                    />
+                </TabsContent>
+
+                <TabsContent value="chunks" className="space-y-4">
+                    <CrudLayout<KnowledgeChunkRecord>
+                        embedded
+                        title="Generated Chunks"
+                        endpoint="/knowledge/chunk"
+                        columns={chunkColumns}
+                        filterItems={chunkFilterItems}
+                        storageKey="knowledge-chunk-filters"
+                    />
                 </TabsContent>
             </Tabs>
 

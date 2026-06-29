@@ -42,6 +42,40 @@ export type KnowledgeDocumentRecord = {
     updateTime?: string
 }
 
+export type KnowledgeCandidateRecord = {
+    id: number
+    title: string
+    summary?: string
+    content?: string
+    docTyp: string
+    confidence?: string
+    status: number
+    actionTyp: number
+    targetDocKey?: string
+    targetDocumentId?: number
+    sourceInputIds?: number[]
+    agentExecutionId?: number
+    proposedNamespaceKeys?: string[]
+    proposedNewNamespaces?: Record<string, unknown>[]
+    metadataJson?: Record<string, unknown>
+    reviewedTime?: string
+    updateTime?: string
+}
+
+export type KnowledgeChunkRecord = {
+    id: number
+    documentId: number
+    chunkNo: number
+    status: number
+    chunkText?: string
+    tokenCount?: number
+    heading?: string
+    sectionPath?: string[]
+    sourceSpan?: Record<string, unknown>
+    metadataJson?: Record<string, unknown>
+    updateTime?: string
+}
+
 export type RawFormState = {
     title: string
     sourceTyp: string
