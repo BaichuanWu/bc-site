@@ -204,6 +204,7 @@ export default function AlphaPage() {
                 { label: "Failed (8)", value: 8 },
                 { label: "Simulated (10)", value: 10 },
                 { label: "Submitted (20)", value: 20 },
+                { label: "Active (20)", value: 40 },
             ]
         },
         { key: "sharpe", label: "Sharpe Constraints", type: "number" },

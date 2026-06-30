@@ -20,8 +20,10 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { MarkdownEditor } from "@/components/common/markdown-editor"
+import { NamespacePicker } from "@/components/knowledge/governance-dialogs"
+import { formatJsonText, parseJsonText } from "@/lib/json-utils"
 import { knowledgeRawTemplates } from "@/lib/markdown-templates"
-import type { RawFormState } from "@/lib/knowledge"
+import type { KnowledgeNamespaceRecord, RawFormState } from "@/lib/knowledge"
 
 type Option = {
     label: string
@@ -35,6 +37,7 @@ export function KnowledgeRawDialog({
     form,
     sourceTypeOptions,
     statusOptions,
+    activeNamespaces,
     onOpenChange,
     onFormChange,
     onCancel,
@@ -46,11 +49,13 @@ export function KnowledgeRawDialog({
     form: RawFormState
     sourceTypeOptions: Option[]
     statusOptions: Option[]
+    activeNamespaces: KnowledgeNamespaceRecord[]
     onOpenChange: (open: boolean) => void
     onFormChange: (updater: (prev: RawFormState) => RawFormState) => void
     onCancel: () => void
     onSave: () => void
 }) {
+    const namespaceSuggestions = parseJsonText(form.namespaceSuggestions, [] as string[])
     return (
         <Dialog modal={false} open={open} onOpenChange={onOpenChange}>
             <MarkdownDialogContent>
@@ -67,8 +72,12 @@ export function KnowledgeRawDialog({
                             <Input value={form.title} onChange={(e) => onFormChange((prev) => ({ ...prev, title: e.target.value }))} />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Namespace Suggestions JSON</Label>
-                            <Input value={form.namespaceSuggestions} onChange={(e) => onFormChange((prev) => ({ ...prev, namespaceSuggestions: e.target.value }))} placeholder='["quants.alpha.template.two_field"]' />
+                            <Label>Namespace Suggestions</Label>
+                            <NamespacePicker
+                                namespaces={activeNamespaces}
+                                value={namespaceSuggestions}
+                                onChange={(value) => onFormChange((prev) => ({ ...prev, namespaceSuggestions: formatJsonText(value, "[]") }))}
+                            />
                         </div>
                     </div>
 

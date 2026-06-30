@@ -2,7 +2,7 @@ import * as React from "react"
 import { Plus, ChevronLeft, ChevronRight, Loader2, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SearchFilterGroup, resolveInitialFilterState, type SearchFilterItem } from "@/components/common/query-filters"
+import { SearchFilterGroup, resolveInitialFilterState, type FilterClause, type SearchFilterItem } from "@/components/common/query-filters"
 import { DataTable, type Column } from "@/components/common/data-table"
 import { useCrud, type SortEntry } from "@/hooks/use-crud"
 import {
@@ -38,6 +38,7 @@ export type CrudLayoutProps<T extends { id: string | number }> = {
     idKey?: string
     filterItems?: SearchFilterItem[]
     storageKey?: string
+    defaultFilters?: Record<string, FilterClause>
 
     // Manual Override Props (Optional)
     items?: T[]
@@ -75,6 +76,7 @@ export function CrudLayout<T extends { id: string | number }>({
     endpoint,
     filterItems,
     storageKey,
+    defaultFilters,
     stickyTop = 0,
     onFilterChange,
     pageSizeOptions = [10, 20, 30, 40, 50],
@@ -82,7 +84,7 @@ export function CrudLayout<T extends { id: string | number }>({
     footer,
 }: CrudLayoutProps<T>) {
     const [filters, setFilters] = React.useState<Record<string, unknown>>(() =>
-        resolveInitialFilterState(storageKey)
+        resolveInitialFilterState(storageKey, defaultFilters)
     )
     const ResolvedItemsRender = itemsRender ?? DataTable<T>
     const pageActions = React.useMemo(() => {
@@ -186,6 +188,7 @@ export function CrudLayout<T extends { id: string | number }>({
                     items={filterItems}
                     onSearch={handleFilterChange}
                     storageKey={storageKey}
+                    initialFilters={defaultFilters}
                 />
             )}
 

@@ -33,7 +33,7 @@ type FilterValue =
     | Array<string | number | null>
     | undefined
 
-type FilterClause = Record<string, FilterValue>
+export type FilterClause = Record<string, FilterValue>
 
 interface DynamicFilterProps {
     label: string
