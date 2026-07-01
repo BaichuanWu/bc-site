@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { FileText, MoreHorizontal, Play, Send, Edit, Search, TreePine, Zap } from "lucide-react"
+import { FileText, MoreHorizontal, Play, Send, Edit, Search, TreePine } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -113,12 +113,6 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                         <Play className="mr-2 h-4 w-4" /> Simulate
                     </DropdownMenuItem>
 
-                    {isSimulated && (
-                        <DropdownMenuItem onClick={() => handleAction("Batch Neutralizations", "simulate_neutralizations_task", { alphaId: alpha.id })}>
-                            <Zap className="mr-2 h-4 w-4" /> All Neutralizations
-                        </DropdownMenuItem>
-                    )}
-
                     <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit & Simulate
                     </DropdownMenuItem>
@@ -178,12 +172,10 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
 
                     <DropdownMenuItem onClick={() => {
                         const params = new URLSearchParams()
-                        if (alpha.id) params.set("ids", String(alpha.id))
-                        if (alpha.parentId) params.append("ids", String(alpha.parentId))
-                        if (alpha.ancestorId) params.append("ids", String(alpha.ancestorId))
+                        if (alpha.id) params.set("lineageOf", String(alpha.id))
                         navigate("/dashboard/wqb/alpha/analysis", params.toString())
                     }}>
-                        <TreePine className="mr-2 h-4 w-4" /> Analysis Tree
+                        <TreePine className="mr-2 h-4 w-4" /> Related Alphas
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
