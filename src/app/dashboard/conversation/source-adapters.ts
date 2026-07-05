@@ -6,18 +6,9 @@ import type {
   ConversationSourceAdapter,
   ConversationSourceAdapterResult,
 } from "./types"
-import { apiClient } from "@/lib/api"
-import { toast } from "sonner"
 
 const AGENT_SOURCE_TYP = 10
-const ALPHA_ENHANCEMENT_TITLE_PREFIX = "Alpha enhancement #"
-
-function readAlphaEnhancementSourceAlphaId(conversation: ConversationRecord) {
-  if (!conversation.title?.startsWith(ALPHA_ENHANCEMENT_TITLE_PREFIX)) return null
-  const raw = conversation.title.slice(ALPHA_ENHANCEMENT_TITLE_PREFIX.length).trim()
-  const parsed = Number(raw)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
-}
+const AGENT_EXECUTION_SOURCE_TYP = 20
 
 function getRecordValue(record: Record<string, unknown>, key: string) {
   return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined
@@ -37,6 +28,7 @@ function readPositiveNumber(record: Record<string, unknown>, key: string) {
 function getSourceTypeLabel(sourceTyp?: number) {
   if (!sourceTyp) return "Manual"
   if (sourceTyp === AGENT_SOURCE_TYP) return "Agent"
+  if (sourceTyp === AGENT_EXECUTION_SOURCE_TYP) return "Agent execution"
   return `Source ${sourceTyp}`
 }
 
@@ -68,53 +60,6 @@ const defaultConversationSourceAdapter: ConversationSourceAdapter = {
 const agentConversationSourceAdapter: ConversationSourceAdapter = {
   sourceTyp: AGENT_SOURCE_TYP,
   resolve: ({ conversation }): ConversationSourceAdapterResult => {
-    const enhancementSourceAlphaId = readAlphaEnhancementSourceAlphaId(conversation)
-    if (enhancementSourceAlphaId) {
-      return {
-        label: "Alpha Enhancement Agent",
-        summary: `Interactive enhancement conversation for alpha #${enhancementSourceAlphaId}.`,
-        actions: [
-          ...(conversation.sourceId
-            ? [
-                {
-                  id: "open-agent",
-                  kind: "openSource" as const,
-                  label: "Open agent",
-                  href: `/dashboard/agent/${conversation.sourceId}`,
-                },
-              ]
-            : []),
-          {
-            id: "store-alpha-children",
-            kind: "inspectSource",
-            label: "Create related WQB alphas",
-            run: async () => {
-              try {
-                const result = await apiClient.post("/quants/wqb/alpha/store-enhancement-children", {
-                  conversationId: conversation.id,
-                })
-                const storedCount = Array.isArray((result as { storedChildren?: unknown[] }).storedChildren)
-                  ? (result as { storedChildren: unknown[] }).storedChildren.length
-                  : 0
-                toast.success(`Created ${storedCount} related WQB alpha${storedCount === 1 ? "" : "s"}.`)
-              } catch (error) {
-                const detail = typeof error === "object" && error !== null && "response" in error
-                  ? (error as { response?: { data?: { detail?: unknown } } }).response?.data?.detail
-                  : null
-                toast.error(typeof detail === "string" ? detail : "Failed to create related WQB alphas.")
-              }
-            },
-          },
-          {
-            id: "open-related-alpha",
-            kind: "openSource",
-            label: "Open related alphas",
-            href: `/dashboard/wqb/alpha/analysis?lineageOf=${enhancementSourceAlphaId}`,
-          },
-        ],
-      }
-    }
-
     const metadata = conversation.metaData || {}
     const taskId = readPositiveNumber(metadata, "taskId")
     const workflowName = readString(metadata, "workflowName")
@@ -158,8 +103,30 @@ const agentConversationSourceAdapter: ConversationSourceAdapter = {
   },
 }
 
+const agentExecutionConversationSourceAdapter: ConversationSourceAdapter = {
+  sourceTyp: AGENT_EXECUTION_SOURCE_TYP,
+  resolve: ({ conversation }): ConversationSourceAdapterResult => {
+    const executionId = conversation.sourceId && conversation.sourceId > 0 ? conversation.sourceId : null
+    return {
+      label: "Agent execution",
+      summary: executionId ? `Agent execution #${executionId}` : getSourceSummary(conversation),
+      actions: executionId
+        ? [
+            {
+              id: "open-agent-execution",
+              kind: "openSource" as const,
+              label: "Open execution",
+              href: `/dashboard/agent-execution/${executionId}`,
+            },
+          ]
+        : [],
+    }
+  },
+}
+
 const conversationSourceAdapters = new Map<number, ConversationSourceAdapter>([
   [AGENT_SOURCE_TYP, agentConversationSourceAdapter],
+  [AGENT_EXECUTION_SOURCE_TYP, agentExecutionConversationSourceAdapter],
 ])
 
 export function resolveConversationSourceAdapter(conversation: ConversationRecord) {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { ChevronRightIcon } from "lucide-react"
 
-import { JsonNode } from "@/components/common/json-node"
+import { StructuredDataView } from "@/components/common/structured-data-view"
 import { Badge } from "@/components/ui/badge"
 import { TASK_STATE } from "@/lib/constants"
 import { formatTime } from "@/lib/date-utils"
@@ -29,6 +29,8 @@ const TASK_EVENT_KIND_CONFIG: Record<string, TaskEventKindConfig> = {
 }
 
 function getPayloadKind(event: TaskEventRecord) {
+  const eventKind = event.data?.eventKind ?? event.data?.event_kind
+  if (typeof eventKind === "string" && eventKind.length > 0) return eventKind
   const kind = event.data?.kind
   return typeof kind === "string" && kind.length > 0 ? kind : event.type
 }
@@ -208,7 +210,7 @@ export function TaskEventViewer({ event }: TaskEventViewerProps) {
                     {detail.label}
                   </div>
                   <div className="max-h-72 overflow-auto rounded-md border bg-muted/20 p-2 text-[11px]">
-                    <JsonNode data={detail.value} depth={0} />
+                    <StructuredDataView data={detail.value} />
                   </div>
                 </div>
               ))}

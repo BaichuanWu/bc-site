@@ -464,12 +464,13 @@ export function quickPublishFormFromRaw(
         version: "",
         status: String(defaults?.documentStatus ?? 10),
         confidence: defaults?.confidence ?? "medium",
-        summary: item.summary || "",
-        content: item.content || "",
+        summary: "",
+        content: "",
         metadata: formatJsonText(
             {
                 source_refs: item.sourceRefs || [],
                 source_typ: item.sourceTyp,
+                source_input_id: item.id,
             },
             "{}",
         ),

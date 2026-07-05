@@ -23,7 +23,30 @@ export type MessagesResponse = {
 
 export type ConversationSendResponse = {
   conversationId: number
-  message: ConversationMessage
+  message?: ConversationMessage
+  executionId?: number
+  agentResult?: unknown
+}
+
+export type AgentExecutionRecord = {
+  id: number
+  agentId: number
+  agentVersionId?: number
+  status: number
+  statusName: string
+  inputJson?: unknown
+  outputJson?: unknown
+  errorLog?: string
+  conversationId?: number | null
+  agent?: {
+    id: number
+    name?: string
+    agentClass?: string
+  } | null
+  version?: {
+    id: number
+    version?: string
+  } | null
 }
 
 export type ConversationRecord = {

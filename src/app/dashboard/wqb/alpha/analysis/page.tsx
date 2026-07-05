@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, Bot, CheckSquare, Loader2, Play, BarChart3 } from "lucide-react"
+import { ArrowLeft, CheckSquare, Loader2, Play, BarChart3 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { PageShell } from "@/components/common/page-shell"
@@ -14,7 +14,6 @@ import { WorkspaceLink } from "@/components/workspace/workspace-link"
 import { apiClient } from "@/lib/api"
 import { getJsonArray, getJsonObject } from "@/types/json"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
-import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { useTaskAction } from "@/hooks/use-task-action"
 import { toast } from "sonner"
 
@@ -109,8 +108,7 @@ export default function AlphaAnalysisPage() {
 }
 
 function AnalysisContent() {
-    const navigate = useWorkspaceNavigate()
-    const { runTask, runNamedTask, isLoading: isTaskLoading } = useTaskAction()
+    const { runNamedTask, isLoading: isTaskLoading } = useTaskAction()
     const searchParams = useSearchParams()
     const rawIds = searchParams.getAll("ids")
     const rawIdsKey = rawIds.join(",")
@@ -165,25 +163,6 @@ function AnalysisContent() {
             },
         )
     }, [runNamedTask])
-    const startEnhancementConversation = React.useCallback(async () => {
-        const sourceAlphaId = lineageOf || (alphas[0] ? String(alphas[0].id) : "")
-        if (!sourceAlphaId) return
-        await runTask(
-            () => apiClient.post(`/quants/wqb/alpha/${sourceAlphaId}/start-enhancement-conversation`),
-            {
-                errorMessage: "Failed to start enhancement conversation",
-                onSuccess: async (res) => {
-                    const data = getJsonObject(res)
-                    const conversationId = data?.conversationId
-                    if (typeof conversationId !== "number") return
-                    navigate(`/dashboard/conversation/${conversationId}`, undefined, {
-                        title: `Alpha enhancement #${sourceAlphaId}`,
-                    })
-                },
-            },
-        )
-    }, [alphas, lineageOf, navigate, runTask])
-
     useWorkspaceTabTitle(
         "/dashboard/wqb/alpha/analysis",
         lineageOf ? "Related WQB Alphas" : ids.length > 0 ? `WQB Alpha Analysis (${ids.length})` : "WQB Alpha Analysis",
@@ -273,9 +252,6 @@ function AnalysisContent() {
                     </div>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Button variant="outline" onClick={startEnhancementConversation} disabled={isTaskLoading || alphas.length === 0}>
-                        <Bot className="mr-2 h-4 w-4" /> Enhance with Agent
-                    </Button>
                     <Button variant="outline" onClick={selectUntestedAlphas} disabled={untestedAlphaIds.length === 0}>
                         <CheckSquare className="mr-2 h-4 w-4" /> Select Untested
                     </Button>

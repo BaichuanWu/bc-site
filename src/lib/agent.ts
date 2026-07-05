@@ -34,14 +34,14 @@ export type VersionFormState = {
 
 export const EMPTY_AGENT_FORM: AgentFormState = {
   name: "",
-  agentClass: "DefaultAgentNode",
+  agentClass: "LlmAgentNode",
   description: "",
 }
 
 export function agentRecordToForm(agent: AgentRecord): AgentFormState {
   return {
     name: agent.name || "",
-    agentClass: agent.agentClass || "DefaultAgentNode",
+    agentClass: agent.agentClass || "LlmAgentNode",
     description: agent.description || "",
   }
 }

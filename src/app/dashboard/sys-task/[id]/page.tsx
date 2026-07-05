@@ -24,7 +24,7 @@ import { getJsonSizeKb } from '@/lib/json-utils'
 import { getProgressPercentFromMessage, getTaskEventProgressPercent } from '@/lib/task-progress'
 import { extractRelatedTaskIds } from '@/lib/task-events'
 
-import { JsonNode } from '@/components/common/json-node'
+import { StructuredDataView } from '@/components/common/structured-data-view'
 import { PageShell } from '@/components/common/page-shell'
 import { TaskEventViewer } from '@/components/task/task-event-viewer'
 import { TaskControlButtons } from '@/components/task/task-control-buttons'
@@ -33,7 +33,7 @@ import { TaskProgressBar } from '@/components/common/task-progress-bar'
 import { type TaskEventRecord, type TaskStatus } from '@/types/task'
 import { useWorkspaceNavigate } from '@/hooks/use-workspace-navigate'
 import { useWorkspaceTabTitle } from '@/hooks/use-workspace-tab-title'
-import { PipelineDashboard } from '@/components/task/pipeline-dashboard'
+import { WorkflowRunView } from '@/components/task/workflow-run-view'
 import { 
     mapStatusToServerState, 
     mapStatusToName, 
@@ -206,14 +206,7 @@ export default function TaskDetailPage() {
                         </Card>
                     ) : null}
 
-                    {displayTask.name === 'alpha_factory_auto' && (
-                        <div className="mb-8">
-                            <PipelineDashboard
-                                events={displayEvents}
-                                status={mapServerStateToStatus(displayTask.state)}
-                            />
-                        </div>
-                    )}
+                    <WorkflowRunView events={displayEvents} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left: Progress & Metadata */}
@@ -263,7 +256,18 @@ export default function TaskDetailPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="p-4 border-y border-border bg-muted/10">
-                                        <JsonNode data={displayTask.context} depth={0} />
+                                        <StructuredDataView data={displayTask.context} />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-none shadow-sm bg-muted/5 overflow-hidden border border-white/5">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter opacity-40">Result</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="max-h-96 overflow-auto border-y border-border bg-muted/10 p-4">
+                                        <StructuredDataView data={displayTask.result} />
                                     </div>
                                 </CardContent>
                             </Card>

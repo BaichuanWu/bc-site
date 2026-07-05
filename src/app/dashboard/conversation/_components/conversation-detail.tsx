@@ -17,6 +17,7 @@ import {
   resolveConversationSourceAdapter,
 } from "../source-adapters"
 import type {
+  AgentExecutionRecord,
   ConversationMessage,
   ConversationRecord,
   ConversationSendResponse,
@@ -33,6 +34,9 @@ function getConversationModel(conversation?: ConversationRecord | null) {
   const config = conversation?.llmConfig || {}
   return typeof config.model === "string" ? config.model : null
 }
+
+const AGENT_EXECUTION_SOURCE_TYP = 20
+const AGENT_EXECUTION_STATUS_PAUSED = 25
 
 export function ConversationDetail({ conversationId }: { conversationId: number }) {
   const { mutate: mutateCache } = useSWRConfig()
@@ -57,6 +61,14 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
     () => normalizeCrudListResponse<ConversationRecord>(conversationResponse)[0] || null,
     [conversationResponse],
   )
+  const agentExecutionId =
+    conversation?.sourceTyp === AGENT_EXECUTION_SOURCE_TYP && conversation.sourceId
+      ? conversation.sourceId
+      : null
+  const { data: agentExecution, mutate: mutateAgentExecution } = useSWR<AgentExecutionRecord>(
+    agentExecutionId ? `/agent/execution/${agentExecutionId}` : null,
+    fetcher,
+  )
   const messages = React.useMemo(
     () => [...(messagesResponse?.items || []), ...optimisticMessages],
     [messagesResponse?.items, optimisticMessages],
@@ -77,7 +89,13 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
   }, [conversation, lastResultMessage, messages])
   const title = getConversationTitle(conversationId, conversation)
   const modelName = getConversationModel(conversation)
-  const canSend = Boolean(input.trim() && !isSending && conversation)
+  const isAgentExecutionConversation = Boolean(agentExecutionId)
+  const canSend = Boolean(
+    input.trim() &&
+      !isSending &&
+      conversation &&
+      (!isAgentExecutionConversation || agentExecution?.status === AGENT_EXECUTION_STATUS_PAUSED),
+  )
 
   useWorkspaceTabTitle(`/dashboard/conversation/${conversationId}`, `Conversation: ${title}`)
 
@@ -111,8 +129,13 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
       )) as ConversationSendResponse
       if (res.message) {
         setOptimisticMessages([optimisticUserMessage, res.message])
+      } else {
+        setOptimisticMessages([optimisticUserMessage])
       }
       await mutateCache(`/agent/conversation/${conversationId}/messages`)
+      if (agentExecutionId) {
+        await mutateAgentExecution()
+      }
       setOptimisticMessages([])
     } catch (error) {
       setInput(content)
@@ -121,7 +144,7 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
     } finally {
       setIsSending(false)
     }
-  }, [conversation, conversationId, input, isSending, mutateCache])
+  }, [agentExecutionId, conversation, conversationId, input, isSending, mutateAgentExecution, mutateCache])
 
   if (isLoadingConversation || isLoadingMessages) {
     return (
@@ -161,6 +184,33 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
             sourceTyp={conversation.sourceTyp}
             sourceId={conversation.sourceId}
           />
+
+          {agentExecution ? (
+            <Card className="shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Agent Execution</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant={
+                      agentExecution.status === AGENT_EXECUTION_STATUS_PAUSED
+                        ? "secondary"
+                        : "outline"
+                    }
+                  >
+                    {agentExecution.statusName}
+                  </Badge>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    #{agentExecution.id}
+                  </span>
+                </div>
+                {agentExecution.agent?.name ? (
+                  <div className="text-muted-foreground">{agentExecution.agent.name}</div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card className="shadow-none">
             <CardHeader className="pb-3">
@@ -202,7 +252,11 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
           input={input}
           canSend={canSend}
           isSending={isSending}
-          inputEnabled={Boolean(conversation)}
+          inputEnabled={Boolean(
+            conversation &&
+              (!isAgentExecutionConversation ||
+                agentExecution?.status === AGENT_EXECUTION_STATUS_PAUSED),
+          )}
           onInputChange={setInput}
           onSend={() => {
             void sendMessage()
