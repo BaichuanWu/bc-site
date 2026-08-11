@@ -49,7 +49,7 @@ export function ConversationDetail({ conversationId }: { conversationId: number 
     [conversationId],
   )
   const { data: conversationResponse, isLoading: isLoadingConversation } = useSWR<unknown>(
-    conversationId > 0 ? `/agent/conversation?q=${conversationQuery}&limit=1` : null,
+    conversationId > 0 ? `/agent/conversation?query=${conversationQuery}&limit=1` : null,
     fetcher,
   )
   const { data: messagesResponse, isLoading: isLoadingMessages } = useSWR<MessagesResponse>(

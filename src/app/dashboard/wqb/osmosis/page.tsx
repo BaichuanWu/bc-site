@@ -32,7 +32,7 @@ type OsmosisAlpha = {
 }
 
 type OsmosisAlphaResponse = {
-  dataSource?: OsmosisAlpha[]
+  items?: OsmosisAlpha[]
   total?: number
 }
 
@@ -46,7 +46,7 @@ export default function WqbOsmosisPage() {
     fetcher,
   )
 
-  const items = React.useMemo(() => data?.dataSource || [], [data?.dataSource])
+  const items = React.useMemo(() => data?.items || [], [data?.items])
   const totalPoints = React.useMemo(
     () => items.reduce((sum, item) => sum + Number(item.osmosisPoints || 0), 0),
     [items],

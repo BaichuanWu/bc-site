@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 export type SortEntry = { key: string; dir: 'asc' | 'desc' }
 type CrudListResponse<T> = {
-    dataSource?: T[]
+    items?: T[]
     total?: number
 }
 
@@ -66,18 +66,16 @@ export function useCrud<T extends { id: string | number }>(
         }
 
         if (Object.keys(qPayload).length > 0) {
-            params.set("q", JSON.stringify(qPayload))
+            params.set("query", JSON.stringify(qPayload))
         }
 
-        // Pagination params (skip and limit)
-        const skip = (page - 1) * pageSize
-        params.set("skip", String(skip))
+        const offset = (page - 1) * pageSize
+        params.set("offset", String(offset))
         params.set("limit", String(pageSize))
 
         // Sorting params (comma-separated string for backend)
         if (sorts.length > 0) {
-            const orderByStr = sorts.map(s => s.dir === 'desc' ? `-${s.key}` : s.key).join(',')
-            params.set("orderBy", orderByStr)
+            params.set("sort", sorts.map(s => s.dir === 'desc' ? `-${s.key}` : s.key).join(','))
         }
 
         return params.toString()
@@ -100,8 +98,8 @@ export function useCrud<T extends { id: string | number }>(
 
     const { data, total } = React.useMemo(() => {
         const listResult = resultData ?? null
-        const resolvedData: T[] = Array.isArray(listResult?.dataSource)
-            ? listResult.dataSource
+        const resolvedData: T[] = Array.isArray(listResult?.items)
+            ? listResult.items
             : []
         const resolvedTotal = listResult?.total || 0
         return { data: resolvedData, total: resolvedTotal }

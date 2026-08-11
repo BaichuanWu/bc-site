@@ -29,3 +29,7 @@
 - For touched frontend files, run focused lint checks.
 - For dashboard architecture, use `pnpm run check:dashboard-standards`.
 - For API casing, use `pnpm run check:api-casing` or the current frontend contract check.
+
+## OpenSpec Gate
+- Follow the workspace OpenSpec Gate for every behavior-changing request. Keep an active change in this repository for bc-site-only work; cross-project changes are owned at the workspace root.
+- Complete proposal, design, observable specs, and tasks before implementation. API-contract changes must identify affected backend consumers, include verification evidence, pass `openspec validate --strict`, and then be archived.

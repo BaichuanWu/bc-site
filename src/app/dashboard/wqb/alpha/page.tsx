@@ -50,7 +50,7 @@ type Alpha = {
 }
 
 type AlphaListResponse = {
-    dataSource?: Alpha[]
+    items?: Alpha[]
     total?: number
     [key: string]: unknown
 }
@@ -115,10 +115,10 @@ export default function AlphaPage() {
             (key: unknown) =>
                 typeof key === "string" && key.startsWith("/quants/wqb/alpha?"),
             (current: AlphaListResponse | undefined) => {
-                if (!current || !Array.isArray(current.dataSource)) return current
+                if (!current || !Array.isArray(current.items)) return current
 
                 let changed = false
-                const nextDataSource = current.dataSource.map((alpha) => {
+                const nextItems = current.items.map((alpha) => {
                     if (String(alpha.id) !== String(updatedAlpha.id)) return alpha
 
                     changed = true
@@ -131,7 +131,7 @@ export default function AlphaPage() {
                 if (!changed) return current
                 return {
                     ...current,
-                    dataSource: nextDataSource,
+                    items: nextItems,
                 }
             },
             { revalidate: false }
@@ -141,8 +141,8 @@ export default function AlphaPage() {
     const refreshAlphaRow = React.useCallback(async (alphaId: string | number) => {
         const response = await apiClient.get("/quants/wqb/alpha", {
             params: {
-                q: JSON.stringify({ id: alphaId }),
-                skip: 0,
+                query: JSON.stringify({ id: alphaId }),
+                offset: 0,
                 limit: 1,
             },
         })

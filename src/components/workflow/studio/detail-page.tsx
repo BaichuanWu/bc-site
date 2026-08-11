@@ -69,7 +69,7 @@ export function WorkflowDetailPage(props: WorkflowDetailPageProps) {
   )
   const { data: workflowResponse, mutate: mutateWorkflow } = useSWR<unknown>(
     workflowId
-      ? `/workflow-definition?q=${encodeURIComponent(JSON.stringify({ id: workflowId }))}&limit=1`
+      ? `/workflow-definition?query=${encodeURIComponent(JSON.stringify({ id: workflowId }))}&limit=1`
       : null,
     fetcher,
   )

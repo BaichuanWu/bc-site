@@ -72,7 +72,7 @@ import {
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 
 type CrudResponse<T> = {
-    dataSource?: T[]
+    items?: T[]
     total?: number
 }
 
@@ -89,7 +89,7 @@ export default function KnowledgePage() {
         apiClient.get(url).then((res) => res as KnowledgeGovernanceSummary)
     )
     const { data: namespaceList } = useSWR<CrudResponse<KnowledgeNamespaceRecord>>(
-        "/knowledge/namespace?limit=5000&orderBy=namespaceKey",
+        "/knowledge/namespace?limit=5000&sort=namespaceKey",
         (url: string) => apiClient.get(url).then((res) => res as CrudResponse<KnowledgeNamespaceRecord>)
     )
 
@@ -149,7 +149,7 @@ export default function KnowledgePage() {
         value: String(option.value),
     }))
 
-    const namespaces = namespaceList?.dataSource || []
+    const namespaces = namespaceList?.items || []
     const activeNamespaces = namespaces.filter((namespace) => Number(namespace.status) === 10)
 
     React.useEffect(() => {
@@ -273,7 +273,7 @@ export default function KnowledgePage() {
             refreshDocuments(),
             refreshChunks(),
             mutate("/knowledge/governance/summary"),
-            mutate("/knowledge/namespace?limit=5000&orderBy=namespaceKey"),
+            mutate("/knowledge/namespace?limit=5000&sort=namespaceKey"),
         ])
     }, [mutate, refreshCandidates, refreshChunks, refreshDocuments, refreshNamespaces, refreshRaw])
 

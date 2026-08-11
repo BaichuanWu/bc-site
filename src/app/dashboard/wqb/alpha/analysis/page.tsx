@@ -182,11 +182,11 @@ function AnalysisContent() {
                 const res = lineageOf
                     ? await apiClient.get(`/quants/wqb/alpha/${lineageOf}/lineage`)
                     : await apiClient.get(`/quants/wqb/alpha`, {
-                        params: { q: JSON.stringify({ id: { in_: idNumbers } }) }
+                        params: { query: JSON.stringify({ id: { in_: idNumbers } }) }
                     })
 
                 const responseObject = getJsonObject(res)
-                const fetchedAlphas = (getJsonArray(responseObject?.dataSource) ?? []) as Alpha[]
+                const fetchedAlphas = (getJsonArray(responseObject?.items) ?? []) as Alpha[]
                 const resolvedAncestorId =
                     typeof responseObject?.ancestorId === "string" || typeof responseObject?.ancestorId === "number"
                         ? responseObject.ancestorId

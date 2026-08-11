@@ -53,7 +53,7 @@ export function AgentDetailPage(props: AgentDetailPageProps) {
     mutate: mutateAgent,
     isLoading: isLoadingAgent,
   } = useSWR<AgentRecord | null>(
-    agentId ? `/agent/agent?q=${encodeURIComponent(JSON.stringify({ id: agentId }))}&limit=1` : null,
+    agentId ? `/agent/agent?query=${encodeURIComponent(JSON.stringify({ id: agentId }))}&limit=1` : null,
     async (url: string) => {
       const response = await fetcher<unknown>(url)
       return normalizeCrudListResponse<AgentRecord>(response)[0] || null

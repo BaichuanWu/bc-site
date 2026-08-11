@@ -37,7 +37,7 @@ export function LlmEditor(props: LlmEditorProps) {
 
   const { data: llmResponse, mutate } = useSWR<unknown>(
     llmId
-      ? `/agent/llm?q=${encodeURIComponent(JSON.stringify({ id: llmId }))}&limit=1`
+      ? `/agent/llm?query=${encodeURIComponent(JSON.stringify({ id: llmId }))}&limit=1`
       : null,
     fetcher,
   )
