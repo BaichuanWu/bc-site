@@ -16,6 +16,10 @@ import { getJsonArray, getJsonObject } from "@/types/json"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { useTaskAction } from "@/hooks/use-task-action"
 import { toast } from "sonner"
+import {
+    type WqbPnlProfile,
+} from "@/lib/wqb-pnl-profile"
+import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
 
 type Alpha = {
     id: string | number
@@ -33,8 +37,7 @@ type Alpha = {
     warnCount?: number
     operatorCount?: number
     isChecksInfo?: string[]
-    trendScore?: number
-    intergrityScore?: number
+    pnlProfile?: WqbPnlProfile
     parentId?: string | number
     ancestorId?: string | number
     description?: string
@@ -264,7 +267,7 @@ function AnalysisContent() {
                 </div>
             </div>
 
-            <Card className="border-none shadow-xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
+            <Card className="min-w-0 max-w-full border-none shadow-xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <BarChart3 className="h-5 w-5 text-blue-500" />
@@ -272,8 +275,8 @@ function AnalysisContent() {
                     </CardTitle>
                     <CardDescription>{lineageOf ? "Ancestor alpha is pinned as the first row." : "Selected alpha entries."}</CardDescription>
                 </CardHeader>
-                <CardContent className="overflow-x-auto p-0">
-                    <Table>
+                <CardContent className="min-w-0 max-w-full p-0">
+                    <Table className="min-w-[2500px]">
                         <TableHeader>
                             <TableRow className="bg-slate-50/50 dark:bg-slate-800/50">
                                 <TableHead className="w-[52px]"></TableHead>
@@ -293,8 +296,8 @@ function AnalysisContent() {
                                 <TableHead className="text-right">Fails</TableHead>
                                 <TableHead className="text-right">Warns</TableHead>
                                 <TableHead className="w-[320px]">Checks</TableHead>
-                                <TableHead className="text-right">Trend</TableHead>
-                                <TableHead className="text-right">Integrity</TableHead>
+                                <TableHead className="w-[142px] text-right">Recent Flat</TableHead>
+                                <TableHead className="w-[150px]">Annual Sharpe</TableHead>
                                 <TableHead className="text-right">SC</TableHead>
                                 <TableHead className="text-right">BC</TableHead>
                                 <TableHead className="text-right">PC</TableHead>
@@ -367,8 +370,8 @@ function AnalysisContent() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-right font-mono text-sm">{Number(alpha.trendScore) || 0}</TableCell>
-                                        <TableCell className="text-right font-mono text-sm">{Number(alpha.intergrityScore) || 0}</TableCell>
+                                        <TableCell className="text-right"><RecentFlatPeriod profile={alpha.pnlProfile} /></TableCell>
+                                        <TableCell><AnnualSharpes profile={alpha.pnlProfile} /></TableCell>
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.sc) || 0).toFixed(4)}</TableCell>
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.bc) || 0).toFixed(4)}</TableCell>
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.pc) || 0).toFixed(4)}</TableCell>

@@ -12,6 +12,10 @@ import { apiClient, fetcher } from "@/lib/api"
 import { useAsyncAction } from "@/hooks/use-async-action"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { formatDateTime } from "@/lib/date-utils"
+import {
+  type WqbPnlProfile,
+} from "@/lib/wqb-pnl-profile"
+import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
 
 type OsmosisAlpha = {
   id: string | number
@@ -25,8 +29,7 @@ type OsmosisAlpha = {
   fitness: number
   margin: number
   turnover: number
-  trendScore: number
-  intergrityScore: number
+  pnlProfile?: WqbPnlProfile
   expression: string
   wqbSubmittedTime?: string
 }
@@ -108,8 +111,19 @@ export default function WqbOsmosisPage() {
     { key: "fitness", title: "Fitness", width: 92, align: "right", render: (value) => numberText(value, 2) },
     { key: "margin", title: "Margin", width: 96, align: "right", render: (value) => numberText(Number(value || 0) * 10000, 2) },
     { key: "turnover", title: "Turn", width: 88, align: "right", render: (value) => numberText(value, 4) },
-    { key: "trendScore", title: "Trend", width: 88, align: "right" },
-    { key: "intergrityScore", title: "Integrity", width: 96, align: "right" },
+    {
+      key: "pnlProfile.recentLongestFlatRun",
+      title: "Recent Flat",
+      width: 142,
+      align: "right",
+      render: (_, item) => <RecentFlatPeriod profile={item.pnlProfile} />,
+    },
+    {
+      key: "pnlProfile.recentAnnualSharpes",
+      title: "Annual Sharpe",
+      width: 150,
+      render: (_, item) => <AnnualSharpes profile={item.pnlProfile} />,
+    },
     {
       key: "wqbSubmittedTime",
       title: "Submitted",

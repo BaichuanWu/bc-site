@@ -20,6 +20,10 @@ import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { useTaskAction } from "@/hooks/use-task-action"
 import { useSWRConfig } from "swr"
+import {
+    type WqbPnlProfile,
+} from "@/lib/wqb-pnl-profile"
+import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
 
 type Alpha = {
     id: string | number
@@ -40,8 +44,7 @@ type Alpha = {
     failCount: number
     warnCount: number
     isChecksInfo?: string[]
-    trendScore: number
-    intergrityScore: number
+    pnlProfile?: WqbPnlProfile
     region: string
     universe: string
     delay: number
@@ -90,9 +93,13 @@ const getStateClassName = (state: number) => {
 }
 
 export default function AlphaPage() {
-    const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>(() =>
-        resolveInitialFilterState("alpha-page-filters")
-    )
+    const [currentFilters, setCurrentFilters] = React.useState<Record<string, unknown>>(() => {
+        const initial = resolveInitialFilterState("alpha-page-filters")
+        const profileFilters = { ...initial }
+        delete profileFilters.trendScore
+        delete profileFilters.intergrityScore
+        return profileFilters
+    })
     useWorkspaceTabTitle("/dashboard/wqb/alpha", "WQB Alphas")
     const { runNamedTask } = useTaskAction()
     const { mutate } = useSWRConfig()
@@ -177,8 +184,8 @@ export default function AlphaPage() {
             "calc_pnl_score_by_query",
             { kwargs: { query: currentFilters } },
             {
-                fallbackSuccessMessage: "PnL score task started",
-                errorMessage: "Failed to start PnL score calculation",
+                fallbackSuccessMessage: "PnL profile refresh started",
+                errorMessage: "Failed to refresh PnL profiles",
                 onTaskCompleted: refreshAlphaList,
             }
         )
@@ -227,8 +234,17 @@ export default function AlphaPage() {
             ]
         },
         { key: "operatorCount", label: "Operator Count", type: "number" },
-        { key: "trendScore", label: "Trend Score", type: "number" },
-        { key: "intergrityScore", label: "Integrity Score", type: "number" },
+        {
+            key: "pnlProfile.status",
+            label: "PnL Analysis",
+            type: "text",
+            options: [
+                { label: "Analyzed", value: "ready" },
+                { label: "Unavailable", value: "unavailable" },
+            ],
+        },
+        { key: "pnlProfile.recentLongestFlatRun", label: "Recent Max Flat Obs.", type: "number" },
+        { key: "pnlProfile.recentMinimumAnnualSharpe", label: "Min 3Y Annual Sharpe", type: "number" },
         { key: "sc", label: "Self Corr (SC)", type: "number" },
         { key: "bc", label: "batch Corr (BC)", type: "number" },
         { key: "pc", label: "Production Corr (PC)", type: "number" },
@@ -319,8 +335,20 @@ export default function AlphaPage() {
                 )
             },
         },
-        { key: "trendScore", title: "Trend", width: 84, align: 'right', sortable: true },
-        { key: "intergrityScore", title: "Integrity", width: 92, align: 'right', sortable: true },
+        {
+            key: "pnlProfile.recentLongestFlatRun",
+            title: "Recent Flat",
+            width: 142,
+            align: "right",
+            sortable: true,
+            render: (_, item) => <RecentFlatPeriod profile={item.pnlProfile} />,
+        },
+        {
+            key: "pnlProfile.recentAnnualSharpes",
+            title: "Annual Sharpe",
+            width: 150,
+            render: (_, item) => <AnnualSharpes profile={item.pnlProfile} />,
+        },
         { key: "sc", title: "SC", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
         { key: "bc", title: "BC", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
         { 
