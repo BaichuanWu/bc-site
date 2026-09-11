@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
                 title: "WQB",
                 children: [
                     { title: "Alpha", href: "/dashboard/wqb/alpha" },
+                    { title: "知识与效果", href: "/dashboard/wqb/knowledge" },
                     { title: "Osmosis", href: "/dashboard/wqb/osmosis" },
                 ]
             }

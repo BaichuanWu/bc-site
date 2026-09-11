@@ -24,6 +24,7 @@ import {
     type WqbPnlProfile,
 } from "@/lib/wqb-pnl-profile"
 import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
+import { WQB_REGION_OPTIONS } from "@/lib/wqb-platform"
 
 type Alpha = {
     id: string | number
@@ -223,15 +224,7 @@ export default function AlphaPage() {
             key: "region",
             label: "Region",
             type: "text",
-            options: [
-                { label: "USA", value: "USA" },
-                { label: "EUR", value: "EUR" },
-                { label: "ASI", value: "ASI" },
-                { label: "CHN", value: "CHN" },
-                { label: "JPN", value: "JPN" },
-                { label: "IND", value: "IND" },
-                { label: "GLB", value: "GLB" },
-            ]
+            options: WQB_REGION_OPTIONS,
         },
         { key: "operatorCount", label: "Operator Count", type: "number" },
         {
