@@ -1,0 +1,15 @@
+schema: spec-driven
+
+context: |
+  bc-site owns the Next.js dashboard. API-facing values remain camelCase and
+  behavior must follow shared dashboard and API-contract standards.
+
+rules:
+  proposal:
+    - State the user-visible outcome and affected API contracts.
+  design:
+    - Describe component ownership, routes, and backend dependencies.
+  specs:
+    - Define observable UI and API-consumption scenarios.
+  tasks:
+    - Include lint, dashboard standards, API casing, and affected UI checks.
