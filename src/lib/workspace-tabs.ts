@@ -84,6 +84,8 @@ export function getWorkspaceTitleFallback(pathname: string) {
   if (/^\/dashboard\/sys-task\/[^/]+$/.test(pathname)) return "Task"
   if (pathname === "/dashboard/wqb/alpha") return "Alpha"
   if (pathname === "/dashboard/wqb/osmosis") return "Osmosis"
+  if (pathname === "/dashboard/wqb/knowledge") return "WQB Knowledge"
+  if (/^\/dashboard\/wqb\/knowledge\/\d+$/.test(pathname)) return "WQB Knowledge"
   if (pathname === "/dashboard/wqb/alpha/analysis") {
     return "Alpha Analysis"
   }
