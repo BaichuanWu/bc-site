@@ -186,15 +186,15 @@ export default function WorkflowPage() {
       <RunWorkflowDialog
         open={!!runningWorkflow}
         onOpenChange={(open) => !open && setRunningWorkflow(null)}
-        workflowName={runningWorkflow?.name || ""}
+        definitionId={runningWorkflow?.id || 0}
         title={runningWorkflow?.title || runningWorkflow?.name || "Workflow"}
         description={
           runningWorkflow
-            ? `Execute ${runningWorkflow.name} with JSON kwargs. Active workflows can be launched directly from Workflow Studio.`
+            ? `Create an instance of ${runningWorkflow.name} with JSON input.`
             : undefined
         }
-        initialKwargs={
-          ((((runningWorkflow?.definitionJson || {}) as JsonObject).run_defaults as JsonObject | undefined)?.kwargs as Record<string, unknown> | undefined) || {}
+        initialInput={
+          (((runningWorkflow?.definitionJson || {}) as JsonObject).run_defaults as Record<string, unknown> | undefined) || {}
         }
       />
     </>

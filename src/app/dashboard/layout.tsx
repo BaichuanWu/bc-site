@@ -43,7 +43,6 @@ const NAV_ITEMS: NavItem[] = [
                 title: "WQB",
                 children: [
                     { title: "Alpha", href: "/dashboard/wqb/alpha" },
-                    { title: "知识与效果", href: "/dashboard/wqb/knowledge" },
                     { title: "Osmosis", href: "/dashboard/wqb/osmosis" },
                 ]
             }
@@ -54,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
         icon: Workflow,
         children: [
             { title: "Workflow Studio", href: "/dashboard/workflow" },
+            { title: "Workflow Runs", href: "/dashboard/workflow-instances" },
         ]
     },
     {

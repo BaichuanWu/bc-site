@@ -5,73 +5,68 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { parseJsonText } from "@/lib/json-utils"
-import { useTaskAction } from "@/hooks/use-task-action"
+import { apiClient } from "@/lib/api"
+import { useWorkspaceNavigate } from "@/hooks/use-workspace-navigate"
 import { Loader2 } from "lucide-react"
 
 interface RunWorkflowDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  workflowName: string
+  definitionId: number
   title: string
   description?: string
-  initialKwargs?: Record<string, unknown>
-  renderForm?: () => React.ReactNode
+  initialInput?: Record<string, unknown>
 }
 
-const WORKFLOW_TASK_NAME = "workflow_task"
-
-function formatInitialKwargs(initialKwargs?: Record<string, unknown>) {
-  return JSON.stringify(initialKwargs || {}, null, 2)
-}
-
-function toKwargs(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? { ...(value as Record<string, unknown>) }
-    : {}
+function formatInitialInput(initialInput?: Record<string, unknown>) {
+  return JSON.stringify(initialInput || {}, null, 2)
 }
 
 export function RunWorkflowDialog({
   open,
   onOpenChange,
-  workflowName,
+  definitionId,
   title,
   description,
-  initialKwargs,
-  renderForm,
+  initialInput,
 }: RunWorkflowDialogProps) {
-  const { runNamedTask, isLoading } = useTaskAction()
-  const [kwargsText, setKwargsText] = React.useState(() =>
-    formatInitialKwargs(initialKwargs),
+  const navigate = useWorkspaceNavigate()
+  const [isLoading, setIsLoading] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [inputText, setInputText] = React.useState(() =>
+    formatInitialInput(initialInput),
   )
 
   React.useEffect(() => {
     if (!open) return
-    setKwargsText(formatInitialKwargs(initialKwargs))
-  }, [initialKwargs, open])
+    setInputText(formatInitialInput(initialInput))
+  }, [initialInput, open])
 
   const handleRun = async () => {
-    const kwargs = toKwargs(parseJsonText(kwargsText, {}))
-    kwargs.workflowName = workflowName
-
-    await runNamedTask(
-      WORKFLOW_TASK_NAME,
-      {
-        displayName: workflowName,
-        kwargs,
-      },
-      {
-        errorMessage: "Failed to start workflow",
-        onSuccess: async () => {
-          onOpenChange(false)
-        },
+    setIsLoading(true)
+    setError("")
+    try {
+      const input: unknown = JSON.parse(inputText)
+      if (input === null || typeof input !== "object" || Array.isArray(input)) {
+        throw new Error("Workflow input must be a JSON object")
       }
-    )
+      const created = await apiClient.post("/workflow-instances", {
+        definitionId,
+        input,
+        config: { autoAdvance: false },
+      }) as { id: number }
+      onOpenChange(false)
+      navigate(`/dashboard/workflow-instances/${created.id}`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to start workflow")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={renderForm ? "sm:max-w-[425px]" : "max-w-[720px]"}>
+      <DialogContent className="max-w-[720px]">
         <DialogHeader>
           <DialogTitle>Run {title}</DialogTitle>
           <DialogDescription>
@@ -79,25 +74,22 @@ export function RunWorkflowDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {renderForm ? (
-            renderForm()
-          ) : (
-            <div className="grid gap-2">
-              <Label htmlFor="run-kwargs">Task kwargs JSON</Label>
-              <Textarea
-                id="run-kwargs"
-                value={kwargsText}
-                onChange={(e) => setKwargsText(e.target.value)}
-                className="min-h-[260px] font-mono text-xs"
-              />
-            </div>
-          )}
+          <div className="grid gap-2">
+            <Label htmlFor="run-input">Workflow input JSON</Label>
+            <Textarea
+              id="run-input"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="min-h-[260px] font-mono text-xs"
+            />
+          </div>
         </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleRun} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Execute Task
+            Create run
           </Button>
         </DialogFooter>
       </DialogContent>
