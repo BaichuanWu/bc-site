@@ -45,6 +45,8 @@ const NAV_ITEMS: NavItem[] = [
                     { title: "Alpha", href: "/dashboard/wqb/alpha" },
                     { title: "Osmosis", href: "/dashboard/wqb/osmosis" },
                     { title: "Knowledge", href: "/dashboard/wqb/knowledge" },
+                    { title: "Exploration Receipts", href: "/dashboard/wqb/exploration-receipts" },
+                    { title: "Dataset Classifications", href: "/dashboard/wqb/dataset-classifications" },
                 ]
             }
         ]
