@@ -30,7 +30,7 @@ const columns: Column<WqbKnowledge>[] = [
   { key: "state", title: "State", width: 105, render: (_, item) => <Badge variant={item.state === 10 ? "secondary" : "outline"}>{item.state === 10 ? "Final" : "Draft"}</Badge> },
   {
     key: "content", title: "Preview", width: 420, truncate: true,
-    render: (_, item) => <Link className="block truncate hover:underline" href={`/dashboard/wqb/knowledge/${item.id}`}>{item.content || "Open detail"}</Link>,
+    render: (_, item) => <Link className="block truncate hover:underline" href={`/dashboard/wqb/knowledge/${item.id}`}>{item.contentSummary || item.content || "Open detail"}</Link>,
   },
 ]
 

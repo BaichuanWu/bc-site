@@ -1,3 +1,12 @@
+export type WqbKnowledgeSection = { key: string; title: string; markdown: string }
+export type WqbStructuredContent = {
+  schemaVersion: number
+  summary: string
+  sections: WqbKnowledgeSection[]
+  unclassified: boolean
+  sourceFormat: string
+}
+
 export type WqbKnowledge = {
   id: number
   batchNo: string
@@ -10,6 +19,9 @@ export type WqbKnowledge = {
   datafield: string | null
   topic: string | null
   content: string
+  structuredContent?: WqbStructuredContent | null
+  contentSummary?: string | null
+  contentFormatVersion?: number | null
   contentLength: number
   contentOffset: number
   contentTruncated: boolean
