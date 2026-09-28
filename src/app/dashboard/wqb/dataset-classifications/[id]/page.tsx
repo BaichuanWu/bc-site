@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import useSWR from "swr"
 import { DetailPageLayout } from "@/components/common/detail-page-layout"
 import { DataTable, type Column } from "@/components/common/data-table"
+import { NumberedPagination } from "@/components/common/numbered-pagination"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,10 +42,7 @@ export default function Page() {
       </CardContent></Card>
       <Card><CardHeader><CardTitle>Field decisions</CardTitle></CardHeader><CardContent className="space-y-3">
         <DataTable items={(data.items ?? []).map((item) => ({ ...item, id: item.fieldId }))} columns={columns} />
-        <div className="flex items-center justify-between text-sm text-muted-foreground"><span>{data.decidedCount ?? 0} decisions · page {page + 1}</span><div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button>
-          <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= (data.decidedCount ?? 0)} onClick={() => setPage(page + 1)}>Next</Button>
-        </div></div>
+        <NumberedPagination page={page} total={data.decidedCount ?? 0} pageSize={PAGE_SIZE} onPageChange={setPage} />
       </CardContent></Card>
     </> : null}
   </DetailPageLayout>

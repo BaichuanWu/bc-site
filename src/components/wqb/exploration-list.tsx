@@ -3,13 +3,13 @@
 import * as React from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react"
+import { BookOpen } from "lucide-react"
 
 import { DataTable, type Column } from "@/components/common/data-table"
 import { ListPageShell } from "@/components/common/list-page-shell"
+import { NumberedPagination } from "@/components/common/numbered-pagination"
 import { SearchFilterGroup, type SearchFilterItem, type FilterClause } from "@/components/common/query-filters"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { fetcher } from "@/lib/api"
 import type { BrowserPage, DatasetClassification, ExplorationReceipt } from "@/lib/wqb-exploration"
@@ -65,12 +65,6 @@ export function ExplorationList({ kind }: { kind: "receipts" | "classifications"
       onSearch={(next) => { setFilters(next); setPage(0) }} />
     {error ? <p role="alert" className="text-sm text-destructive">Could not load {title.toLowerCase()}.</p> : null}
     {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : <DataTable items={data?.items ?? []} columns={receipt ? receiptColumns as Column<ExplorationReceipt | DatasetClassification>[] : classificationColumns as Column<ExplorationReceipt | DatasetClassification>[]} />}
-    <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-      <span>{total.toLocaleString()} records · page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeft className="size-4" /> Previous</Button>
-        <Button variant="outline" size="sm" disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage(page + 1)}>Next <ChevronRight className="size-4" /></Button>
-      </div>
-    </div>
+    <NumberedPagination page={page} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
   </ListPageShell>
 }
