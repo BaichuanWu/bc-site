@@ -8,15 +8,17 @@ import { BookOpen } from "lucide-react"
 import { DataTable, type Column } from "@/components/common/data-table"
 import { NumberedPagination } from "@/components/common/numbered-pagination"
 import { ListPageShell } from "@/components/common/list-page-shell"
+import { SearchFilterGroup, type FilterClause, type SearchFilterItem } from "@/components/common/query-filters"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { fetcher } from "@/lib/api"
 import type { WqbKnowledge, WqbKnowledgePage } from "@/lib/wqb-knowledge"
 
 const PAGE_SIZE = 20
+const filterItems: SearchFilterItem[] = [
+  { key: "text", label: "Content" },
+  { key: "state", label: "State", options: [{ label: "Draft", value: 0 }, { label: "Final", value: 10 }] },
+]
 
 const columns: Column<WqbKnowledge>[] = [
   {
@@ -36,37 +38,18 @@ const columns: Column<WqbKnowledge>[] = [
 
 export default function WqbKnowledgePage() {
   useWorkspaceTabTitle("/dashboard/wqb/knowledge", "WQB Knowledge")
-  const [search, setSearch] = React.useState("")
-  const [text, setText] = React.useState("")
-  const [state, setState] = React.useState("all")
+  const [filters, setFilters] = React.useState<Record<string, FilterClause>>({})
   const [page, setPage] = React.useState(0)
   const params = new URLSearchParams({ offset: String(page * PAGE_SIZE), limit: String(PAGE_SIZE) })
-  if (text) params.set("text", text)
-  if (state !== "all") params.set("state", state)
+  const text = filters.text?.eq ?? filters.text?.like ?? filters.text?.ilike
+  if (typeof text === "string" && text.trim()) params.set("text", text.trim())
+  const states = filters.state?.in
+  if (Array.isArray(states) && states.length === 1) params.set("state", String(states[0]))
   const { data, error, isLoading } = useSWR<WqbKnowledgePage>(`/quants/wqb/knowledge?${params}`, fetcher)
   const total = data?.total ?? 0
 
-  function submitSearch(event: React.FormEvent) {
-    event.preventDefault()
-    setPage(0)
-    setText(search.trim())
-  }
-
   return <ListPageShell title="WQB Knowledge" icon={BookOpen}>
-    <div className="flex flex-wrap items-end gap-3">
-      <form onSubmit={submitSearch} className="flex min-w-64 flex-1 gap-2">
-        <Input aria-label="Search knowledge" placeholder="Search content" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <Button type="submit" variant="outline">Search</Button>
-      </form>
-      <Select value={state} onValueChange={(value) => { setState(value); setPage(0) }}>
-        <SelectTrigger aria-label="Knowledge state" className="w-36"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All states</SelectItem>
-          <SelectItem value="10">Final</SelectItem>
-          <SelectItem value="0">Draft</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+    <SearchFilterGroup title="Filter" items={filterItems} onSearch={(next) => { setFilters(next); setPage(0) }} />
     {error ? <p role="alert" className="text-sm text-destructive">Could not load WQB knowledge.</p> : null}
     {isLoading ? <p className="text-sm text-muted-foreground">Loading knowledge…</p> : <DataTable items={data?.items ?? []} columns={columns} />}
     <NumberedPagination page={page} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
