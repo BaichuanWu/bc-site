@@ -10,7 +10,6 @@ import {
     ChevronRight,
     Bot,
     Activity,
-    BookOpen,
     FlaskConical,
     Workflow,
     type LucideIcon,
@@ -45,7 +44,6 @@ const NAV_ITEMS: NavItem[] = [
                     { title: "Alpha", href: "/dashboard/wqb/alpha" },
                     { title: "Osmosis", href: "/dashboard/wqb/osmosis" },
                     { title: "Knowledge", href: "/dashboard/wqb/knowledge" },
-                    { title: "Exploration Receipts", href: "/dashboard/wqb/exploration-receipts" },
                     { title: "Dataset Classifications", href: "/dashboard/wqb/dataset-classifications" },
                 ]
             }
@@ -57,13 +55,6 @@ const NAV_ITEMS: NavItem[] = [
         children: [
             { title: "Workflow Studio", href: "/dashboard/workflow" },
             { title: "Workflow Runs", href: "/dashboard/workflow-instances" },
-        ]
-    },
-    {
-        title: "Knowledge",
-        icon: BookOpen,
-        children: [
-            { title: "Knowledge Workspace", href: "/dashboard/knowledge" },
         ]
     },
     {

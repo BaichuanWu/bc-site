@@ -30,6 +30,7 @@ type Alpha = {
     expression: string
     description?: string
     state: number
+    settings?: { simulationMode?: string }
     parentId?: string | number
     ancestorId?: string | number
 }
@@ -96,6 +97,9 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
     const isSimulated = alpha.state >= 10
     const isSubmitted = alpha.state >= 20
     const isPending = alpha.state === 5
+    const canUpgradeQuick = alpha.state === 10
+        && Boolean(alpha.wqbAlphaId)
+        && alpha.settings?.simulationMode === "QUICK"
 
     return (
         <>
@@ -112,6 +116,15 @@ export function AlphaActionMenu({ alpha, onSuccess }: AlphaActionMenuProps) {
                     <DropdownMenuItem onClick={() => handleAction("Simulate", "alpha_simulate", { alphaIds: [alpha.id] })}>
                         <Play className="mr-2 h-4 w-4" /> Simulate
                     </DropdownMenuItem>
+
+                    {canUpgradeQuick && (
+                        <DropdownMenuItem onClick={() => handleAction(
+                            "Upgrade to FULL", "alpha_simulate",
+                            { alphaIds: [alpha.id], simulationMode: "FULL" },
+                        )}>
+                            <Play className="mr-2 h-4 w-4" /> Upgrade to FULL
+                        </DropdownMenuItem>
+                    )}
 
                     <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit & Simulate

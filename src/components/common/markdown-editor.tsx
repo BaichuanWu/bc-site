@@ -17,7 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { MarkdownTemplate } from "@/lib/markdown-templates"
+export type MarkdownTemplate = {
+  id: string
+  label: string
+  description?: string
+  content: string
+}
 
 interface MarkdownEditorProps {
   value: string

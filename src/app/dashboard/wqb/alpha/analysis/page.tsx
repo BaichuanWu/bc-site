@@ -20,6 +20,7 @@ import {
     type WqbPnlProfile,
 } from "@/lib/wqb-pnl-profile"
 import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
+import { AlphaDiagnoseCell, type AlphaDiagnostics } from "@/components/alpha/alpha-diagnose-cell"
 
 type Alpha = {
     id: string | number
@@ -33,10 +34,10 @@ type Alpha = {
     pc: number
     sc?: number
     bc?: number
-    failCount?: number
-    warnCount?: number
+    raBlockCount?: number
+    ppaBlockCount?: number
     operatorCount?: number
-    isChecksInfo?: string[]
+    diagnostics: AlphaDiagnostics
     pnlProfile?: WqbPnlProfile
     parentId?: string | number
     ancestorId?: string | number
@@ -47,6 +48,7 @@ type Alpha = {
     wqbTypName?: string
     isPnlValid?: boolean
     state: number
+    settings?: { simulationMode?: string }
     wqbData?: unknown
 }
 
@@ -60,8 +62,8 @@ function sortRelatedAlphas(alphas: Alpha[], ancestorId: string | number | null) 
 
         return (
             (Number(right.state) || 0) - (Number(left.state) || 0)
-            || (Number(left.failCount) || 0) - (Number(right.failCount) || 0)
-            || (Number(left.warnCount) || 0) - (Number(right.warnCount) || 0)
+            || (Number(left.raBlockCount) || 0) - (Number(right.raBlockCount) || 0)
+            || (Number(left.ppaBlockCount) || 0) - (Number(right.ppaBlockCount) || 0)
             || (Number(right.fitness) || 0) - (Number(left.fitness) || 0)
             || (Number(left.id) || 0) - (Number(right.id) || 0)
         )
@@ -293,9 +295,9 @@ function AnalysisContent() {
                                 <TableHead className="text-right">Turn</TableHead>
                                 <TableHead className="text-right">Margin</TableHead>
                                 <TableHead className="text-right">Ops</TableHead>
-                                <TableHead className="text-right">Fails</TableHead>
-                                <TableHead className="text-right">Warns</TableHead>
-                                <TableHead className="w-[320px]">Checks</TableHead>
+                                <TableHead className="w-[96px] text-right">RA Count</TableHead>
+                                <TableHead className="w-[96px] text-right">PPA Count</TableHead>
+                                <TableHead className="w-[180px]">Diagnose</TableHead>
                                 <TableHead className="w-[142px] text-right">Recent Flat</TableHead>
                                 <TableHead className="w-[150px]">Annual Sharpe</TableHead>
                                 <TableHead className="text-right">SC</TableHead>
@@ -310,6 +312,7 @@ function AnalysisContent() {
                                 const isAncestor = ancestorId !== null
                                     ? String(alpha.id) === String(ancestorId)
                                     : index === 0 && !alpha.ancestorId
+                                const isQuick = alpha.settings?.simulationMode === "QUICK"
 
                                 return (
                                     <TableRow
@@ -334,12 +337,19 @@ function AnalysisContent() {
                                                     href={alpha.wqbUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-blue-500 hover:text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                                                    className={isQuick
+                                                        ? "text-yellow-600 hover:text-yellow-700 hover:underline dark:text-yellow-400 dark:hover:text-yellow-300"
+                                                        : "text-blue-500 hover:text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"}
+                                                    title={isQuick ? "QUICK backtest" : undefined}
                                                     onClick={(event) => event.stopPropagation()}
                                                 >
                                                     {alpha.wqbAlphaId || "-"}
                                                 </a>
-                                            ) : alpha.wqbAlphaId || "-"}
+                                            ) : (
+                                                <span className={isQuick ? "text-yellow-600 dark:text-yellow-400" : undefined} title={isQuick ? "QUICK backtest" : undefined}>
+                                                    {alpha.wqbAlphaId || "-"}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="max-w-[300px] truncate font-mono text-[10px] sm:text-xs">{alpha.expression}</TableCell>
                                         <TableCell className="max-w-[280px] truncate text-xs text-muted-foreground">{alpha.description || "-"}</TableCell>
@@ -351,24 +361,10 @@ function AnalysisContent() {
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.turnover) || 0).toFixed(4)}</TableCell>
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.margin) * 10000 || 0).toFixed(2)}</TableCell>
                                         <TableCell className="text-right font-mono text-sm">{Number(alpha.operatorCount) || 0}</TableCell>
-                                        <TableCell className="text-right font-mono text-sm">{Number(alpha.failCount) || 0}</TableCell>
-                                        <TableCell className="text-right font-mono text-sm">{Number(alpha.warnCount) || 0}</TableCell>
+                                        <TableCell className="text-right font-mono text-sm">{alpha.raBlockCount ?? "-"}</TableCell>
+                                        <TableCell className="text-right font-mono text-sm">{alpha.ppaBlockCount ?? "-"}</TableCell>
                                         <TableCell>
-                                            <div className="flex max-w-[320px] flex-wrap gap-1">
-                                                {(alpha.isChecksInfo || []).length > 0 ? (
-                                                    (alpha.isChecksInfo || []).map((check, checkIndex) => (
-                                                        <Badge
-                                                            key={`${alpha.id}-${check}-${checkIndex}`}
-                                                            variant="outline"
-                                                            className="whitespace-normal break-all px-1.5 py-0 text-[10px] font-mono leading-4"
-                                                        >
-                                                            {check}
-                                                        </Badge>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-muted-foreground">-</span>
-                                                )}
-                                            </div>
+                                            <AlphaDiagnoseCell alphaId={alpha.id} wqbAlphaId={alpha.wqbAlphaId} diagnostics={alpha.diagnostics} />
                                         </TableCell>
                                         <TableCell className="text-right"><RecentFlatPeriod profile={alpha.pnlProfile} /></TableCell>
                                         <TableCell><AnnualSharpes profile={alpha.pnlProfile} /></TableCell>
@@ -376,9 +372,7 @@ function AnalysisContent() {
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.bc) || 0).toFixed(4)}</TableCell>
                                         <TableCell className="text-right font-mono text-sm">{(Number(alpha.pc) || 0).toFixed(4)}</TableCell>
                                         <TableCell><Badge variant="outline">{alpha.wqbTypName || "Regular (0)"}</Badge></TableCell>
-                                        <TableCell>
-                                            {getStateBadge(alpha.state, alpha.isPnlValid)}
-                                        </TableCell>
+                                        <TableCell>{getStateBadge(alpha.state, alpha.isPnlValid)}</TableCell>
                                     </TableRow>
                                 )
                             })}

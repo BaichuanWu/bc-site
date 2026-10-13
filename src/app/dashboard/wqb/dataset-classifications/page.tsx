@@ -1,2 +1,2 @@
-import { ExplorationList } from "@/components/wqb/exploration-list"
-export default function Page() { return <ExplorationList kind="classifications" /> }
+import { ClassificationList } from "@/components/wqb/classification-list"
+export default function Page() { return <ClassificationList /> }

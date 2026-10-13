@@ -44,7 +44,7 @@ function alphaIdOf(item: Record<string, unknown>) {
 }
 
 function metricBadges(item: Record<string, unknown>) {
-  const metrics = ["sharpe", "fitness", "margin", "pc", "warnCount", "warn_count", "failCount", "fail_count"]
+  const metrics = ["sharpe", "fitness", "margin", "pc", "raBlockCount", "ppaBlockCount"]
   return metrics
     .map((key) => [key, readNumber(item[key])] as const)
     .filter((entry): entry is readonly [string, number] => entry[1] !== null)

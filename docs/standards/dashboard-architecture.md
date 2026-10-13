@@ -57,6 +57,8 @@
 - 如果某个页面需要大量 `if resource === ...` 的分支，应优先拆出上层组合组件，而不是继续污染 `CrudLayout`。
 
 ### DataTable
+- 列 `key` 支持点路径（例如 `settings.neutralization`）；同名字段优先于路径解析。
+- 默认单元格与 `render(value, item, onRefresh)` 共用取值逻辑；缺失路径返回 `undefined`，保留 `null`、`0` 和 `false`。
 - sticky header 是可选能力，由 `stickyTop` 控制。
 - `stickyTop=0` 表示直接贴住宿主滚动容器顶部。
 - 如果宿主滚动容器内部还有固定工具条，可通过 `stickyTop` 提供偏移量。

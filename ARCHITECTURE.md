@@ -17,6 +17,9 @@
 - Page components should stay thin and compose shared shells/content components.
 - Dashboard page spacing, headers, tabs, and close behavior are platform concerns.
 - Public component props should express generic UI capability, not resource-specific routing hacks.
+- Knowledge browsing uses `/dashboard/wqb/knowledge` and WQB APIs. The generic
+  `/dashboard/knowledge` governance workspace is retired; Research knowledge
+  artifacts remain part of the Research result display.
 
 ## Documentation Map
 - Specs: `docs/product-specs/`

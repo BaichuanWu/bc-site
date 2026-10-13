@@ -1,11 +1,11 @@
-# WQB 知识与实际效果
+# WQB 知识与文档
 
-入口 `/dashboard/wqb/knowledge`，每行是一项知识。列表沿用 WQB Alpha 页的公共搜索筛选、表格密度、排序和 offset 分页；支持八类知识筛选和词法搜索，重点展示经济学逻辑、模板和优化手段。列表包含当前版本、成熟度、实际采用/历史应用数量、证据及有限的同设置表现预览。
+入口 `/dashboard/wqb/knowledge` 使用公共列表壳、搜索筛选、表格和 offset 分页。普通浏览使用当前版本，可按“可复用知识 / 文档”、主题、文档用途和适用条件筛选。主列展示标题、身份、内容类型、主题、文档用途、适用范围与摘要；入库渠道、历史 state 和批次不作为主要分类。
 
-详情 `/dashboard/wqb/knowledge/{id}?version={version}` 展示知识正文、适用边界、按条件分组的实例表现、证据展开、关系、使用记录、导入映射和版本选择。实例中的原始结果与调整记录按需展开。表格或数字缺失明确标注，不把缺证据渲染成失败或零分。
+`KNOWLEDGE` 保存可脱离会话理解的抽象方法、概念、经验和模板。`DOCUMENT` 保存受治理用途允许的正式探索报告或用户明确指定文档。用途不认证结论正确性；报告的个案成绩不能作为普适结论。适用范围为空明确显示“未声明”。
 
-效果范围限定 API 明示的实例页；历史背景实例不等于机制验证。归因、成熟度和指标口径完全使用 bc-wqb 返回结果，前端不重新评分。来源正文以文本/Markdown 展示，结构内容使用带标签的字段视图；大型原始迁移 payload 不在主列表传输。
+详情按稳定 reference 展示正文、主题、用途、适用范围、元数据和版本选择。保留记录的历史精确引用继续可读；清理删除的记录返回现有 404，可通过库外备份显式恢复。前端不重新评分。大型原始迁移 payload 不在主列表传输。
 
-列表使用公共 CrudLayout、SearchFilterGroup 和 DataTable，详情使用 DetailPageLayout 和 WorkspaceLink；feature 内容组件位于 components/wqb-knowledge。保留现有通用 knowledge 和 research 页面。
+正文按 Markdown/GFM 文档渲染，支持表格、强调和安全链接。保存内容中的原始 HTML 保持惰性，不生成活动 iframe、脚本或脚本协议链接。恢复工作区时清除已删除的通用 Knowledge 与 exploration-receipts 页签，并保留 WQB Knowledge、分类和 Research 页签。
 
-真实验收样本：模板 8 的版本 2（investment effect，关联历史实例）；知识 3990（Two-field alpha taxonomy and AST template）；知识 3991（CONCENTRATED_WEIGHT warning repair with ts_backfill，缺独立验证证据）。样本标识来自当前授权数据库，其他环境按导入映射定位。
+两类名称与用途由 bc-wqb 管理，bc-core 暴露筛选，bc-site 展示含义。旧 kind 新筛选和写入返回迁移提示；旧值只可能出现在保留历史版本。跨项目治理变更位于 workspace OpenSpec `govern-wqb-knowledge-content`。

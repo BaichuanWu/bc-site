@@ -22,6 +22,7 @@ type BivariantRender<T> = {
 }["bivarianceHack"]
 
 export type Column<T> = {
+    // Exact property names take precedence over dot-separated nested paths.
     key: string
     title: React.ReactNode
     width?: string | number
@@ -31,6 +32,19 @@ export type Column<T> = {
     truncate?: boolean
     sortable?: boolean
     render?: BivariantRender<T>
+}
+
+function getColumnValue(row: Record<string, unknown>, key: string): unknown {
+    if (Object.hasOwn(row, key)) return row[key]
+
+    let value: unknown = row
+    for (const segment of key.split(".")) {
+        if (value === null || typeof value !== "object" || !Object.hasOwn(value, segment)) {
+            return undefined
+        }
+        value = (value as Record<string, unknown>)[segment]
+    }
+    return value
 }
 
 function renderTableValue(value: unknown): React.ReactNode {
@@ -210,9 +224,10 @@ export function DataTable<T extends { id: string | number }>({
                     <TableRow key={item.id} className="group border-b last:border-0 hover:bg-muted/30">
                         {columns.map((col, colIdx) => {
                             const row = item as Record<string, unknown>
+                            const cellValue = getColumnValue(row, col.key)
                             const value = col.render
-                                ? col.render(row[col.key], item, onRefresh)
-                                : row[col.key]
+                                ? col.render(cellValue, item, onRefresh)
+                                : cellValue
 
                             const cellContent = col.truncate ? (
                                 <Tooltip>

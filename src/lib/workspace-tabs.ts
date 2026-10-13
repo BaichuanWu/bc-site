@@ -77,14 +77,12 @@ export function getWorkspaceTitleFallback(pathname: string) {
   if (/^\/dashboard\/workflow-instances\/[^/]+$/.test(pathname)) return "Workflow Run"
   if (pathname === "/dashboard/workflow/new") return "New Workflow"
   if (/^\/dashboard\/workflow\/[^/]+$/.test(pathname)) return "Workflow"
-  if (pathname === "/dashboard/knowledge") return "Knowledge"
   if (pathname === "/dashboard/research") return "Research"
   if (/^\/dashboard\/research\/[^/]+$/.test(pathname)) return "Research"
   if (pathname === "/dashboard/sys-task") return "System Tasks"
   if (/^\/dashboard\/sys-task\/[^/]+$/.test(pathname)) return "Task"
   if (pathname === "/dashboard/wqb/alpha") return "Alpha"
   if (pathname === "/dashboard/wqb/osmosis") return "Osmosis"
-  if (/^\/dashboard\/wqb\/exploration-receipts(\/\d+)?$/.test(pathname)) return "Exploration Receipts"
   if (/^\/dashboard\/wqb\/dataset-classifications(\/\d+)?$/.test(pathname)) return "Dataset Classifications"
   if (pathname === "/dashboard/wqb/knowledge") return "WQB Knowledge"
   if (/^\/dashboard\/wqb\/knowledge\/\d+$/.test(pathname)) return "WQB Knowledge"
@@ -113,10 +111,15 @@ export function ensureWorkspaceDefaults(
   state: WorkspaceTabsState | null | undefined,
 ): WorkspaceTabsState {
   const base = state && Array.isArray(state.tabs) ? state : createDefaultWorkspaceState()
+  const retainedTabs = base.tabs.filter((tab) =>
+    !["/dashboard/knowledge", "/dashboard/wqb/exploration-receipts"].some((retired) =>
+      tab.pathname === retired || tab.pathname.startsWith(`${retired}/`),
+    ),
+  )
   const rootKey = buildWorkspaceTabKey(DASHBOARD_ROOT)
-  const rootExisting = base.tabs.find((tab) => tab.key === rootKey)
+  const rootExisting = retainedTabs.find((tab) => tab.key === rootKey)
   const tabs = rootExisting
-    ? base.tabs.map((tab) =>
+    ? retainedTabs.map((tab) =>
         tab.key === rootKey
           ? normalizeWorkspaceTab({
               ...tab,
@@ -134,7 +137,7 @@ export function ensureWorkspaceDefaults(
           closable: false,
           lastVisitedAt: Date.now(),
         }),
-        ...base.tabs.map((tab) => normalizeWorkspaceTab(tab)),
+        ...retainedTabs.map((tab) => normalizeWorkspaceTab(tab)),
       ]
   const uniqueTabs = dedupeWorkspaceTabs(tabs)
   const activeExists = uniqueTabs.some((tab) => tab.key === base.activeTabKey)

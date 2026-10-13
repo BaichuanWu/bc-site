@@ -17,6 +17,7 @@ import { formatDateTime } from "@/lib/date-utils"
 import { Badge } from "@/components/ui/badge"
 import { resolveInitialFilterState, type SearchFilterItem } from "@/components/common/query-filters"
 import { AlphaActionMenu } from "@/components/alpha/alpha-action-menu"
+import { AlphaDiagnoseCell, type AlphaDiagnostics } from "@/components/alpha/alpha-diagnose-cell"
 import { useWorkspaceTabTitle } from "@/hooks/use-workspace-tab-title"
 import { useTaskAction } from "@/hooks/use-task-action"
 import { useSWRConfig } from "swr"
@@ -24,7 +25,7 @@ import {
     type WqbPnlProfile,
 } from "@/lib/wqb-pnl-profile"
 import { AnnualSharpes, RecentFlatPeriod } from "@/components/alpha/pnl-profile-cell"
-import { WQB_REGION_OPTIONS } from "@/lib/wqb-platform"
+import { formatNeutralization, WQB_REGION_OPTIONS } from "@/lib/wqb-platform"
 
 type Alpha = {
     id: string | number
@@ -38,13 +39,14 @@ type Alpha = {
     turnover: number
     wqbTypName: string
     state: number
+    settings?: { simulationMode?: string }
     isPnlValid?: boolean
     sc: number
     pc: number
     pcUpdateTime?: string
-    failCount: number
-    warnCount: number
-    isChecksInfo?: string[]
+    raBlockCount: number
+    ppaBlockCount: number
+    diagnostics: AlphaDiagnostics
     pnlProfile?: WqbPnlProfile
     region: string
     universe: string
@@ -241,8 +243,8 @@ export default function AlphaPage() {
         { key: "sc", label: "Self Corr (SC)", type: "number" },
         { key: "bc", label: "batch Corr (BC)", type: "number" },
         { key: "pc", label: "Production Corr (PC)", type: "number" },
-        { key: "failCount", label: "Fail Count Limit", type: "number" },
-        { key: "warnCount", label: "Warn Count Limit", type: "number" },
+        { key: "raBlockCount", label: "RA Block Count", type: "number" },
+        { key: "ppaBlockCount", label: "PPA Block Count", type: "number" },
         {
             key: "settings.neutralization",
             label: "Neutralization",
@@ -274,11 +276,26 @@ export default function AlphaPage() {
             width: 120, 
             className: "font-semibold", 
             fixed: 'left',
-            render: (val, item) => item.wqbUrl ? (
-                <a href={item.wqbUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300">
-                    {val as string}
-                </a>
-            ) : <>{val}</>
+            render: (val, item) => {
+                const isQuick = item.settings?.simulationMode === "QUICK"
+                return item.wqbUrl ? (
+                    <a
+                        href={item.wqbUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={isQuick
+                            ? "text-yellow-600 hover:text-yellow-700 hover:underline dark:text-yellow-400 dark:hover:text-yellow-300"
+                            : "text-blue-500 hover:text-blue-600 hover:underline dark:text-blue-400 dark:hover:text-blue-300"}
+                        title={isQuick ? "QUICK backtest" : undefined}
+                    >
+                        {val as string}
+                    </a>
+                ) : (
+                    <span className={isQuick ? "text-yellow-600 dark:text-yellow-400" : undefined} title={isQuick ? "QUICK backtest" : undefined}>
+                        {val as string}
+                    </span>
+                )
+            }
         },
         {
             key: "expression",
@@ -297,36 +314,30 @@ export default function AlphaPage() {
         { key: "region", title: "Region", width: 80, align: 'center', className: "font-bold text-blue-500/80" },
         { key: "universe", title: "Universe", width: 100, truncate: true },
         { key: "delay", title: "Delay", width: 70, align: 'center' },
+        {
+            key: "settings.neutralization",
+            title: "Neutral",
+            width: 110,
+            align: 'center',
+            render: (val) => {
+                const value = val == null ? "" : String(val)
+                return <span className="block w-full truncate cursor-help" title={value || undefined}>{formatNeutralization(value)}</span>
+            },
+        },
         { key: "sharpe", title: "Sharpe", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
         { key: "fitness", title: "Fitness", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(2) },
         { key: "turnover", title: "Turn", width: 92, align: 'right', sortable: true, render: (val) => (Number(val) || 0).toFixed(4) },
         { key: "margin", title: "Margin", width: 96, align: 'right', sortable: true, render: (val) => (Number(val) * 10000 || 0).toFixed(2) },
+        { key: "wqbData.is.returns", title: "Returns", width: 96, align: 'right', render: (val) => val == null ? "-" : (Number(val) * 100).toFixed(2) },
+        { key: "wqbData.is.drawdown", title: "Drawdown", width: 96, align: 'right', render: (val) => val == null ? "-" : (Number(val) * 100).toFixed(2) },
         { key: "operatorCount", title: "Ops", width: 84, align: 'right', sortable: true },
-        { key: "failCount", title: "Fails", width: 84, align: 'right', sortable: true },
-        { key: "warnCount", title: "Warns", width: 84, align: 'right', sortable: true },
+        { key: "raBlockCount", title: "RA Count", width: 96, align: 'right', sortable: true, render: (val) => val == null ? "-" : String(val) },
+        { key: "ppaBlockCount", title: "PPA Count", width: 96, align: 'right', sortable: true, render: (val) => val == null ? "-" : String(val) },
         {
-            key: "isChecksInfo",
-            title: "Checks",
-            width: 320,
-            className: "align-top",
-            render: (val) => {
-                const checks = Array.isArray(val) ? val.filter((item): item is string => typeof item === "string" && item.length > 0) : []
-                if (checks.length === 0) return <span className="text-muted-foreground">-</span>
-
-                return (
-                    <div className="flex flex-wrap gap-1">
-                        {checks.map((check, index) => (
-                            <Badge
-                                key={`${check}-${index}`}
-                                variant="outline"
-                                className="whitespace-normal break-all px-1.5 py-0 text-[10px] font-mono leading-4"
-                            >
-                                {check}
-                            </Badge>
-                        ))}
-                    </div>
-                )
-            },
+            key: "diagnostics",
+            title: "Diagnose",
+            width: 180,
+            render: (_, item) => <AlphaDiagnoseCell alphaId={item.id} wqbAlphaId={item.wqbAlphaId} diagnostics={item.diagnostics} />,
         },
         {
             key: "pnlProfile.recentLongestFlatRun",

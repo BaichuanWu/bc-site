@@ -1,27 +1,21 @@
 # wqb-knowledge-search Specification
 
 ## Purpose
-TBD - created by archiving change align-wqb-knowledge-search. Update Purpose after archive.
+Browse the current admitted knowledge corpus using shared search controls and independent semantic fields.
 
 ## Requirements
 
 ### Requirement: WQB Knowledge uses the shared search controls
-
-The WQB Knowledge list SHALL present text and state searches using the shared search filter panel.
+The WQB Knowledge list SHALL present text, semantic kind, topic, document purpose and applicability searches using the shared search filter panel. Technical ingestion origin, batch and historic numeric state SHALL not be primary controls. Ordinary list retrieval SHALL select current versions.
 
 #### Scenario: Search knowledge
-
-- **WHEN** a user enters Content text, selects Draft or Final, and clicks Search
-- **THEN** the list requests matching knowledge using the text and state query parameters
-- **AND** pagination returns to its first page
+- **WHEN** a user enters content text, chooses reusable knowledge or documents and searches
+- **THEN** the list requests matching current knowledge with the semantic filters and pagination returns to its first page
 
 #### Scenario: Reset knowledge search
+- **WHEN** a user resets filters
+- **THEN** the list requests both admitted semantic types without text or applicability restrictions and pagination returns to its first page
 
-- **WHEN** a user resets the filters
-- **THEN** the list requests all knowledge states without text restriction
-- **AND** pagination returns to its first page
-
-#### Scenario: Select both states
-
-- **WHEN** a user selects both Draft and Final
-- **THEN** the list does not restrict results by state
+#### Scenario: Specific document purpose
+- **WHEN** a user filters by a document purpose
+- **THEN** the purpose is forwarded independently of topic and applicability
